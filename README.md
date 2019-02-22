@@ -1,5 +1,7 @@
 # TSQRのGPU実装 (using TensorCore)
 
+![STQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
+
 ## 予定
 1. 幅が16以下限定の行列に対するTSQRを実装
 2. 幅がN以下限定の行列に対するTSQRの実装
@@ -9,4 +11,4 @@
 
 
 ## TSQRの参考文献
-- 
+-  
