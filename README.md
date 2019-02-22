@@ -9,6 +9,8 @@
 ## その後の予定
 - rsvdへの応用
 
+## 関連リポジトリ
+- [TCQR](https://gitlab.momo86.net/mutsuki/tcqr)
 
 ## TSQRの参考文献
 -  
