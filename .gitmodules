@@ -1,0 +1,3 @@
+[submodule "src/tcqr"]
+	path = src/tcqr
+	url = https://gitlab.momo86.net/mutsuki/tcqr
