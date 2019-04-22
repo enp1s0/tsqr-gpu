@@ -17,7 +17,7 @@ constexpr unsigned fragment_dimension = 16;
 constexpr std::size_t num_matrix_per_block = 8;
 
 template <class Func>
-__device__ void debug_func(unsigned warp_id,	Func run_func){
+__device__ void debug_func(unsigned warp_id, Func run_func){
 #ifdef DEBUG
 	if(warp_id == 0){
 		run_func();
@@ -187,45 +187,6 @@ __device__ void matmul_16x16_TN(half* const c, const half* const a, const half* 
 	}
 }
 #endif 
-template <class T>
-__device__ void matmul_16x16(T* const c, const T* const a, const T* const b, unsigned warp_id){
-	/* 行列Cを1ワープで計算する
-	 * スレッドによる分割方法は
-	 * C(列優先) = 
-	 * -------------------- -
-	 * |   |   | ... |    | ^
-	 * | 0 | 2 | ... | 30 | |
-	 * |   |   | ... |    | |
-	 * -------------------- 16
-	 * |   |   | ... |    | |
-	 * | 1 | 3 | ... | 31 | |
-	 * |   |   | ... |    | v
-	 * -------------------- -
-	 * <--------16-------->
-	 * の様に分割する．
-	 * (start_i, j)は各スレッドの書き込み先の
-	 * 先頭の要素
-	 */
-	// (x % 2) <-> (x & 0x1)
-	const auto start_i = (warp_id & 0x1) * (fragment_dimension/2);
-	// (x / 2) <-> (x >> 1)
-	const auto j = (warp_id >> 1);
-	T sums[fragment_dimension/2];
-
-	for(std::size_t i = start_i; i < fragment_dimension / 2 + start_i; i++){
-		auto sum = cutf::cuda::type::cast<T>(0.0f);
-		for(std::size_t k = 0; k < fragment_dimension; k++){
-			sum += a[fragment_dimension * k + i] * b[fragment_dimension * j + k];
-		}
-		sums[i - start_i] = sum;
-	}
-	__syncthreads();
-
-	// 一度バッファ(レジスタ)に貯めてからメモリに書き込み
-	for(std::size_t i = start_i; i < fragment_dimension / 2 + start_i; i++){
-		c[fragment_dimension * j + i] = sums[i - start_i];
-	}
-}
 
 template <class T>
 __device__ void make_identity_matrix(T* const dest_ptr, std::size_t m, unsigned warp_id){
@@ -381,51 +342,6 @@ __device__ void qr16x16_f32tc_core(
 	}
 }
 
-// kernel
-template <class T, class Norm_t, bool UseTC>
-__global__ void qr16x16_kernel(T* const q, T* const r, const T* const a, const std::size_t m, const std::size_t n){
-	// (x % 32) <-> (x & 0x1f)
-	const auto warp_id = threadIdx.x & 0x1f;
-	__shared__ T q_shared[fragment_dimension * fragment_dimension];
-	__shared__ T r_shared[fragment_dimension * fragment_dimension];
-	__shared__ T h[fragment_dimension * fragment_dimension];
-	__shared__ T u[fragment_dimension];
-
-	copy_16x16<T, T>(r_shared, a, m, n, warp_id);
-	make_identity_matrix(q_shared, m, warp_id);
-
-	qr16x16_core<T, Norm_t, UseTC>(q_shared, r_shared,
-			h, u,
-		   	m, n, warp_id);
-
-	copy_16x16<T, T>(r, m, n, r_shared, warp_id);
-	copy_16x16_T<T, T>(q, m, m, q_shared, warp_id);
-}
-
-// 単精度入出力TC使用
-template <>
-__global__ void qr16x16_kernel<float, float, true>(float* const q, float* const r, const float* const a, const std::size_t m, const std::size_t n){
-	// (x % 32) <-> (x & 0x1f)
-	const auto warp_id = threadIdx.x & 0x1f;
-	__shared__ float q_shared_f32[fragment_dimension * fragment_dimension];
-	__shared__ float r_shared_f32[fragment_dimension * fragment_dimension];
-	// 作業用メモリ
-	__shared__ half q_shared_f16[fragment_dimension * fragment_dimension];
-	__shared__ half r_shared_f16[fragment_dimension * fragment_dimension];
-	__shared__ half h_shared[fragment_dimension * fragment_dimension];
-	__shared__ float u_shared[fragment_dimension];
-
-	copy_16x16(r_shared_f32, a, m, n, warp_id);
-	make_identity_matrix(q_shared_f32, m, warp_id);
-
-	qr16x16_f32tc_core(q_shared_f32, r_shared_f32,
-			q_shared_f16, r_shared_f16,
-			u_shared, h_shared,
-			m, n, warp_id);
-
-	copy_16x16(r, m, n, r_shared_f32, warp_id);
-	copy_16x16_T(q, m, m, q_shared_f32, warp_id);
-}
 // batched kernel
 template <class T, class Norm_t, bool UseTC>
 __global__ void qr16x16_batched_kernel(T* const* const q, T* const* const r, const T* const* const a, const std::size_t m, const std::size_t n, const std::size_t batch_size){
@@ -496,114 +412,6 @@ __global__ void qr16x16_batched_kernel<float, float, true>(float* const* const q
 	copy_16x16(r[matrix_id], m, n, r_f32_ptr, warp_id);
 	copy_16x16_T(q[matrix_id], m, m, q_f32_ptr, warp_id);
 }
-
-constexpr std::size_t loop_count = 300;
-
-// 固有値計算
-template <class T, class Norm_t, bool UseTC>
-__global__ void eigen16x16_kernel(T* const eigenvalues, const T* const a, const std::size_t n){
-	// (x % 32) <-> (x & 0x1f)
-	const auto warp_id = threadIdx.x & 0x1f;
-	__shared__ T q_shared[fragment_dimension * fragment_dimension];
-	__shared__ T r_shared[fragment_dimension * fragment_dimension];
-	__shared__ T h[fragment_dimension * fragment_dimension];
-	__shared__ T u[fragment_dimension];
-
-	copy_16x16<T, T>(r_shared, a, n, n, warp_id);
-	make_identity_matrix(q_shared, n, warp_id);
-	// TODO : 収束判定
-	for(std::size_t i = 0; i < loop_count; i++){
-		// R <- RQ を計算
-		matmul_16x16(r_shared, r_shared, q_shared, warp_id);
-		// QR法 : QR分解部分 {{{
-		make_identity_matrix(q_shared, n, warp_id);
-		qr16x16_core<T, Norm_t, UseTC>(q_shared, r_shared,
-				h, u,
-				n, n, warp_id);
-		// 転置されてしまっているのを修正
-		for(unsigned j = 0; j < fragment_dimension * fragment_dimension / warp_size; j++){
-			const auto index = warp_size * j + warp_id;
-			const auto x = index / fragment_dimension;
-			const auto y = index % fragment_dimension;
-			if(x < y){
-				const auto tmp = q_shared[index];
-				const auto swap_index = fragment_dimension * y + x;
-				q_shared[index] = q_shared[swap_index];
-				q_shared[swap_index] = tmp;
-			}
-		}
-	}
-	if(warp_id < n){
-		eigenvalues[warp_id] = r_shared[warp_id * (fragment_dimension + 1)];
-	}
-}
-template <>
-__global__ void eigen16x16_kernel<float, float, true>(float* const eigenvalues, const float* const a, const std::size_t n){
-	// (x % 32) <-> (x & 0x1f)
-	const auto warp_id = threadIdx.x & 0x1f;
-	__shared__ float q_shared_f32[fragment_dimension * fragment_dimension];
-	__shared__ float r_shared_f32[fragment_dimension * fragment_dimension];
-	// 作業用メモリ
-	__shared__ half q_shared_f16[fragment_dimension * fragment_dimension];
-	__shared__ half r_shared_f16[fragment_dimension * fragment_dimension];
-	__shared__ half h_shared[fragment_dimension * fragment_dimension];
-	__shared__ float u_shared[fragment_dimension];
-
-	copy_16x16(r_shared_f32, a, n, n, warp_id);
-	make_identity_matrix(q_shared_f32, n, warp_id);
-
-	// TODO : 収束判定
-	for(std::size_t i = 0; i < loop_count; i++){
-		// R <- RQ を計算
-		matmul_16x16(r_shared_f32, r_shared_f32, q_shared_f32, warp_id);
-		// QR法 : QR分解部分 {{{
-		make_identity_matrix(q_shared_f32, n, warp_id);
-		qr16x16_f32tc_core(q_shared_f32, r_shared_f32,
-				q_shared_f16, r_shared_f16,
-				u_shared, h_shared,
-				n, n, warp_id);
-
-		// 転置されてしまっているのを修正
-		for(unsigned j = 0; j < fragment_dimension * fragment_dimension / warp_size; j++){
-			const auto index = warp_size * j + warp_id;
-			const auto x = index / fragment_dimension;
-			const auto y = index % fragment_dimension;
-			if(x < y){
-				const auto tmp = q_shared_f32[index];
-				const auto swap_index = fragment_dimension * y + x;
-				q_shared_f32[index] = q_shared_f32[swap_index];
-				q_shared_f32[swap_index] = tmp;
-			}
-		}
-	}
-	if(warp_id < n){
-		eigenvalues[warp_id] = r_shared_f32[warp_id * (fragment_dimension + 1)];
-	}
-}
-} // noname namespace
-
-template <class T, class Norm_t, bool UseTC>
-void tcqr::qr16x16(T *const q, T *const r, const T *const a, const std::size_t m, const std::size_t n){
-	qr16x16_kernel<T, Norm_t, UseTC><<<1, warp_size>>>(q, r, a, m, n);
-}
-template void tcqr::qr16x16<half, half, true>(half *const, half *const, const half *const, const std::size_t, const std::size_t);
-template void tcqr::qr16x16<half, float, true>(half *const, half *const, const half *const, const std::size_t, const std::size_t);
-template void tcqr::qr16x16<half, half, false>(half *const, half *const, const half *const, const std::size_t, const std::size_t);
-template void tcqr::qr16x16<half, float, false>(half *const, half *const, const half *const, const std::size_t, const std::size_t);
-template void tcqr::qr16x16<float, float, false>(float *const, float *const, const float *const, const std::size_t, const std::size_t);
-template void tcqr::qr16x16<float, float, true>(float *const, float *const, const float *const, const std::size_t, const std::size_t);
-
-
-template <class T, class Norm_t, bool UseTC>
-void tcqr::eigen16x16(T* const eigens, const T* const a, std::size_t n){
-	eigen16x16_kernel<T, Norm_t, UseTC><<<1, warp_size>>>(eigens, a, n);
-}
-template void tcqr::eigen16x16<half, half, false>(half* const, const half* const, std::size_t);
-template void tcqr::eigen16x16<half, half, true>(half* const, const half* const, std::size_t);
-template void tcqr::eigen16x16<half, float, false>(half* const, const half* const, std::size_t);
-template void tcqr::eigen16x16<half, float, true>(half* const, const half* const, std::size_t);
-template void tcqr::eigen16x16<float, float, false>(float* const, const float* const, std::size_t);
-template void tcqr::eigen16x16<float, float, true>(float* const, const float* const, std::size_t);
 
 template <class T, class Norm_t, bool UseTC>
 void tcqr::qr16x16_batched(T* const* const q, T* const * const r, const T* const* const a, const std::size_t m, const std::size_t n, const std::size_t batch_size){
