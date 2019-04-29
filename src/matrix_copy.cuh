@@ -5,24 +5,46 @@ namespace mtk {
 namespace matrix_copy {
 template <class T, std::size_t FRAGMENT_DIM = 16>
 __device__ inline void g2s(
-		T* const dst_ptr, const std::size_t dst_m, const std::size_t dst_n,
-		const T* const src_ptr, const std::size_t src_p_y, const std::size_t src_ld,
+		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
+		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
 		){
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
 	const auto x = tid >> 1;
-	if(x >= dst_n) return;
+	if(x >= shared_n) return;
 
 	const auto start_y = (tid & 0b1) * load_size;
 	for(std::size_t i = 0; i < load_size; i++){
 		const auto y = start_y + i;
-		if(y >= dst_m) return;
+		if(y >= shared_m) return;
 
 		// copy
-		const auto dst_index = x * FRAGMENT_DIM + y;
-		const auto src_index = x * src_ld + y + src_p_y;
+		const auto shared_index = x * FRAGMENT_DIM + y;
+		const auto global_index = x * global_ld + y + global_p_y;
 
-		dst_ptr[dst_index] = src_ptr[src_index];
+		shared_ptr[shared_index] = global_ptr[global_index];
+	}
+}
+template <class T, std::size_t FRAGMENT_DIM = 16>
+__device__ inline void s2g(
+		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
+		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
+		const unsigned tid
+		){
+	constexpr auto load_size = FRAGMENT_DIM >> 1;
+	const auto x = tid >> 1;
+	if(x >= shared_n) return;
+
+	const auto start_y = (tid & 0b1) * load_size;
+	for(std::size_t i = 0; i < load_size; i++){
+		const auto y = start_y + i;
+		if(y >= shared_m) return;
+
+		// copy
+		const auto shared_index = x * FRAGMENT_DIM + y;
+		const auto global_index = x * global_ld + y + global_p_y;
+
+		global_ptr[global_index] = shared_ptr[shared_index];
 	}
 }
 } // namespace matrix_copy
