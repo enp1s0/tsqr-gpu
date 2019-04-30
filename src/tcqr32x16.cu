@@ -99,6 +99,7 @@ __device__ void qr32x16_f32tc_core(
 				u32_ptr, norm2_u_1,
 				unique_id
 				);
+		// copy f32 to f16
 		// update q, r
 	}
 }
