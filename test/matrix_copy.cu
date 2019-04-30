@@ -14,7 +14,7 @@ constexpr std::size_t s_size_n = 6;
 constexpr std::size_t batch_size = (g_size_m + s_size_m -1) / s_size_m;
 using test_t = float;
 
-__global__ void kernel(test_t* ptr){
+__global__ void kernel16x16(test_t* ptr){
 	__shared__ test_t s_mem[fragment_dim * fragment_dim * batch_per_block];
 
 	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -25,7 +25,7 @@ __global__ void kernel(test_t* ptr){
 	const auto s_mem_ptr = s_mem + fragment_dim * fragment_dim * matrix_index;
 	const auto m = min(s_size_m, g_size_m - s_size_m * matrix_index);
 
-	mtk::matrix_copy::g2s(
+	mtk::matrix_copy::g2s16x16(
 			s_mem_ptr, 2, 2,
 			ptr, matrix_index * s_size_m, g_size_m,
 			tid & 31
@@ -38,7 +38,7 @@ __global__ void kernel(test_t* ptr){
 		__syncthreads();
 	}
 
-	mtk::matrix_copy::s2g(
+	mtk::matrix_copy::s2g16x16(
 			ptr, matrix_index * s_size_m, g_size_m,
 			s_mem_ptr, m, s_size_n,
 			tid & 31
@@ -60,7 +60,7 @@ int main(){
 
 	constexpr auto grid_size = (batch_size + batch_per_block - 1) / batch_per_block;
 
-	kernel<<<grid_size, batch_per_block * warp_size>>>(g_mem.get());
+	kernel16x16<<<grid_size, batch_per_block * warp_size>>>(g_mem.get());
 
 	cutf::cuda::memory::copy(h_mem_1.get(), g_mem.get(), g_size_m * g_size_n);
 	utils::print_matrix(h_mem_1.get(), g_size_m, g_size_n, "g (g2s2g)");
