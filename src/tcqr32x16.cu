@@ -52,6 +52,14 @@ __device__ void update_qr(
 		const unsigned tid
 		){
 	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> q16_0_frag, q16_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float, nvcuda::wmma::col_major> r32_0_frag, r32_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float, nvcuda::wmma::col_major> q32_0_frag, q32_1_frag;
+	for(unsigned i = 0; i < 2; i++){
+		
+	}
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
