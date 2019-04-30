@@ -4,7 +4,7 @@
 namespace mtk {
 namespace matrix_copy {
 template <class T, std::size_t FRAGMENT_DIM = 16>
-__device__ inline void g2s(
+__device__ inline void g2s16x16(
 		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
@@ -26,7 +26,7 @@ __device__ inline void g2s(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM = 16>
-__device__ inline void s2g(
+__device__ inline void s2g16x16(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
