@@ -103,4 +103,16 @@ __device__ void qr32x16_f32tc_core(
 		// update q, r
 	}
 }
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__global__ void qr32x16_f32_batched_kernel(
+		float* const q32_ptr,
+		float* const r32_ptr,
+		const float* const a32_ptr,
+		const unsigned m,
+		const unsigned n,
+		std::size_t batch_size
+		){
+
+}
 }
