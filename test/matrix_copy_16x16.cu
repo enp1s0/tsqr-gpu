@@ -28,7 +28,7 @@ __global__ void kernel16x16(test_t* ptr){
 	mtk::matrix_copy::g2s16x16(
 			s_mem_ptr, 2, 2,
 			ptr, matrix_index * s_size_m, g_size_m,
-			tid & 31
+			tid
 			);
 
 	for(std::size_t i = 0; i < batch_size; i++){
@@ -41,7 +41,7 @@ __global__ void kernel16x16(test_t* ptr){
 	mtk::matrix_copy::s2g16x16(
 			ptr, matrix_index * s_size_m, g_size_m,
 			s_mem_ptr, m, s_size_n,
-			tid & 31
+			tid
 			);
 }
 
