@@ -10,10 +10,11 @@ __device__ inline void g2s16x16(
 		const unsigned tid
 		){
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
-	const auto x = tid >> 1;
+	const auto unique_id = tid & 0x1f;
+	const auto x = unique_id >> 1;
 	if(x >= shared_n) return;
 
-	const auto start_y = (tid & 0b1) * load_size;
+	const auto start_y = (unique_id & 0b1) * load_size;
 	for(std::size_t i = 0; i < load_size; i++){
 		const auto y = start_y + i;
 		if(y >= shared_m) return;
@@ -32,10 +33,11 @@ __device__ inline void s2g16x16(
 		const unsigned tid
 		){
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
-	const auto x = tid >> 1;
+	const auto unique_id = tid & 0x1f;
+	const auto x = unique_id >> 1;
 	if(x >= shared_n) return;
 
-	const auto start_y = (tid & 0b1) * load_size;
+	const auto start_y = (unique_id & 0b1) * load_size;
 	for(std::size_t i = 0; i < load_size; i++){
 		const auto y = start_y + i;
 		if(y >= shared_m) return;
