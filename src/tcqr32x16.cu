@@ -188,8 +188,7 @@ __global__ void qr32x16_f32_kernel(
 		float* const r32_ptr,
 		const float* const a32_ptr,
 		const unsigned m,
-		const unsigned n,
-		std::size_t batch_size
+		const unsigned n
 		){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 
