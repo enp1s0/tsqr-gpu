@@ -126,7 +126,6 @@ __device__ void qr32x16_f32tc_core(
 		const unsigned tid
 		){
 	const auto unique_id = tid & 0x3f;
-	cutf::cuda::math::ceil(
 	for(unsigned k = 0; k < n - 1; k++){
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
