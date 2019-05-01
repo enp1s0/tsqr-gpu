@@ -1,7 +1,8 @@
 #ifndef __MATRIX_OPERATIONS_CUH__
 #define __MATRIX_OPERATIONS_CUH__
 #include <cutf/type.hpp>
-
+namespace mtk {
+namespace matrix_operation {
 template <class T, std::size_t FRAGMENT_DIM_M = 32>
 __device__ inline void make_zero_matrix(
 		T* const target_ptr,
@@ -21,5 +22,6 @@ __device__ inline void make_identity_matrix(
 	make_zero_matrix(target_ptr, unique_id);
 	target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::cuda::type::cast<T>(1.0f);
 }
-
+} // namespace matrix_operation
+} // namespace mtk
 #endif /* end of include guard */
