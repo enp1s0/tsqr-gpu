@@ -2,6 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include "tcqr.hpp"
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 
@@ -230,4 +231,14 @@ __global__ void qr32x16_f32_kernel(
 			tid
 			);
 }
+}
+
+void mtk::tcqr::qr32x16_f32tc(
+		float *const q, float *const r,
+		const float *const a, const unsigned int m, const unsigned int n
+		){
+	qr32x16_f32_kernel<<<1, 2 * warp_size>>>(
+			q, r,
+			a, m, n
+			);
 }
