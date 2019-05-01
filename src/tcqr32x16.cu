@@ -24,14 +24,15 @@ __device__ OUTPUT_T get_norm2_32(
 	return cutf::cuda::type::cast<OUTPUT_T>(tmp);
 }
 
-template <class DST_T, class SRC_T>
+template <class DST_T, class SRC_T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
 __device__ void copy_32x16(
 		DST_T* const dst_ptr,
 		const SRC_T* const src_ptr,
 		const unsigned unique_id
 		){
-	for(unsigned i = 0; i < 8; i++){
-		dst_ptr[i * 2 * warp_size + unique_id] = cutf::cuda::type::cast<DST_T>(src_ptr[i * 2 * warp_size + unique_id]);
+	constexpr auto stride = 2 * warp_size;
+	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N) / stride; i++){
+		dst_ptr[i * stride + unique_id] = cutf::cuda::type::cast<DST_T>(src_ptr[i * stride + unique_id]);
 	}
 }
 
