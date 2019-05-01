@@ -275,7 +275,7 @@ __global__ void qr32x16_f32_batched_kernel(
 			tid
 			);
 	mtk::matrix_copy::s2g32x16(
-			r32_ptr, n * matrix_id, n,
+			r32_ptr, n * matrix_id, n * batch_size,
 			shared_r32, n, n,
 			tid
 			);
