@@ -61,7 +61,7 @@ __device__ void update_qr(
 		float* const q32_ptr, float* const r32_ptr,
 		const half* const q16_ptr, const half* const r16_ptr,
 		half* h16_ptr,
-		const unsigned tid
+		const unsigned unique_id
 		){
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
