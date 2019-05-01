@@ -38,7 +38,7 @@ __device__ __host__ inline void print_matrix_16x16(const T* const ptr, std::size
 	}
 }
 template <class T>
-__device__ __host__ inline void print_matrix_16x32(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
+__device__ __host__ inline void print_matrix_32x16(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
 	if(name != nullptr) printf("%s = \n", name);
 	for(int i = 0; i < m; i++){
 		for(int j = 0; j < n; j++){
