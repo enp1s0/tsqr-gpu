@@ -8,8 +8,9 @@ __device__ inline void make_zero_matrix(
 		T* const target_ptr,
 		const unsigned tid
 		){
-	const auto unique_id = tid & 0x3f;
+	constexpr unsigned warp_size = 32;
 	constexpr auto stride = 2 * warp_size;
+	const auto unique_id = tid & 0x3f;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_M) / stride; i++){
 		target_ptr[i * stride + unique_id] = cutf::cuda::type::cast<T>(0.0f);
 	}
