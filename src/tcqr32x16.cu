@@ -2,9 +2,13 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include <stdio.h>
 #include "tcqr.hpp"
+#include "utils.hpp"
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
+
+#define DEBUG
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -128,6 +132,21 @@ __device__ void qr32x16_f32tc_core(
 		){
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n - 1; k++){
+		debug_func(
+				unique_id,
+				[&k](){printf("/* -------- %u ---------\n", k);}
+				);
+		__syncthreads();
+		debug_func(
+				unique_id,
+				[&r32_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r32_ptr, m, n, "R");}
+				);
+		__syncthreads();
+		debug_func(
+				unique_id,
+				[&q32_ptr, &m](){mtk::utils::print_matrix_32x16(q32_ptr, m, m, "Q");}
+				);
+		__syncthreads();
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M){
@@ -137,27 +156,55 @@ __device__ void qr32x16_f32tc_core(
 			}
 		}
 		__syncthreads();
+		debug_func(
+				unique_id,
+				[&u32_ptr, &m](){mtk::utils::print_matrix(u32_ptr, 1, m, "u");}
+				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
 		const auto norm_u_0 = cutf::cuda::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
 		__syncthreads();
+		debug_func(
+				unique_id,
+				[&norm_u_0](){printf("norm_u_0 = %.5f\n", norm_u_0);}
+				);
 		// update u
 		if(unique_id == k){
 			u32_ptr[unique_id] += cutf::cuda::math::sign(u32_ptr[unique_id]) * norm_u_0;
 		}
 		__syncthreads();
+		debug_func(
+				unique_id,
+				[&u32_ptr, &m](){mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
+				);
 		// recompute |u|
 		const auto norm2_u_1 = get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f);
+		debug_func(
+				unique_id,
+				[&norm2_u_1](){printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
+				);
 		// compute h
 		make_h(
 				h16_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
 				);
+		debug_func(
+				unique_id,
+				[&h16_ptr, &m](){mtk::utils::print_matrix_32x16(h16_ptr, m, m, "H");}
+				);
 		// copy f32 to f16
 		copy_32x16(r16_ptr, r32_ptr, unique_id);
 		copy_32x16(q16_ptr, q32_ptr, unique_id);
 		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+		debug_func(
+				unique_id,
+				[&r16_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R");}
+				);
+		debug_func(
+				unique_id,
+				[&q16_ptr, &m](){mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q");}
+				);
 		__syncthreads();
 		// update q, r
 		update_qr_f32tc(
