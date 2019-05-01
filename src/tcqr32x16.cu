@@ -6,6 +6,15 @@
 namespace {
 constexpr unsigned warp_size = 32;
 
+template <class Func>
+__device__ void debug_func(unsigned unique_id, Func run_func){
+#ifdef DEBUG
+	if(unique_id == 0){
+		run_func();
+	}
+#endif
+}
+
 template <class INPUT_T, class OUTPUT_T>
 __device__ OUTPUT_T get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
