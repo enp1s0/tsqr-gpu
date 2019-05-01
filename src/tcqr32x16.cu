@@ -331,6 +331,23 @@ __global__ void qr32x16_f32_kernel(
 }
 }
 
+template <std::size_t max_batch_size_per_block = 4>
+void mtk::tcqr::qr32x16_f32tc(
+		float *const q, float *const r,
+		const float *const a, const unsigned int m, const unsigned int n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		){
+	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * 2 * warp_size;
+
+	qr32x16_f32_batched_kernel<<<grid_size, block_size>>>(
+			q, r,
+			a, m, n,
+			batch_size,
+			a_start_position
+			);
+}
 void mtk::tcqr::qr32x16_f32tc(
 		float *const q, float *const r,
 		const float *const a, const unsigned int m, const unsigned int n
