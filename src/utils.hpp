@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <cutf/type.hpp>
 
+namespace mtk {
 namespace utils {
 template <class T>
 __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
@@ -107,5 +108,6 @@ inline double get_error(const T* const matrix_a, const T* const matrix_b, const 
 	return std::sqrt(norm / norm_a);
 }
 } // namespace utils
+} // namespace mtk
 
 #endif /* end of include guard */
