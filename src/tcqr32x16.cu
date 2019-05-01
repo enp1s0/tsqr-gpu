@@ -2,6 +2,8 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include "matrix_copy.cuh"
+#include "matrix_operations.cuh"
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -178,5 +180,55 @@ __global__ void qr32x16_f32_batched_kernel(
 		std::size_t batch_size
 		){
 
+}
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__global__ void qr32x16_f32_kernel(
+		float* const q32_ptr,
+		float* const r32_ptr,
+		const float* const a32_ptr,
+		const unsigned m,
+		const unsigned n,
+		std::size_t batch_size
+		){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+	__shared__ shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ shared_r32[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
+	__shared__ shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
+	__shared__ shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ shared_u32[FRAGMENT_DIM_M];
+
+	// init shared memory
+	mtk::matrix_copy::g2s32x16(
+			shared_r32, m, n,
+			a32_ptr, 0, m,
+			tid
+			);
+	mtk::matrix_operation::make_identity_matrix(
+			shared_q32,
+			tid
+			);
+
+	// qr core
+	qr32x16_f32tc_core(
+			shared_q32, shared_r32,
+			shared_q16, shared_r16,
+			shared_u32, shared_h16,
+			m, n,
+			tid
+			);
+	// store result
+	mtk::matrix_copy::s2g32x16(
+			q32_ptr, 0, m,
+			shared_q32, m, n,
+			tid
+			);
+	mtk::matrix_copy::s2g16x16(
+			r32_ptr, 0, n,
+			shared_r32, n, n,
+			tid
+			);
 }
 }
