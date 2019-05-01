@@ -332,7 +332,7 @@ __global__ void qr32x16_f32_kernel(
 }
 
 template <std::size_t max_batch_size_per_block = 4>
-void mtk::tcqr::qr32x16_f32tc(
+void mtk::tcqr::qr32x16_f32tc_batched(
 		float *const q, float *const r,
 		const float *const a, const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
