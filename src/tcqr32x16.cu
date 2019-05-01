@@ -192,12 +192,12 @@ __global__ void qr32x16_f32_kernel(
 		){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-	__shared__ shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
-	__shared__ shared_r32[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
-	__shared__ shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
-	__shared__ shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
-	__shared__ shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
-	__shared__ shared_u32[FRAGMENT_DIM_M];
+	__shared__ float shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ float shared_r32[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
+	__shared__ half shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ half shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
+	__shared__ half shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ float shared_u32[FRAGMENT_DIM_M];
 
 	// init shared memory
 	mtk::matrix_copy::g2s32x16(
