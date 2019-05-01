@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <cutf/type.hpp>
 
+namespace mtk {
 namespace utils {
 template <class T>
 __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
@@ -27,6 +28,21 @@ __device__ __host__ inline void print_matrix_16x16(const T* const ptr, std::size
 	for(int i = 0; i < m; i++){
 		for(int j = 0; j < n; j++){
 			const auto val = cutf::cuda::type::cast<float>(ptr[j * 16 + i]);
+			if(val < 0.0f){
+				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
+			}
+		}
+		printf("\n");
+	}
+}
+template <class T>
+__device__ __host__ inline void print_matrix_32x16(const T* const ptr, std::size_t m, std::size_t n, const char *name = nullptr){
+	if(name != nullptr) printf("%s = \n", name);
+	for(int i = 0; i < m; i++){
+		for(int j = 0; j < n; j++){
+			const auto val = cutf::cuda::type::cast<float>(ptr[j * 32 + i]);
 			if(val < 0.0f){
 				printf("%.5f ", val);
 			}else{
@@ -92,5 +108,6 @@ inline double get_error(const T* const matrix_a, const T* const matrix_b, const 
 	return std::sqrt(norm / norm_a);
 }
 } // namespace utils
+} // namespace mtk
 
 #endif /* end of include guard */
