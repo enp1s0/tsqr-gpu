@@ -271,7 +271,7 @@ __global__ void qr32x16_f32_kernel(
 			shared_q32, m, n,
 			tid
 			);
-	mtk::matrix_copy::s2g16x16(
+	mtk::matrix_copy::s2g32x16(
 			r32_ptr, 0, n,
 			shared_r32, n, n,
 			tid
