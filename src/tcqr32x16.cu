@@ -8,7 +8,7 @@
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 
-#define DEBUG
+//#define DEBUG
 
 namespace {
 constexpr unsigned warp_size = 32;
