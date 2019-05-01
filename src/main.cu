@@ -21,7 +21,7 @@ int main(){
 	for(unsigned i = 0; i < m * n; i++){
 		h_a.get()[i] = dist(mt);
 	}
-	mtk::utils::print_matrix_32x16(
+	mtk::utils::print_matrix(
 			h_a.get(), m, n, "A"
 			);
 
@@ -35,10 +35,10 @@ int main(){
 	cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
 	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n);
 
-	mtk::utils::print_matrix_32x16(
+	mtk::utils::print_matrix(
 			h_q.get(), m, n, "Q"
 			);
-	mtk::utils::print_matrix_32x16(
+	mtk::utils::print_matrix(
 			h_r.get(), n, n, "R"
 			);
 }
