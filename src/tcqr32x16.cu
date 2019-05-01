@@ -24,6 +24,17 @@ __device__ OUTPUT_T get_norm2_32(
 	return cutf::cuda::type::cast<OUTPUT_T>(tmp);
 }
 
+template <class DST_T, class SRC_T>
+__device__ void copy_32x16(
+		DST_T* const dst_ptr,
+		const SRC_T* const src_ptr,
+		const unsigned unique_id
+		){
+	for(unsigned i = 0; i < 8; i++){
+		dst_ptr[i * 2 * warp_size + unique_id] = cutf::cuda::type::cast<DST_T>(src_ptr[i * 2 * warp_size + unique_id]);
+	}
+}
+
 template <class T, class U_T, std::size_t FRAGMENT_DIM_M = 32>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m, 
@@ -100,6 +111,10 @@ __device__ void qr32x16_f32tc_core(
 				unique_id
 				);
 		// copy f32 to f16
+		copy_32x16(r16_ptr, r32_ptr, unique_id);
+		copy_32x16(q16_ptr, q32_ptr, unique_id);
+		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+		__syncthreads();
 		// update q, r
 	}
 }
