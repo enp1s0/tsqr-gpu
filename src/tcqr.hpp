@@ -1,13 +1,12 @@
 #ifndef __TCQR_HPP__
 #define __TCQR_HPP__
 
+namespace mtk {
 namespace tcqr{
-template <class T, class Norm_t, bool UseTC>
-void qr16x16(T* const q, T* const r, const T* const a, const std::size_t m, const std::size_t n);
+void qr32x16_f32tc(float* const q, float* const r, const float* const a, const unsigned m, const unsigned n);
 template <class T, class Norm_t, bool UseTC>
 void qr16x16_batched(T* const* const q, T* const * const r, const T* const* const a, const std::size_t m, const std::size_t n, const std::size_t batch_size);
-template <class T, class Norm_t, bool UseTC>
-void eigen16x16(T* const eigenvalues, const T* const a, std::size_t n);
 }
+} // namespace mtk
 
 #endif /* end of include guard */
