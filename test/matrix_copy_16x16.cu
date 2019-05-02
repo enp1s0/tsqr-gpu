@@ -33,7 +33,7 @@ __global__ void kernel16x16(test_t* ptr){
 
 	for(std::size_t i = 0; i < batch_size; i++){
 		if(matrix_index == i && tid % 32 == 0){
-			utils::print_matrix_16x16(s_mem_ptr, m, s_size_n, "mat");
+			mtk::utils::print_matrix_16x16(s_mem_ptr, m, s_size_n, "mat");
 		}
 		__syncthreads();
 	}
@@ -55,7 +55,7 @@ int main(){
 	for(std::size_t i = 0; i < g_size_m * g_size_n; i++){
 		h_mem_0.get()[i] = cutf::cuda::type::cast<test_t>(static_cast<float>(i));
 	}
-	utils::print_matrix(h_mem_0.get(), g_size_m, g_size_n, "g");
+	mtk::utils::print_matrix(h_mem_0.get(), g_size_m, g_size_n, "g");
 	cutf::cuda::memory::copy(g_mem.get(), h_mem_0.get(), g_size_m * g_size_n);
 
 	constexpr auto grid_size = (batch_size + batch_per_block - 1) / batch_per_block;
@@ -63,7 +63,7 @@ int main(){
 	kernel16x16<<<grid_size, batch_per_block * warp_size>>>(g_mem.get());
 
 	cutf::cuda::memory::copy(h_mem_1.get(), g_mem.get(), g_size_m * g_size_n);
-	utils::print_matrix(h_mem_1.get(), g_size_m, g_size_n, "g (g2s2g)");
+	mtk::utils::print_matrix(h_mem_1.get(), g_size_m, g_size_n, "g (g2s2g)");
 
 	cudaDeviceSynchronize();
 }
