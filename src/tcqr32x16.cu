@@ -131,7 +131,7 @@ __device__ void qr32x16_f32tc_core(
 		const unsigned tid
 		){
 	const auto unique_id = tid & 0x3f;
-	for(unsigned k = 0; k < n - 1; k++){
+	for(unsigned k = 0; k < n ; k++){
 		debug_func(
 				unique_id,
 				[&k](){printf("/* -------- %u ---------\n", k);}
