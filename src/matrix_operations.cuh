@@ -24,7 +24,7 @@ __device__ inline void make_identity_matrix(
 	const auto unique_id = tid & 0x3f;
 	make_zero_matrix(target_ptr, unique_id);
 	if(unique_id < FRAGMENT_DIM_M)
-		target_ptr[unique_id * (2 + FRAGMENT_DIM_M)] = cutf::cuda::type::cast<T>(1.0f);
+		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::cuda::type::cast<T>(1.0f);
 }
 } // namespace matrix_operation
 } // namespace mtk
