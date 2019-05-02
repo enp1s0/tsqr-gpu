@@ -268,15 +268,16 @@ __global__ void qr32x16_f32_batched_kernel(
 			sub_a_m, n,
 			tid
 			);
+
 	// store result
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g16x32_t(
 			q32_ptr, sub_a_position, m,
-			shared_q32, sub_a_m, n,
+			shared_q32_ptr, n, sub_a_m,
 			tid
 			);
 	mtk::matrix_copy::s2g32x16(
 			r32_ptr, n * matrix_id, n * batch_size,
-			shared_r32, n, n,
+			shared_r32_ptr, n, n,
 			tid
 			);
 }
