@@ -39,9 +39,9 @@ __global__ void kernel32x16(test_t* const dst_ptr, const test_t* const src_ptr){
 		}
 	}
 
-	mtk::matrix_copy::s2g32x16_t(
-			dst_ptr, matrix_index * 10, 32,
-			s_mem_ptr, s_size_m, 10,
+	mtk::matrix_copy::s2g16x32_t(
+			dst_ptr, matrix_index * 16, 32,
+			s_mem_ptr, 16, 16,
 			tid
 			);
 }
