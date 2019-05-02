@@ -1,4 +1,5 @@
 #include <cutf/memory.hpp>
+#include <cutf/cublas.hpp>
 #include <iostream>
 #include <random>
 #include <cmath>
@@ -6,7 +7,7 @@
 #include "utils.hpp"
 
 int main(){
-	constexpr unsigned m = 27437;
+	constexpr unsigned m = 64;
 	constexpr unsigned n = 16;
 
 	std::mt19937 mt(std::random_device{}());
@@ -55,11 +56,34 @@ int main(){
 
 	cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
 	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n * batch_size);
-
-	mtk::utils::print_matrix(
-			h_q.get(), m, n, "Q"
+	cudaDeviceSynchronize();
+	/*mtk::utils::print_matrix(
+			h_q.get(), m, n, "Q (result)"
 			);
 	mtk::utils::print_matrix(
-			h_r.get(), n * batch_size, n, "R"
-			);
+			h_r.get(), n * batch_size, n, "R (result)"
+			);*/
+	auto d_tmp_matrix = cutf::cuda::memory::get_device_unique_ptr<float>(32 * 32);
+	auto h_tmp_matrix = cutf::cuda::memory::get_host_unique_ptr<float>(32 * 32);
+	auto cublas = cutf::cublas::get_cublas_unique_ptr();
+	const auto one = 1.0f;
+	const auto zero = 0.0f;
+	for(std::size_t i = 0; i < batch_size; i++){
+		const unsigned sub_m = (h_a_start_position.get()[i + 1] - h_a_start_position.get()[i]);
+		cutf::cublas::gemm(
+				*cublas.get(),
+				CUBLAS_OP_N, CUBLAS_OP_N,
+				sub_m, n, n,
+				&one,
+				d_q.get() + h_a_start_position.get()[i], m,
+				d_r.get() + i * n, batch_size * n,
+				&zero,
+				d_tmp_matrix.get(), sub_m
+				);
+		cutf::cuda::memory::copy(h_tmp_matrix.get(), d_tmp_matrix.get(), sub_m * sub_m);
+		mtk::utils::print_matrix(h_q.get() + h_a_start_position.get()[i], sub_m, n, m, ("Q (" + std::to_string(i) + ")").c_str());
+		mtk::utils::print_matrix(h_r.get() + i * n, n, n, batch_size * n, ("R (" + std::to_string(i) + ")").c_str());
+		mtk::utils::print_matrix(h_a.get() + h_a_start_position.get()[i], sub_m, n, m, ("A (" + std::to_string(i) + ")").c_str());
+		mtk::utils::print_matrix(h_tmp_matrix.get(), sub_m, n, ("QR (" + std::to_string(i) + ")").c_str());
+	}
 }
