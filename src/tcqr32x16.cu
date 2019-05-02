@@ -319,9 +319,9 @@ __global__ void qr32x16_f32_kernel(
 			tid
 			);
 	// store result
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g16x32_t(
 			q32_ptr, 0, m,
-			shared_q32, m, n,
+			shared_q32, n, m,
 			tid
 			);
 	mtk::matrix_copy::s2g32x16(
