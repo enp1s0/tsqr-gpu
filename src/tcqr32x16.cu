@@ -199,11 +199,11 @@ __device__ void qr32x16_f32tc_core(
 		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 		debug_func(
 				unique_id,
-				[&r16_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R");}
+				[&r16_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R (before update)");}
 				);
 		debug_func(
 				unique_id,
-				[&q16_ptr, &m](){mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q");}
+				[&q16_ptr, &m](){mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
 				);
 		__syncthreads();
 		// update q, r
