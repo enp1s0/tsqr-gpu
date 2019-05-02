@@ -87,20 +87,21 @@ __device__ inline void s2g32x16(
 		global_ptr[global_index] = shared_ptr[shared_index];
 	}
 }
-template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
-__device__ inline void s2g32x16_t(
+template <class T, std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 32>
+__device__ inline void s2g16x32_t(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
 		){
+	constexpr auto load_size = FRAGMENT_DIM_M >> 1;
 	const auto unique_id = tid & 0x3f;
-	const auto y = unique_id & 0x1f;
-	const auto lane = unique_id >> 5;
-	if(y >= shared_m) return;
-	for(std::size_t i = 0; i < FRAGMENT_DIM_N; i+=2){
-		const auto x = i + lane;
-		if(x >= shared_n) return;
-		const auto shared_index = FRAGMENT_DIM_M * x + y;
+	const auto x = unique_id & 0x1f;
+	if(x >= shared_n) return;
+	const auto start_y = (unique_id >> 5) * load_size;
+	for(std::size_t i = 0; i < load_size; i++){
+		const auto y = i + start_y;
+		if(y >= shared_m) return;
+		const auto shared_index = FRAGMENT_DIM_N * x + y;
 		const auto global_index = global_ld * y + x + global_p_y;
 
 		global_ptr[global_index] = shared_ptr[shared_index];
