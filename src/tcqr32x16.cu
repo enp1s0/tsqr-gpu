@@ -280,6 +280,7 @@ __global__ void qr32x16_f32_batched_kernel(
 			shared_r32_ptr, n, n,
 			tid
 			);
+	printf("");
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
