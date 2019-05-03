@@ -4,8 +4,17 @@
 #include <vector>
 #include "tsqr.hpp"
 #include "tcqr.hpp"
+#include "utils.hpp"
+
+#define DEBUG
 
 namespace{
+template <class Func>
+void debug_func(Func func){
+#ifdef DEBUG
+	func();
+#endif
+}
 std::size_t get_batch_size_log2(const std::size_t m){
 	return (std::max(5u, static_cast<unsigned>( std::ceil( std::log2(static_cast<float>(m))))) - 5u);
 }
@@ -33,6 +42,13 @@ void mtk::tsqr::tsqr16(
 	float* const working_r_ptr[2] = {working_memory_ptr, working_memory_ptr + n * n * batch_size};
 	const auto working_q_ptr = working_r_ptr[1] + n * n * batch_size / 2;
 
+	debug_func([&m, &n](){std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
+	debug_func([&m, &n](){std::printf("%s : working memory size = %lu\n", __func__, get_working_memory_size(m, n));});
+	debug_func([&batch_size](){std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
+	debug_func([&working_r_ptr](){std::printf("%s working_r_ptr[0] = 0x%x\n", __func__, working_r_ptr[0]);});
+	debug_func([&working_r_ptr](){std::printf("%s working_r_ptr[1] = 0x%x\n", __func__, working_r_ptr[1]);});
+	debug_func([&working_q_ptr](){std::printf("%s working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
+
 	const auto d_sub_m_list = cutf::cuda::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
 	const auto h_sub_m_list = cutf::cuda::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
 
@@ -43,7 +59,14 @@ void mtk::tsqr::tsqr16(
 	}
 	h_sub_m_list.get()[batch_size] = batch_size;
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+	debug_func([&h_sub_m_list, &batch_size](){
+			std::printf("%s : batchs ");
+			for(std::size_t i = 0; i < batch_size + 1; i++) std::printf("%lu ", h_sub_m_list.get()[i]);
+			std::printf("\n");
+			});
 
+	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
+	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
 	mtk::tcqr::qr32x16_f32tc_batched(
 			working_q_ptr,
 			working_r_ptr[0],
@@ -59,8 +82,11 @@ void mtk::tsqr::tsqr16(
 
 	// 再帰的QR分解のfor展開
 	for(std::size_t k = batch_size_log2 - 1; k > 1; k--){
+		debug_func([&k](){std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
 		const auto working_q_sride = 2 * n * n * (2 * batch_size - (1lu << (k + 1)));
+		debug_func([&working_r_index](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu])\n", __func__, working_r_index, 1-working_r_index);});
+
 		mtk::tcqr::qr32x16_f32tc_batched(
 				working_memory_ptr + working_q_sride,
 				working_r_ptr[(batch_size_log2 - k) % 2],
@@ -69,9 +95,17 @@ void mtk::tsqr::tsqr16(
 				n, 
 				local_batch_size, d_sub_m_list.get()
 				);
+
+#ifdef DEBUG
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(n * n * local_batch_size/2);
+		cutf::cuda::memory::copy(h_tmp.get(), working_r_ptr[1-working_r_index], n * n * local_batch_size/2);
+		mtk::utils::print_matrix(h_tmp.get(), n * local_batch_size/2, n, "tmp r");
+#endif
 	}
 
 	// 最終層はrの保存先が異なる
+	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
+	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (2 * batch_size - 2);
 	mtk::tcqr::qr32x16_f32tc_batched(
 			working_q_ptr + working_q_sride,
