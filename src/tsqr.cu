@@ -98,7 +98,7 @@ void mtk::tsqr::tsqr16(
 				working_q_ptr + working_q_sride,
 				working_r_ptr[1 - working_r_index],
 				working_r_ptr[working_r_index],
-				n * local_batch_size,
+				2 * n * local_batch_size,
 				n, 
 				local_batch_size, d_sub_m_list.get()
 				);
