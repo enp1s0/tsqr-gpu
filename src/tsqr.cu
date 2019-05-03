@@ -86,7 +86,13 @@ void mtk::tsqr::tsqr16(
 		const auto local_batch_size = 1lu << k;	
 		const auto working_q_sride = 2 * n * n * (2 * batch_size - (1lu << (k + 1)));
 		const auto working_r_index = 1lu - (batch_size_log2 - k) % 2;
-		debug_func([&working_r_index](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu])\n", __func__, working_r_index, 1-working_r_index);});
+		debug_func([&working_r_index, local_batch_size](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu]) [l_bs : %lu]\n", __func__, working_r_index, 1-working_r_index, local_batch_size);});
+
+#ifdef DEBUG_MATRIX_PRINT
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+		cutf::cuda::memory::copy(h_tmp.get(), working_r_ptr[working_r_index], 2 * n * n * local_batch_size);
+		mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "input");
+#endif
 
 		mtk::tcqr::qr32x16_f32tc_batched(
 				working_q_ptr + working_q_sride,
@@ -97,11 +103,6 @@ void mtk::tsqr::tsqr16(
 				local_batch_size, d_sub_m_list.get()
 				);
 
-#ifdef DEBUG
-		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(n * n * local_batch_size/2);
-		cutf::cuda::memory::copy(h_tmp.get(), working_r_ptr[1-working_r_index], n * n * local_batch_size/2);
-		mtk::utils::print_matrix(h_tmp.get(), n * local_batch_size/2, n, "tmp r");
-#endif
 	}
 
 	// 最終層はrの保存先が異なる
