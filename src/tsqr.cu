@@ -45,9 +45,9 @@ void mtk::tsqr::tsqr16(
 	debug_func([&m, &n](){std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
 	debug_func([&m, &n](){std::printf("%s : working memory size = %lu\n", __func__, get_working_memory_size(m, n));});
 	debug_func([&batch_size](){std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
-	debug_func([&working_r_ptr](){std::printf("%s working_r_ptr[0] = 0x%x\n", __func__, working_r_ptr[0]);});
-	debug_func([&working_r_ptr](){std::printf("%s working_r_ptr[1] = 0x%x\n", __func__, working_r_ptr[1]);});
-	debug_func([&working_q_ptr](){std::printf("%s working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
+	debug_func([&working_r_ptr](){std::printf("%s : working_r_ptr[0] = 0x%x\n", __func__, working_r_ptr[0]);});
+	debug_func([&working_r_ptr](){std::printf("%s : working_r_ptr[1] = 0x%x\n", __func__, working_r_ptr[1]);});
+	debug_func([&working_q_ptr](){std::printf("%s : working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
 
 	const auto d_sub_m_list = cutf::cuda::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
 	const auto h_sub_m_list = cutf::cuda::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
@@ -60,7 +60,7 @@ void mtk::tsqr::tsqr16(
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 	debug_func([&h_sub_m_list, &batch_size](){
-			std::printf("%s : batchs ");
+			std::printf("%s : batchs ", __func__);
 			for(std::size_t i = 0; i < batch_size + 1; i++) std::printf("%lu ", h_sub_m_list.get()[i]);
 			std::printf("\n");
 			});
