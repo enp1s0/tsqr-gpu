@@ -55,9 +55,9 @@ void mtk::tsqr::tsqr16(
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++){
-		h_sub_m_list.get()[i] = m * i / batch_size + h_sub_m_list.get()[i - 1];
+		h_sub_m_list.get()[i] = m * i / batch_size;
 	}
-	h_sub_m_list.get()[batch_size] = batch_size;
+	h_sub_m_list.get()[batch_size] = m;
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 	debug_func([&h_sub_m_list, &batch_size](){
 			std::printf("%s : batchs ");
@@ -76,7 +76,7 @@ void mtk::tsqr::tsqr16(
 
 	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++){
-		h_sub_m_list.get()[i] = n * i;
+		h_sub_m_list.get()[i] = 2 * n * i;
 	}
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
 
