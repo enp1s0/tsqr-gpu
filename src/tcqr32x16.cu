@@ -8,7 +8,7 @@
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 
-#define DEBUG
+//#define DEBUG
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -131,7 +131,7 @@ __device__ void qr32x16_f32tc_core(
 		const unsigned tid
 		){
 	const auto unique_id = tid & 0x3f;
-	for(unsigned k = 0; k < n - 1; k++){
+	for(unsigned k = 0; k < n ; k++){
 		debug_func(
 				unique_id,
 				[&k](){printf("/* -------- %u ---------\n", k);}
@@ -199,11 +199,11 @@ __device__ void qr32x16_f32tc_core(
 		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 		debug_func(
 				unique_id,
-				[&r16_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R");}
+				[&r16_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R (before update)");}
 				);
 		debug_func(
 				unique_id,
-				[&q16_ptr, &m](){mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q");}
+				[&q16_ptr, &m](){mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
 				);
 		__syncthreads();
 		// update q, r
@@ -217,16 +217,70 @@ __device__ void qr32x16_f32tc_core(
 	}
 }
 
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
 __global__ void qr32x16_f32_batched_kernel(
 		float* const q32_ptr,
 		float* const r32_ptr,
 		const float* const a32_ptr,
-		const unsigned m,
+		const std::size_t m,
 		const unsigned n,
-		std::size_t batch_size
+		const std::size_t batch_size,
+		const unsigned* a_start_position
 		){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / (warp_size * 2);
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	if(matrix_id >= batch_size) return;
 
+	__shared__ float shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ float shared_r32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ half shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ float shared_u32[FRAGMENT_DIM_M * max_batch_size_per_block];
+
+	const auto shared_q32_ptr = shared_q32 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_r32_ptr = shared_r32 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_q16_ptr = shared_q16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_r16_ptr = shared_r16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_h16_ptr = shared_h16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_u32_ptr = shared_u32 + shared_memory_id * FRAGMENT_DIM_M;
+
+	const auto sub_a_position = a_start_position[matrix_id];
+	const auto sub_a_m = a_start_position[matrix_id + 1] - sub_a_position;
+
+	// init shared memory
+	mtk::matrix_copy::g2s32x16(
+			shared_r32_ptr, sub_a_m, n,
+			a32_ptr, sub_a_position, m,
+			tid
+			);
+	mtk::matrix_operation::make_identity_matrix(
+			shared_q32_ptr,
+			tid
+			);
+
+	// qr core
+	qr32x16_f32tc_core(
+			shared_q32_ptr, shared_r32_ptr,
+			shared_q16_ptr, shared_r16_ptr,
+			shared_u32_ptr, shared_h16_ptr,
+			sub_a_m, n,
+			tid
+			);
+
+	// store result
+	mtk::matrix_copy::s2g16x32_t(
+			q32_ptr, sub_a_position, m,
+			shared_q32_ptr, n, sub_a_m,
+			tid
+			);
+	mtk::matrix_copy::s2g32x16(
+			r32_ptr, n * matrix_id, n * batch_size,
+			shared_r32_ptr, n, n,
+			tid
+			);
+	printf("");
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
@@ -266,9 +320,9 @@ __global__ void qr32x16_f32_kernel(
 			tid
 			);
 	// store result
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g16x32_t(
 			q32_ptr, 0, m,
-			shared_q32, m, n,
+			shared_q32, n, m,
 			tid
 			);
 	mtk::matrix_copy::s2g32x16(
@@ -279,6 +333,23 @@ __global__ void qr32x16_f32_kernel(
 }
 }
 
+void mtk::tcqr::qr32x16_f32tc_batched(
+		float *const q, float *const r,
+		const float *const a, const unsigned int m, const unsigned int n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		){
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * 2 * warp_size;
+
+	qr32x16_f32_batched_kernel<<<grid_size, block_size>>>(
+			q, r,
+			a, m, n,
+			batch_size,
+			a_start_position
+			);
+}
 void mtk::tcqr::qr32x16_f32tc(
 		float *const q, float *const r,
 		const float *const a, const unsigned int m, const unsigned int n
