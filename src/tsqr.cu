@@ -85,12 +85,13 @@ void mtk::tsqr::tsqr16(
 		debug_func([&k](){std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
 		const auto working_q_sride = 2 * n * n * (2 * batch_size - (1lu << (k + 1)));
+		const auto working_r_index = 1lu - (batch_size_log2 - k) % 2;
 		debug_func([&working_r_index](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu])\n", __func__, working_r_index, 1-working_r_index);});
 
 		mtk::tcqr::qr32x16_f32tc_batched(
-				working_memory_ptr + working_q_sride,
-				working_r_ptr[(batch_size_log2 - k) % 2],
-				working_r_ptr[1 - (batch_size_log2 - k) % 2],
+				working_q_ptr + working_q_sride,
+				working_r_ptr[1 - working_r_index],
+				working_r_ptr[working_r_index],
 				n * local_batch_size,
 				n, 
 				local_batch_size, d_sub_m_list.get()
@@ -110,7 +111,7 @@ void mtk::tsqr::tsqr16(
 	mtk::tcqr::qr32x16_f32tc_batched(
 			working_q_ptr + working_q_sride,
 			r_ptr,
-			working_r_ptr[1 - batch_size_log2 % 2],
+			working_r_ptr[batch_size_log2 % 2],
 			2 * n,
 			n,
 			1, d_sub_m_list.get()
