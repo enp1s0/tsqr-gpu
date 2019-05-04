@@ -218,7 +218,7 @@ void mtk::tsqr::tsqr16(
 			const auto local_batch_size = 1lu << k;	
 			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
 			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
-			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
+			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
 		tsqr_backward<<<grid_size, block_size>>>(
