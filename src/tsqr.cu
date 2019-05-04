@@ -150,10 +150,10 @@ void mtk::tsqr::tsqr16(
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
 
 	// 再帰的QR分解のfor展開
-	for(std::size_t k = batch_size_log2 - 1; k > 1; k--){
+	for(std::size_t k = batch_size_log2 - 1; k > 0; k--){
 		debug_func([&k](){std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
-		const auto working_q_sride = 2 * n * n * (2 * batch_size - (1lu << (k + 1)));
+		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
 		const auto working_r_index = 1lu - (batch_size_log2 - k) % 2;
 		debug_func([&working_r_index, local_batch_size](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu]) [l_bs : %lu]\n", __func__, working_r_index, 1-working_r_index, local_batch_size);});
 
