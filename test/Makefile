@@ -8,7 +8,7 @@ SRCS=$(shell find $(SRCDIR) -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
 HEADERS=$(shell find $(SRCDIR) -name '*.cuh' -o -name '*.hpp' -o -name '*.h')
 
-test: matrix_copy_16x16.test matrix_copy_32x16.test calc_batchsize.test matrix_copy_32x16_t.test
+test: matrix_copy_16x16.test matrix_copy_32x16.test calc_batchsize.test matrix_copy_32x16_t.test matrix_copy_1w.test
 
 %.test: $(SRCDIR)/%.cu
 	$(NVCC) $(NVCCFLAGS) $< -o $@
