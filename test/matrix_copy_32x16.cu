@@ -26,7 +26,7 @@ __global__ void kernel32x16(test_t* ptr){
 	const auto s_mem_ptr = s_mem + fragment_dim_m * fragment_dim_n * matrix_index;
 	const auto m = min(s_size_m, g_size_m - s_size_m * matrix_index);
 
-	mtk::matrix_copy::g2s32x16(
+	mtk::matrix_copy::g2s32x16_2w(
 			s_mem_ptr, s_size_m, s_size_n,
 			ptr, matrix_index * s_size_m, g_size_m,
 			tid
@@ -39,7 +39,7 @@ __global__ void kernel32x16(test_t* ptr){
 		}
 	}
 
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g32x16_2w(
 			ptr, matrix_index * s_size_m, g_size_m,
 			s_mem_ptr, s_size_m, s_size_n,
 			tid

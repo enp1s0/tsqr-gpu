@@ -25,7 +25,7 @@ __global__ void kernel16x16(test_t* ptr){
 	const auto s_mem_ptr = s_mem + fragment_dim * fragment_dim * matrix_index;
 	const auto m = min(s_size_m, g_size_m - s_size_m * matrix_index);
 
-	mtk::matrix_copy::g2s16x16(
+	mtk::matrix_copy::g2s16x16_1w(
 			s_mem_ptr, 2, 2,
 			ptr, matrix_index * s_size_m, g_size_m,
 			tid
@@ -38,7 +38,7 @@ __global__ void kernel16x16(test_t* ptr){
 		__syncthreads();
 	}
 
-	mtk::matrix_copy::s2g16x16(
+	mtk::matrix_copy::s2g16x16_1w(
 			ptr, matrix_index * s_size_m, g_size_m,
 			s_mem_ptr, m, s_size_n,
 			tid
