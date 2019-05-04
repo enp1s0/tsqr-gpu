@@ -250,7 +250,7 @@ __global__ void qr32x16_f32_batched_kernel(
 	const auto sub_a_m = a_start_position[matrix_id + 1] - sub_a_position;
 
 	// init shared memory
-	mtk::matrix_copy::g2s32x16(
+	mtk::matrix_copy::g2s32x16_2w(
 			shared_r32_ptr, sub_a_m, n,
 			a32_ptr, sub_a_position, m,
 			tid
@@ -270,12 +270,12 @@ __global__ void qr32x16_f32_batched_kernel(
 			);
 
 	// store result
-	mtk::matrix_copy::s2g32x32_16x32_t(
+	mtk::matrix_copy::s2g32x32_16x32_t_2w(
 			q32_ptr, sub_a_position, m,
 			shared_q32_ptr, n, sub_a_m,
 			tid
 			);
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g32x16_2w(
 			r32_ptr, n * matrix_id, n * batch_size,
 			shared_r32_ptr, n, n,
 			tid
@@ -301,7 +301,7 @@ __global__ void qr32x16_f32_kernel(
 	__shared__ float shared_u32[FRAGMENT_DIM_M];
 
 	// init shared memory
-	mtk::matrix_copy::g2s32x16(
+	mtk::matrix_copy::g2s32x16_2w(
 			shared_r32, m, n,
 			a32_ptr, 0, m,
 			tid
@@ -320,12 +320,12 @@ __global__ void qr32x16_f32_kernel(
 			tid
 			);
 	// store result
-	mtk::matrix_copy::s2g32x32_16x32_t(
+	mtk::matrix_copy::s2g32x32_16x32_t_2w(
 			q32_ptr, 0, m,
 			shared_q32, n, m,
 			tid
 			);
-	mtk::matrix_copy::s2g32x16(
+	mtk::matrix_copy::s2g32x16_2w(
 			r32_ptr, 0, n,
 			shared_r32, n, n,
 			tid
