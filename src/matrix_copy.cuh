@@ -4,7 +4,7 @@
 namespace mtk {
 namespace matrix_copy {
 template <class T, std::size_t FRAGMENT_DIM = 16>
-__device__ inline void g2s16x16(
+__device__ inline void g2s16x16_1w(
 		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
@@ -27,7 +27,7 @@ __device__ inline void g2s16x16(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM = 16>
-__device__ inline void s2g16x16(
+__device__ inline void s2g16x16_1w(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
@@ -50,7 +50,7 @@ __device__ inline void s2g16x16(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
-__device__ inline void g2s32x16(
+__device__ inline void g2s32x16_2w(
 		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
@@ -69,7 +69,7 @@ __device__ inline void g2s32x16(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
-__device__ inline void s2g32x16(
+__device__ inline void s2g32x16_2w(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
@@ -88,7 +88,7 @@ __device__ inline void s2g32x16(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 32>
-__device__ inline void s2g32x32_16x32_t(
+__device__ inline void s2g32x32_16x32_t_2w(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
