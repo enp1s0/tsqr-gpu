@@ -22,8 +22,6 @@ int main(){
 	auto h_a = cutf::cuda::memory::get_host_unique_ptr<float>(m * n);
 	auto h_q = cutf::cuda::memory::get_host_unique_ptr<float>(m * n);
 	auto h_r = cutf::cuda::memory::get_host_unique_ptr<float>(n * n);
-	auto h_working_memory = cutf::cuda::memory::get_host_unique_ptr<float>(
-			mtk::tsqr::get_working_memory_size(m, n));
 
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(float))<<"MB"<<std::endl
 		<<" Working memory : "<<(mtk::tsqr::get_working_memory_size(m, n) / 1024.0 / 1024.0 * sizeof(float))<<"MB"<<std::endl;
