@@ -227,4 +227,11 @@ void mtk::tsqr::tsqr16(
 				k
 				);
 	}
+	// 1層目はsub_mが特殊なので別途計算を行う
+	h_sub_m_list.get()[0] = 0;
+	for(std::size_t i = 1; i < batch_size; i++){
+		h_sub_m_list.get()[i] = m * i / batch_size;
+	}
+	h_sub_m_list.get()[batch_size] = m;
+	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 }
