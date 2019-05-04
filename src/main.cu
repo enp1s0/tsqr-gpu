@@ -41,4 +41,6 @@ int main(){
 
 	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n);
 	mtk::utils::print_matrix(h_r.get(), n, n, "R");
+	cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
+	mtk::utils::print_matrix(h_q.get(), m, n, "Q");
 }
