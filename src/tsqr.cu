@@ -109,6 +109,7 @@ __global__ void tsqr_backward_layer0(
 		float* const q_ptr,
 		const float* const a_ptr,
 		const float* const b_ptr,
+		const unsigned n,
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
 		){
@@ -300,6 +301,7 @@ void mtk::tsqr::tsqr16(
 		tsqr_backward<<<grid_size, block_size>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
+				n,
 				k
 				);
 	}
