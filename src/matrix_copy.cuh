@@ -50,6 +50,42 @@ __device__ inline void s2g16x16_1w(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void s2g32x16_1w(
+		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
+		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
+		const unsigned tid
+		){
+	const auto y = tid & 0x1f;
+	if(y >= shared_m) return;
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++){
+		if(x >= shared_n) return;
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+		const auto global_index = global_ld * x + y + global_p_y;
+
+		global_ptr[global_index] = shared_ptr[shared_index];
+	}
+}
+template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void g2s32x16_1w(
+		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
+		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
+		const unsigned tid
+		){
+	const auto y = tid & 0x1f;
+	if(y >= shared_m) return;
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++){
+		if(x >= shared_n) return;
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+		const auto global_index = global_ld * x + y + global_p_y;
+
+		shared_ptr[shared_index] = global_ptr[global_index];
+	}
+}
+
+
+
+// for 2 warps
+template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
 __device__ inline void g2s32x16_2w(
 		T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
