@@ -38,7 +38,6 @@ __global__ void tsqr_backward(
 		const std::size_t k
 		){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto unique_id = tid & 0x1f;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
 	const auto ac_m = (1lu << (k)) * 2 * n;
@@ -114,7 +113,6 @@ __global__ void tsqr_backward_layer0(
 		const unsigned* const q_start_position
 		){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto unique_id = tid & 0x1f;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
 	const auto ac_m = q_start_position[batch_size];
