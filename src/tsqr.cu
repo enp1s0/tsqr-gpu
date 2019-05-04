@@ -130,24 +130,29 @@ __global__ void tsqr_backward_layer0(
 	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// matrix_copy mtk:: 系は2 warp用なので使えない
-	// そもそもサイズが固定なのでそれ用に新たに書いてしまってもいいかも
-	// TODO: 型キャストが思ったより無駄なのでやめたほうがいいかも
-	// ACのコピー
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i++){
+	__syncthreads();
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp16_ptr, sub_m, n,
+			a_ptr, q_start_pos, ac_m,
+			tid
+			);
+	/*for(unsigned i = 0; i < FRAGMENT_DIM_N; i++){
 		shared_ac_fp16_ptr[unique_id + i * FRAGMENT_DIM_M] = cutf::cuda::type::cast<half>(ac_ptr[unique_id + ac_m * i + matrix_id * FRAGMENT_DIM_M]);
-	}
+	}*/
 	// Bのコピー
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i+=2){
-		shared_b_fp16_ptr[(unique_id % FRAGMENT_DIM_N) + (lane + i) * FRAGMENT_DIM_N] = cutf::cuda::type::cast<half>(b_ptr[(unique_id&0xf) + (lane + i) * ac_m/2 + matrix_id * FRAGMENT_DIM_M]);
-	}
-	/*__syncthreads();
+	__syncthreads();
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp16_ptr, n, n,
+			b_ptr, matrix_id * n, n * batch_size,
+			tid
+			);
+	__syncthreads();
 	if(tid == 0){
-		mtk::utils::print_matrix(ac_ptr, 32, 16, ac_m, "test kernel print AC(global)");
+		mtk::utils::print_matrix(a_ptr, 32, 16, ac_m, "test kernel print AC(global)");
 		mtk::utils::print_matrix_32x16(shared_ac_fp16_ptr, 32, 16, "test kernel print AC");
 		mtk::utils::print_matrix(b_ptr, 16, 16, ac_m/2, "test kernel print AC(global)");
 		mtk::utils::print_matrix_16x16(shared_b_fp16_ptr, 16, 16, "test kernel print B");
-	}*/
+	}
 
 	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
@@ -167,9 +172,12 @@ __global__ void tsqr_backward_layer0(
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i++){
-		 ac_ptr[unique_id + ac_m * i + matrix_id * FRAGMENT_DIM_M] = shared_ac_fp32_ptr[unique_id + i * FRAGMENT_DIM_M];
-	}
+	__syncthreads();
+	mtk::matrix_copy::s2g32x16_1w(
+			q_ptr, q_start_pos, ac_m,
+			shared_ac_fp32_ptr, sub_m, n,
+			tid
+			);
 }
 }
 
