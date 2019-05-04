@@ -1,16 +1,21 @@
 #include <algorithm>
 #include <cmath>
-#include <cutf/memory.hpp>
 #include <vector>
+#include <mma.h>
+#include <cuda_fp16.h>
+#include <cutf/memory.hpp>
+#include <cutf/type.hpp>
 #include "tsqr.hpp"
 #include "tcqr.hpp"
 #include "utils.hpp"
+#include "matrix_copy.cuh"
 
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
 
 namespace{
+constexpr unsigned warp_size = 32;
 template <class Func>
 void debug_func(Func func){
 #ifdef DEBUG
