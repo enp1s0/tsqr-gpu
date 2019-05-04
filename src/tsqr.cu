@@ -117,8 +117,8 @@ __global__ void tsqr_backward_layer0(
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
 	const auto ac_m = q_start_position[batch_size];
-	const auto lane = unique_id >> 4;
-	const auto sub_m = q_start_position[tid];
+	const auto q_start_pos = q_start_position[matrix_id];
+	const auto sub_m = q_start_position[matrix_id + 1] - q_start_pos;
 
 	if(matrix_id >= batch_size) return;
 
