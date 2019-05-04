@@ -320,4 +320,21 @@ void mtk::tsqr::tsqr16(
 	}
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+	const auto grid_size = (batch_size + max_batch_size_per_block - 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * warp_size;
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(n * m);
+		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr, m * n);
+		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
+	}
+#endif
+	tsqr_backward_layer0<<<grid_size, block_size>>>(
+			q_ptr,
+			working_q_ptr,
+			working_q_ptr + m * n,
+			n,
+			batch_size,
+			d_sub_m_list.get()
+			);
 }
