@@ -34,14 +34,14 @@ template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std:
 __global__ void tsqr_backward(
 		float* const ac_ptr,
 		const float* const b_ptr,
+		const unsigned n,
 		const std::size_t k
 		){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto unique_id = tid & 0x1f;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
-	const auto ac_m = (1lu << (k)) * FRAGMENT_DIM_M;
-	const auto lane = unique_id >> 4;
+	const auto ac_m = (1lu << (k)) * 2 * n;
 
 	if(matrix_id >= (1lu << k)) return;
 
@@ -57,13 +57,19 @@ __global__ void tsqr_backward(
 	// そもそもサイズが固定なのでそれ用に新たに書いてしまってもいいかも
 	// TODO: 型キャストが思ったより無駄なのでやめたほうがいいかも
 	// ACのコピー
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i++){
-		shared_ac_fp16_ptr[unique_id + i * FRAGMENT_DIM_M] = cutf::cuda::type::cast<half>(ac_ptr[unique_id + ac_m * i + matrix_id * FRAGMENT_DIM_M]);
-	}
+	__syncthreads();
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp16_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
 	// Bのコピー
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i+=2){
-		shared_b_fp16_ptr[(unique_id % FRAGMENT_DIM_N) + (lane + i) * FRAGMENT_DIM_N] = cutf::cuda::type::cast<half>(b_ptr[(unique_id&0xf) + (lane + i) * ac_m/2 + matrix_id * FRAGMENT_DIM_M]);
-	}
+	__syncthreads();
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp16_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
 	/*__syncthreads();
 	if(tid == 0){
 		mtk::utils::print_matrix(ac_ptr, 32, 16, ac_m, "test kernel print AC(global)");
@@ -72,6 +78,7 @@ __global__ void tsqr_backward(
 		mtk::utils::print_matrix_16x16(shared_b_fp16_ptr, 16, 16, "test kernel print B");
 	}*/
 
+	__syncthreads();
 	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
@@ -90,9 +97,12 @@ __global__ void tsqr_backward(
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	for(unsigned i = 0; i < FRAGMENT_DIM_N; i++){
-		 ac_ptr[unique_id + ac_m * i + matrix_id * FRAGMENT_DIM_M] = shared_ac_fp32_ptr[unique_id + i * FRAGMENT_DIM_M];
-	}
+	__syncthreads();
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_fp32_ptr, 2 * n, n,
+			tid
+			);
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
