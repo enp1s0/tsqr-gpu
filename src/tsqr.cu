@@ -110,6 +110,7 @@ void mtk::tsqr::tsqr16(
 		float *const q_ptr, float *const r_ptr, 
 		const float *const a_ptr, const std::size_t m, const std::size_t n, 
 		float *const working_memory_ptr){
+	const std::size_t max_batch_size_per_block = 4;
 	const auto batch_size_log2 = get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
 	float* const working_r_ptr[2] = {working_memory_ptr, working_memory_ptr + n * n * batch_size};
@@ -186,13 +187,44 @@ void mtk::tsqr::tsqr16(
 	// 最終層はrの保存先が異なる
 	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
-	const auto working_q_sride = 2 * n * n * (2 * batch_size - 2);
-	mtk::tcqr::qr32x16_f32tc_batched(
+	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
+	mtk::tcqr::qr32x16_f32tc(
 			working_q_ptr + working_q_sride,
 			r_ptr,
-			working_r_ptr[batch_size_log2 % 2],
+			working_r_ptr[1 - (batch_size_log2 % 2)],
 			2 * n,
-			n,
-			1, d_sub_m_list.get()
+			n
 			);
+
+	debug_func([](){std::printf("%s : last Q\n", __func__);});
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n);
+		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
+		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
+	}
+#endif
+
+	debug_func([](){std::printf("%s : Backword\n", __func__);});
+
+	// Backward
+	for(std::size_t k = 1; k < batch_size_log2; k++){
+		debug_func([&k](){std::printf("%s : %lu\n", __func__, k);});
+		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
+		const auto grid_size = ((1lu<<k) + max_batch_size_per_block - 1) / max_batch_size_per_block;
+		const auto block_size = max_batch_size_per_block * warp_size;
+#ifdef DEBUG_Q_MATRIX_PRINT
+		{
+			const auto local_batch_size = 1lu << k;	
+			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
+		}
+#endif
+		tsqr_backward<<<grid_size, block_size>>>(
+				working_q_ptr + working_q_sride,
+				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
+				k
+				);
+	}
 }
