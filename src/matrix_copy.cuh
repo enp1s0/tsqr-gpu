@@ -88,19 +88,22 @@ __device__ inline void s2g32x16(
 	}
 }
 template <class T, std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 32>
-__device__ inline void s2g16x32_t(
+__device__ inline void s2g32x32_16x32_t(
 		T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
 		){
-	constexpr auto load_size = FRAGMENT_DIM_M >> 1;
+	__syncthreads();
+	constexpr unsigned warp_size = 32;
+	constexpr unsigned stride = (2 * warp_size) / FRAGMENT_DIM_M;
 	const auto unique_id = tid & 0x3f;
-	const auto x = unique_id & 0x1f;
-	if(x >= shared_n) return;
-	const auto start_y = (unique_id >> 5) * load_size;
-	for(std::size_t i = 0; i < load_size; i++){
-		const auto y = i + start_y;
-		if(y >= shared_m) return;
+	const auto y = unique_id % FRAGMENT_DIM_M;
+	if(y >= shared_m) return;
+	const auto lane = unique_id / FRAGMENT_DIM_M;
+	for(unsigned k = 0; k < FRAGMENT_DIM_N; k+= stride){
+		const auto x = k + lane;
+		if(x >= shared_n) continue;
+
 		const auto shared_index = FRAGMENT_DIM_N * x + y;
 		const auto global_index = global_ld * y + x + global_p_y;
 

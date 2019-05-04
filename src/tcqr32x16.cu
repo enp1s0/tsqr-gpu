@@ -270,7 +270,7 @@ __global__ void qr32x16_f32_batched_kernel(
 			);
 
 	// store result
-	mtk::matrix_copy::s2g16x32_t(
+	mtk::matrix_copy::s2g32x32_16x32_t(
 			q32_ptr, sub_a_position, m,
 			shared_q32_ptr, n, sub_a_m,
 			tid
@@ -280,7 +280,7 @@ __global__ void qr32x16_f32_batched_kernel(
 			shared_r32_ptr, n, n,
 			tid
 			);
-	printf("");
+	//printf("");
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
@@ -320,7 +320,7 @@ __global__ void qr32x16_f32_kernel(
 			tid
 			);
 	// store result
-	mtk::matrix_copy::s2g16x32_t(
+	mtk::matrix_copy::s2g32x32_16x32_t(
 			q32_ptr, 0, m,
 			shared_q32, n, m,
 			tid
