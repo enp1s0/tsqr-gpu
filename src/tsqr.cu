@@ -7,6 +7,8 @@
 #include "utils.hpp"
 
 #define DEBUG
+//#define DEBUG_INPUT_MATRIX_PRINT
+//#define DEBUG_Q_MATRIX_PRINT
 
 namespace{
 template <class Func>
@@ -105,6 +107,14 @@ void mtk::tsqr::tsqr16(
 				local_batch_size, d_sub_m_list.get()
 				);
 
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+		mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
+	}
+#endif
+
 	}
 
 	// 最終層はrの保存先が異なる
@@ -119,12 +129,4 @@ void mtk::tsqr::tsqr16(
 			n,
 			1, d_sub_m_list.get()
 			);
-
-#ifdef DEBUG_Q_MATRIX_PRINT
-	{
-		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n);
-		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
-		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
-	}
-#endif
 }
