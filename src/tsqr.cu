@@ -61,11 +61,6 @@ void mtk::tsqr::tsqr16(
 	}
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
-	debug_func([&h_sub_m_list, &batch_size](){
-			std::printf("%s : batches ", __func__);
-			for(std::size_t i = 0; i < batch_size + 1; i++) std::printf("%lu ", h_sub_m_list.get()[i]);
-			std::printf("\n");
-			});
 
 	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
