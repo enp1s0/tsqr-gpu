@@ -13,18 +13,18 @@ __device__ inline void g2s16x16_1w(
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
 	const auto unique_id = tid & 0x1f;
 	const auto x = unique_id >> 1;
-	if(x >= shared_n) return;
 
 	const auto start_y = (unique_id & 0b1) * load_size;
 	for(std::size_t i = 0; i < load_size; i++){
 		const auto y = start_y + i;
-		if(y >= shared_m) return;
-
-		// copy
+		auto val = cutf::cuda::type::cast<DST_T>(0.0f);
+		if(y < shared_m && x < shared_n){
+			// copy
+			const auto global_index = x * global_ld + y + global_p_y;
+			val = cutf::cuda::type::cast<DST_T>( global_ptr[global_index] );
+		}
 		const auto shared_index = x * FRAGMENT_DIM + y;
-		const auto global_index = x * global_ld + y + global_p_y;
-
-		shared_ptr[shared_index] = cutf::cuda::type::cast<DST_T>( global_ptr[global_index] );
+		shared_ptr[shared_index] = val;
 	}
 }
 template <class DST_T, class SRC_T, std::size_t FRAGMENT_DIM = 16>
@@ -73,13 +73,15 @@ __device__ inline void g2s32x16_1w(
 		const unsigned tid
 		){
 	const auto y = tid & 0x1f;
-	if(y >= shared_m) return;
 	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++){
-		if(x >= shared_n) return;
-		const auto shared_index = FRAGMENT_DIM_M * x + y;
-		const auto global_index = global_ld * x + y + global_p_y;
-
-		shared_ptr[shared_index] = cutf::cuda::type::cast<DST_T>( global_ptr[global_index] );
+		auto val = cutf::cuda::type::cast<DST_T>(0.0f);
+		if(y < shared_m && x < shared_n){
+			// copy
+			const auto global_index = x * global_ld + y + global_p_y;
+			val = cutf::cuda::type::cast<DST_T>( global_ptr[global_index] );
+		}
+		const auto shared_index = x * FRAGMENT_DIM_M + y;
+		shared_ptr[shared_index] = val;
 	}
 }
 
