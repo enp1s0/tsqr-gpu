@@ -1,16 +1,21 @@
 #include <algorithm>
 #include <cmath>
-#include <cutf/memory.hpp>
 #include <vector>
+#include <mma.h>
+#include <cuda_fp16.h>
+#include <cutf/memory.hpp>
+#include <cutf/type.hpp>
 #include "tsqr.hpp"
 #include "tcqr.hpp"
 #include "utils.hpp"
+#include "matrix_copy.cuh"
 
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
 
 namespace{
+constexpr unsigned warp_size = 32;
 template <class Func>
 void debug_func(Func func){
 #ifdef DEBUG
@@ -22,6 +27,139 @@ std::size_t get_batch_size_log2(const std::size_t m){
 }
 std::size_t get_batch_size(const std::size_t m){
 	return 1lu << get_batch_size_log2(m);
+}
+
+// backward 1層目以外
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
+__global__ void tsqr_backward(
+		float* const ac_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t k
+		){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = (1lu << (k)) * 2 * n;
+
+	if(matrix_id >= (1lu << k)) return;
+
+	__shared__ half shared_ac_f16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_f32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_b_f16[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_fp16_ptr = shared_ac_f16 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// ACのコピー
+	__syncthreads();
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp16_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
+	// Bのコピー
+	__syncthreads();
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp16_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
+
+	__syncthreads();
+	// TCによる行列積
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
+
+	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
+	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	__syncthreads();
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_fp32_ptr, 2 * n, n,
+			tid
+			);
+}
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
+__global__ void tsqr_backward_layer0(
+		float* const q_ptr,
+		const float* const a_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t batch_size,
+		const unsigned* const q_start_position
+		){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = q_start_position[batch_size];
+	const auto q_start_pos = q_start_position[matrix_id];
+	const auto sub_m = q_start_position[matrix_id + 1] - q_start_pos;
+
+	if(matrix_id >= batch_size) return;
+
+	__shared__ half shared_ac_f16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_f32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_b_f16[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_fp16_ptr = shared_ac_f16 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	__syncthreads();
+	// A のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp16_ptr, sub_m, n,
+			a_ptr, q_start_pos, ac_m,
+			tid
+			);
+	// Bのコピー
+	__syncthreads();
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp16_ptr, n, n,
+			b_ptr, matrix_id * n, n * batch_size,
+			tid
+			);
+	__syncthreads();
+
+	// TCによる行列積
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
+
+	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
+	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	__syncthreads();
+	mtk::matrix_copy::s2g32x16_1w(
+			q_ptr, q_start_pos, ac_m,
+			shared_ac_fp32_ptr, sub_m, n,
+			tid
+			);
 }
 }
 
@@ -39,6 +177,7 @@ void mtk::tsqr::tsqr16(
 		float *const q_ptr, float *const r_ptr, 
 		const float *const a_ptr, const std::size_t m, const std::size_t n, 
 		float *const working_memory_ptr){
+	const std::size_t max_batch_size_per_block = 4;
 	const auto batch_size_log2 = get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
 	float* const working_r_ptr[2] = {working_memory_ptr, working_memory_ptr + n * n * batch_size};
@@ -78,10 +217,10 @@ void mtk::tsqr::tsqr16(
 	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
 
 	// 再帰的QR分解のfor展開
-	for(std::size_t k = batch_size_log2 - 1; k > 1; k--){
+	for(std::size_t k = batch_size_log2 - 1; k > 0; k--){
 		debug_func([&k](){std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
-		const auto working_q_sride = 2 * n * n * (2 * batch_size - (1lu << (k + 1)));
+		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
 		const auto working_r_index = 1lu - (batch_size_log2 - k) % 2;
 		debug_func([&working_r_index, local_batch_size](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu]) [l_bs : %lu]\n", __func__, working_r_index, 1-working_r_index, local_batch_size);});
 
@@ -103,11 +242,11 @@ void mtk::tsqr::tsqr16(
 				);
 
 #ifdef DEBUG_Q_MATRIX_PRINT
-	{
-		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
-		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
-		mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
-	}
+		{
+			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
+		}
 #endif
 
 	}
@@ -115,13 +254,69 @@ void mtk::tsqr::tsqr16(
 	// 最終層はrの保存先が異なる
 	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
-	const auto working_q_sride = 2 * n * n * (2 * batch_size - 2);
-	mtk::tcqr::qr32x16_f32tc_batched(
+	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
+	mtk::tcqr::qr32x16_f32tc(
 			working_q_ptr + working_q_sride,
 			r_ptr,
-			working_r_ptr[batch_size_log2 % 2],
+			working_r_ptr[1 - (batch_size_log2 % 2)],
 			2 * n,
+			n
+			);
+
+	debug_func([](){std::printf("%s : last Q\n", __func__);});
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n);
+		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
+		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
+	}
+#endif
+
+	debug_func([](){std::printf("%s : Backword\n", __func__);});
+
+	// Backward
+	for(std::size_t k = 1; k < batch_size_log2; k++){
+		debug_func([&k](){std::printf("%s : %lu\n", __func__, k);});
+		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
+		const auto grid_size = ((1lu<<k) + max_batch_size_per_block - 1) / max_batch_size_per_block;
+		const auto block_size = max_batch_size_per_block * warp_size;
+#ifdef DEBUG_Q_MATRIX_PRINT
+		{
+			const auto local_batch_size = 1lu << k;	
+			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
+		}
+#endif
+		tsqr_backward<<<grid_size, block_size>>>(
+				working_q_ptr + working_q_sride,
+				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
+				n,
+				k
+				);
+	}
+	// 1層目はsub_mが特殊なので別途計算を行う
+	h_sub_m_list.get()[0] = 0;
+	for(std::size_t i = 1; i < batch_size; i++){
+		h_sub_m_list.get()[i] = m * i / batch_size;
+	}
+	h_sub_m_list.get()[batch_size] = m;
+	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+	const auto grid_size = (batch_size + max_batch_size_per_block - 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * warp_size;
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(n * m);
+		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr, m * n);
+		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
+	}
+#endif
+	tsqr_backward_layer0<<<grid_size, block_size>>>(
+			q_ptr,
+			working_q_ptr,
+			working_q_ptr + m * n,
 			n,
-			1, d_sub_m_list.get()
+			batch_size,
+			d_sub_m_list.get()
 			);
 }

@@ -14,6 +14,7 @@ __device__ inline void make_zero_matrix(
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_M) / stride; i++){
 		target_ptr[i * stride + unique_id] = cutf::cuda::type::cast<T>(0.0f);
 	}
+	__syncthreads();
 }
 
 template <class T, std::size_t FRAGMENT_DIM_M = 32>
@@ -25,6 +26,7 @@ __device__ inline void make_identity_matrix(
 	make_zero_matrix(target_ptr, unique_id);
 	if(unique_id < FRAGMENT_DIM_M)
 		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::cuda::type::cast<T>(1.0f);
+	__syncthreads();
 }
 } // namespace matrix_operation
 } // namespace mtk
