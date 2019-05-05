@@ -26,8 +26,11 @@ int main(){
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(float))<<"MB"<<std::endl
 		<<" Working memory : "<<(mtk::tsqr::get_working_memory_size(m, n) / 1024.0 / 1024.0 * sizeof(float))<<"MB"<<std::endl;
 
+	float norm_a = 0.0f;
 	for(std::size_t i = 0; i < m * n; i++){
-		h_a.get()[i] = dist(mt);
+		const auto tmp = dist(mt);
+		h_a.get()[i] = tmp;
+		norm_a += tmp * tmp;
 	}
 	cutf::cuda::memory::copy(d_a.get(), h_a.get(), m * n);
 
@@ -41,6 +44,28 @@ int main(){
 
 	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n);
 	mtk::utils::print_matrix(h_r.get(), n, n, "R");
-	cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
-	mtk::utils::print_matrix(h_q.get(), m, n, "Q");
+	/*cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
+	mtk::utils::print_matrix(h_q.get(), m, n, "Q");*/
+
+	// verify
+	auto cublas = cutf::cublas::get_cublas_unique_ptr();
+	const float alpha = 1.0f, beta = -1.0f;
+	cutf::cublas::gemm(
+			*cublas.get(),
+			CUBLAS_OP_N, CUBLAS_OP_N,
+			m, n, n,
+			&alpha,
+			d_q.get(), m,
+			d_r.get(), n,
+			&beta,
+			d_a.get(), m
+			);
+
+	cutf::cuda::memory::copy(h_a.get(), d_a.get(), m * n);
+	float norm_diff = 0.0f;
+	for(std::size_t i = 0; i < m * n; i++){
+		norm_diff += h_a.get()[i] * h_a.get()[i];
+	}
+	std::cout<<"error : "<<std::sqrt(norm_diff/norm_a)<<std::endl;
+	//mtk::utils::print_matrix(h_a.get(), m, n, "diff");
 }
