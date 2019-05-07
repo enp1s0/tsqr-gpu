@@ -35,12 +35,17 @@ int main(){
 	cutf::cuda::memory::copy(d_a.get(), h_a.get(), m * n);
 
 	std::cout<<std::endl<<"# Start TSQR test"<<std::endl;
-	mtk::tsqr::tsqr16(
-			d_q.get(), d_r.get(),
-			d_a.get(), m, n,
-			d_working_memory.get()
+	const auto elapsed_time = mtk::utils::get_elapsed_time(
+			[&d_q, &d_r, &d_a, &d_working_memory](){
+			mtk::tsqr::tsqr16(
+					d_q.get(), d_r.get(),
+					d_a.get(), m, n,
+					d_working_memory.get()
+					);
+			}
 			);
 	std::cout<<"# Done"<<std::endl;
+	std::cout<<"Elapsed time : "<<elapsed_time<<" [ms]"<<std::endl;
 
 	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n);
 	mtk::utils::print_matrix(h_r.get(), n, n, "R");
