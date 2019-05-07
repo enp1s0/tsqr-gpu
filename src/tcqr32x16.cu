@@ -136,17 +136,17 @@ __device__ void qr32x16_f32tc_core(
 				unique_id,
 				[&k](){printf("/* -------- %u ---------\n", k);}
 				);
-		__syncthreads();
+		debug_func(0, [](){__syncthreads();});
 		debug_func(
 				unique_id,
 				[&r32_ptr, &m, &n](){mtk::utils::print_matrix_32x16(r32_ptr, m, n, "R");}
 				);
-		__syncthreads();
+		debug_func(0, [](){__syncthreads();});
 		debug_func(
 				unique_id,
 				[&q32_ptr, &m](){mtk::utils::print_matrix_32x16(q32_ptr, m, m, "Q");}
 				);
-		__syncthreads();
+		debug_func(0, [](){__syncthreads();});
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M){
@@ -163,7 +163,6 @@ __device__ void qr32x16_f32tc_core(
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
 		const auto norm_u_0 = cutf::cuda::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
-		__syncthreads();
 		debug_func(
 				unique_id,
 				[&norm_u_0](){printf("norm_u_0 = %.5f\n", norm_u_0);}
