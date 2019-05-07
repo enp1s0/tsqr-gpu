@@ -53,21 +53,18 @@ __global__ void tsqr_backward(
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
 	// ACのコピー
-	__syncthreads();
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, 2 * n, n,
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			tid
 			);
 	// Bのコピー
-	__syncthreads();
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, ac_m / 2,
 			tid
 			);
 
-	__syncthreads();
 	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
@@ -86,7 +83,6 @@ __global__ void tsqr_backward(
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	__syncthreads();
 	mtk::matrix_copy::s2g32x16_1w(
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			shared_ac_fp32_ptr, 2 * n, n,
@@ -120,7 +116,6 @@ __global__ void tsqr_backward_layer0(
 	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	__syncthreads();
 	// A のコピー
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, sub_m, n,
@@ -128,13 +123,11 @@ __global__ void tsqr_backward_layer0(
 			tid
 			);
 	// Bのコピー
-	__syncthreads();
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, n * batch_size,
 			tid
 			);
-	__syncthreads();
 
 	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
@@ -154,7 +147,6 @@ __global__ void tsqr_backward_layer0(
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	__syncthreads();
 	mtk::matrix_copy::s2g32x16_1w(
 			q_ptr, q_start_pos, ac_m,
 			shared_ac_fp32_ptr, sub_m, n,
