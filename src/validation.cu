@@ -1,7 +1,11 @@
 #include <cmath>
 #include <cutf/memory.hpp>
+#include <cutf/cublas.hpp>
 #include "validation.hpp"
 #include "matrix_copy.cuh"
+#include "utils.hpp"
+
+#define PRINT_QQT
 
 namespace{
 constexpr unsigned warp_size = 32;
@@ -68,6 +72,37 @@ float mtk::validation::check_orthogonality16(
 
 	cutf::cuda::memory::copy(&h_orthogonality, d_orthogonality.get(), 1);
 
+#ifdef PRINT_QQT
+	auto d_qqt = cutf::cuda::memory::get_device_unique_ptr<float>(m * m);
+	auto h_qqt = cutf::cuda::memory::get_host_unique_ptr<float>(m * m);
+	for(std::size_t i = 0; i < m; i++){
+		for(std::size_t j = 0; j < m; j++){
+			h_qqt.get()[i + m * j] = (i == j) ? 1.0f : 0.0f;
+		}
+	}
+	cutf::cuda::memory::copy(d_qqt.get(), h_qqt.get(), m * m);
+
+	auto cublas = cutf::cublas::get_cublas_unique_ptr();
+	float alpha = 1.0f, beta = 0.0f;
+	cutf::cublas::gemm(
+			*cublas.get(),
+			CUBLAS_OP_N, CUBLAS_OP_T,
+			m, m, n,
+			&alpha,
+			matrix, m,
+			matrix, m,
+			&beta,
+			d_qqt.get(), m
+			);
+	cutf::cuda::memory::copy(h_qqt.get(), d_qqt.get(), m * m);
+	mtk::utils::print_matrix(h_qqt.get(), m, m);
+	float sum = 0;
+	for(std::size_t i = 0; i < m * m; i++){
+		const auto tmp = h_qqt.get()[i];
+		sum += tmp * tmp;
+	}
+	std::cout<<std::sqrt(sum/m)<<std::endl;
+#endif
 
 	return std::sqrt(h_orthogonality / m);
 }
