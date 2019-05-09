@@ -72,5 +72,7 @@ int main(){
 		norm_diff += h_a.get()[i] * h_a.get()[i];
 	}
 	std::cout<<"error : "<<std::sqrt(norm_diff/norm_a)<<std::endl;
-	//mtk::utils::print_matrix(h_a.get(), m, n, "diff");
+
+	const auto orthogonality = mtk::validation::check_orthogonality16(d_q.get(), m, n);
+	std::cout<<"orthogonality : "<<orthogonality<<std::endl;
 }
