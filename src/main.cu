@@ -6,6 +6,7 @@
 #include "tcqr.hpp"
 #include "tsqr.hpp"
 #include "utils.hpp"
+#include "validation.hpp"
 
 constexpr std::size_t m = 1 << 10;
 constexpr std::size_t n = 16;
