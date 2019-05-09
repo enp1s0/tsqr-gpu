@@ -16,6 +16,9 @@ test: matrix_copy_16x16.test matrix_copy_32x16.test calc_batchsize.test matrix_c
 %.test: $(SRCDIR)/%.cpp
 	$(NVCC) $(NVCCFLAGS) $< -o $@
 
+library_link.test: library_link.cu
+	$(NVCC) $(NVCCFLAGS) $< -o $@ -L../lib -I../src -ltsqr
+
 clean:
 	rm -rf *.test
 
