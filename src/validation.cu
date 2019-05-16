@@ -10,14 +10,14 @@ float mtk::validation::check_orthogonality16(
 		const std::size_t m,
 		const unsigned n
 		){
-	auto d_qqt = cutf::cuda::memory::get_device_unique_ptr<float>(n * n);
-	auto h_qqt = cutf::cuda::memory::get_host_unique_ptr<float>(n * n);
+	auto d_qqt = cutf::memory::get_device_unique_ptr<float>(n * n);
+	auto h_qqt = cutf::memory::get_host_unique_ptr<float>(n * n);
 	for(std::size_t i = 0; i < n; i++){
 		for(std::size_t j = 0; j < n; j++){
 			h_qqt.get()[i + n * j] = (i == j) ? 1.0f : 0.0f;
 		}
 	}
-	cutf::cuda::memory::copy(d_qqt.get(), h_qqt.get(), n * n);
+	cutf::memory::copy(d_qqt.get(), h_qqt.get(), n * n);
 
 	auto cublas = cutf::cublas::get_cublas_unique_ptr();
 	float alpha = 1.0f, beta = -1.0f;
@@ -31,7 +31,7 @@ float mtk::validation::check_orthogonality16(
 			&beta,
 			d_qqt.get(), n
 			);
-	cutf::cuda::memory::copy(h_qqt.get(), d_qqt.get(), n * n);
+	cutf::memory::copy(h_qqt.get(), d_qqt.get(), n * n);
 	float sum = 0;
 	for(std::size_t i = 0; i < n * n; i++){
 		const auto tmp = h_qqt.get()[i];
