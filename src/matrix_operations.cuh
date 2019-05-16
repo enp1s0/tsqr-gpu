@@ -12,7 +12,7 @@ __device__ inline void make_zero_matrix(
 	constexpr auto stride = 2 * warp_size;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_M) / stride; i++){
-		target_ptr[i * stride + unique_id] = cutf::cuda::type::cast<T>(0.0f);
+		target_ptr[i * stride + unique_id] = cutf::type::cast<T>(0.0f);
 	}
 	__syncthreads();
 }
@@ -25,7 +25,7 @@ __device__ inline void make_identity_matrix(
 	const auto unique_id = tid & 0x3f;
 	make_zero_matrix(target_ptr, unique_id);
 	if(unique_id < FRAGMENT_DIM_M)
-		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::cuda::type::cast<T>(1.0f);
+		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::type::cast<T>(1.0f);
 	__syncthreads();
 }
 } // namespace matrix_operation

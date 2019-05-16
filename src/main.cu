@@ -15,14 +15,14 @@ int main(){
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	auto d_a = cutf::cuda::memory::get_device_unique_ptr<float>(m * n);
-	auto d_q = cutf::cuda::memory::get_device_unique_ptr<float>(m * n);
-	auto d_r = cutf::cuda::memory::get_device_unique_ptr<float>(n * n);
-	auto d_working_memory = cutf::cuda::memory::get_device_unique_ptr<float>(
+	auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
+	auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
+	auto d_r = cutf::memory::get_device_unique_ptr<float>(n * n);
+	auto d_working_memory = cutf::memory::get_device_unique_ptr<float>(
 			mtk::tsqr::get_working_memory_size(m, n));
-	auto h_a = cutf::cuda::memory::get_host_unique_ptr<float>(m * n);
-	auto h_q = cutf::cuda::memory::get_host_unique_ptr<float>(m * n);
-	auto h_r = cutf::cuda::memory::get_host_unique_ptr<float>(n * n);
+	auto h_a = cutf::memory::get_host_unique_ptr<float>(m * n);
+	auto h_q = cutf::memory::get_host_unique_ptr<float>(m * n);
+	auto h_r = cutf::memory::get_host_unique_ptr<float>(n * n);
 
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(float))<<"MB"<<std::endl
 		<<" Working memory : "<<(mtk::tsqr::get_working_memory_size(m, n) / 1024.0 / 1024.0 * sizeof(float))<<"MB"<<std::endl;
@@ -33,7 +33,7 @@ int main(){
 		h_a.get()[i] = tmp;
 		norm_a += tmp * tmp;
 	}
-	cutf::cuda::memory::copy(d_a.get(), h_a.get(), m * n);
+	cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 	std::cout<<std::endl<<"# Start TSQR test"<<std::endl;
 	const auto elapsed_time = mtk::utils::get_elapsed_time(
@@ -48,9 +48,9 @@ int main(){
 	std::cout<<"# Done"<<std::endl;
 	std::cout<<"Elapsed time : "<<elapsed_time<<" [ms]"<<std::endl;
 
-	cutf::cuda::memory::copy(h_r.get(), d_r.get(), n * n);
+	cutf::memory::copy(h_r.get(), d_r.get(), n * n);
 	mtk::utils::print_matrix(h_r.get(), n, n, "R");
-	/*cutf::cuda::memory::copy(h_q.get(), d_q.get(), m * n);
+	/*cutf::memory::copy(h_q.get(), d_q.get(), m * n);
 	mtk::utils::print_matrix(h_q.get(), m, n, "Q");*/
 
 	// verify
@@ -67,7 +67,7 @@ int main(){
 			d_a.get(), m
 			);
 
-	cutf::cuda::memory::copy(h_a.get(), d_a.get(), m * n);
+	cutf::memory::copy(h_a.get(), d_a.get(), m * n);
 	float norm_diff = 0.0f;
 	for(std::size_t i = 0; i < m * n; i++){
 		norm_diff += h_a.get()[i] * h_a.get()[i];

@@ -182,8 +182,8 @@ void mtk::tsqr::tsqr16(
 	debug_func([&working_r_ptr](){std::printf("%s : working_r_ptr[1] = 0x%x\n", __func__, working_r_ptr[1]);});
 	debug_func([&working_q_ptr](){std::printf("%s : working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
 
-	const auto d_sub_m_list = cutf::cuda::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
-	const auto h_sub_m_list = cutf::cuda::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
+	const auto d_sub_m_list = cutf::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
+	const auto h_sub_m_list = cutf::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
 
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
@@ -191,7 +191,7 @@ void mtk::tsqr::tsqr16(
 		h_sub_m_list.get()[i] = m * i / batch_size;
 	}
 	h_sub_m_list.get()[batch_size] = m;
-	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 
 	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
@@ -206,7 +206,7 @@ void mtk::tsqr::tsqr16(
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++){
 		h_sub_m_list.get()[i] = 2 * n * i;
 	}
-	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
+	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
 
 	// 再帰的QR分解のfor展開
 	for(std::size_t k = batch_size_log2 - 1; k > 0; k--){
@@ -218,8 +218,8 @@ void mtk::tsqr::tsqr16(
 
 #ifdef DEBUG_INPUT_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
-			cutf::cuda::memory::copy(h_tmp.get(), working_r_ptr[working_r_index], 2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::memory::copy(h_tmp.get(), working_r_ptr[working_r_index], 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "input");
 		}
 #endif
@@ -235,8 +235,8 @@ void mtk::tsqr::tsqr16(
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
-			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
 		}
 #endif
@@ -258,8 +258,8 @@ void mtk::tsqr::tsqr16(
 	debug_func([](){std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n);
-		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n);
+		cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
 #endif
@@ -275,8 +275,8 @@ void mtk::tsqr::tsqr16(
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
 			const auto local_batch_size = 1lu << k;	
-			auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
-			cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
@@ -293,13 +293,13 @@ void mtk::tsqr::tsqr16(
 		h_sub_m_list.get()[i] = m * i / batch_size;
 	}
 	h_sub_m_list.get()[batch_size] = m;
-	cutf::cuda::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 	const auto grid_size = (batch_size + max_batch_size_per_block - 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::cuda::memory::get_host_unique_ptr<float>(n * m);
-		cutf::cuda::memory::copy(h_tmp.get(), working_q_ptr, m * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<float>(n * m);
+		cutf::memory::copy(h_tmp.get(), working_q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif

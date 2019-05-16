@@ -26,10 +26,10 @@ template <class INPUT_T, class OUTPUT_T>
 __device__ OUTPUT_T get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 	   	unsigned warp_id){
-	auto tmp = cutf::cuda::type::cast<OUTPUT_T>(0.0f);
+	auto tmp = cutf::type::cast<OUTPUT_T>(0.0f);
 
 	if(warp_id < size){
-		tmp = cutf::cuda::type::cast<OUTPUT_T>(ptr[warp_id]);
+		tmp = cutf::type::cast<OUTPUT_T>(ptr[warp_id]);
 		tmp = tmp * tmp;
 	}
 
@@ -37,7 +37,7 @@ __device__ OUTPUT_T get_norm2_32(
 		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
 	}
 
-	return cutf::cuda::type::cast<OUTPUT_T>(tmp);
+	return cutf::type::cast<OUTPUT_T>(tmp);
 }
 
 template <class DST_T, class SRC_T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
@@ -48,7 +48,7 @@ __device__ void copy_32x16(
 		){
 	constexpr auto stride = 2 * warp_size;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N) / stride; i++){
-		dst_ptr[i * stride + unique_id] = cutf::cuda::type::cast<DST_T>(src_ptr[i * stride + unique_id]);
+		dst_ptr[i * stride + unique_id] = cutf::type::cast<DST_T>(src_ptr[i * stride + unique_id]);
 	}
 }
 
@@ -63,13 +63,13 @@ __device__ void make_h(
 		const auto x = k + lane;
 		U_T tmp;
 		if(x == y){
-			tmp = cutf::cuda::type::cast<U_T>(1.0f);
+			tmp = cutf::type::cast<U_T>(1.0f);
 		}else{
-			tmp = cutf::cuda::type::cast<U_T>(0.0f);
+			tmp = cutf::type::cast<U_T>(0.0f);
 		}
-		tmp -= cutf::cuda::type::cast<U_T>(2.0f) * u_ptr[y] * u_ptr[x] / norm2_u_1;
+		tmp -= cutf::type::cast<U_T>(2.0f) * u_ptr[y] * u_ptr[x] / norm2_u_1;
 
-		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::cuda::type::cast<T>(tmp);
+		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
@@ -162,14 +162,14 @@ __device__ void qr32x16_f32tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::cuda::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
 		debug_func(
 				unique_id,
 				[&norm_u_0](){printf("norm_u_0 = %.5f\n", norm_u_0);}
 				);
 		// update u
 		if(unique_id == k){
-			u32_ptr[unique_id] += cutf::cuda::math::sign(u32_ptr[unique_id]) * norm_u_0;
+			u32_ptr[unique_id] += cutf::math::sign(u32_ptr[unique_id]) * norm_u_0;
 		}
 		__syncthreads();
 		debug_func(
