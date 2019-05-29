@@ -1,3 +1,6 @@
 [submodule "src/cutf"]
 	path = src/cutf
 	url = https://gitlab.momo86.net/mutsuki/cutf
+[submodule "src/gemm_core"]
+	path = src/gemm_core
+	url = git@gitlab.momo86.net:mutsuki/gemm_core.git
