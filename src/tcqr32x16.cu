@@ -342,8 +342,8 @@ __device__ void qr32x16_core(
 				);
 		__syncthreads();
 		// initialize *1
-		mtk::matrix_operation::make_zero_matrix<FRAGMENT_DIM_M, FRAGMENT_DIM_M>(q_ptr1, tid);
-		mtk::matrix_operation::make_zero_matrix<FRAGMENT_DIM_M, FRAGMENT_DIM_N>(r_ptr1, tid);
+		mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(q_ptr1, tid);
+		mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(r_ptr1, tid);
 		// update q, r
 		update_qr<T>(
 				q_ptr0, r_ptr0,
