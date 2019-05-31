@@ -547,10 +547,21 @@ void mtk::tcqr::qr32x16_f32tc_batched(
 			a_start_position
 			);
 }
-void mtk::tcqr::qr32x16_f32tc(
-		float *const q, float *const r,
-		const float *const a, const unsigned int m, const unsigned int n
+
+template <class T, bool UseTC>
+void mtk::tcqr::qr32x16(
+		T* const q, T* const r,
+		const T* const a, const unsigned int m, const unsigned int n
 		){
+	qr32x16_kernel<T><<<1, 2 * warp_size>>>(
+			q, r,
+			a, m, n
+			);
+}
+
+template void mtk::tcqr::qr32x16<float, false>(float* const, float* const, const float* const, const unsigned int, const unsigned int);
+template void mtk::tcqr::qr32x16<half, false>(half* const, half* const, const half* const, const unsigned int, const unsigned int);
+template<> void mtk::tcqr::qr32x16<float, true>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n){
 	qr32x16_f32tc_kernel<<<1, 2 * warp_size>>>(
 			q, r,
 			a, m, n
