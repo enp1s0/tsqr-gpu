@@ -7,6 +7,7 @@
 #include "utils.hpp"
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
+#include "gemm_core/gemm_core.cuh"
 
 //#define DEBUG
 
@@ -125,6 +126,44 @@ __device__ void update_qr_f32tc(
 	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
+
+template <class T>
+__device__ void update_qr(
+		T* const out_q_ptr, T* const out_r_ptr,
+		const T* const in_q_ptr, const T* const in_r_ptr,
+		T* const h_ptr,
+		const unsigned unique_id
+		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+
+	/* mma q 0 */
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane, in_q_ptr, out_q_ptr + lane * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_q_ptr + FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+
+	/* mma q 1 */
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+
+	/*  R */
+	/* mma q 1 */
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane, in_r_ptr, out_r_ptr + lane * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+	mtk::gemm_core16x16<T, 1>(
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_r_ptr + FRAGMENT_DIM_N, out_r_ptr + lane * FRAGMENT_DIM_N,
+		FRAGMENT_DIM_M);
+}
+
 
 __device__ void qr32x16_f32tc_core(
 		float* const q32_ptr, float* const r32_ptr,
