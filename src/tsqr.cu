@@ -195,7 +195,7 @@ void mtk::tsqr::tsqr16(
 
 	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
-	mtk::tcqr::qr32x16_f32tc_batched(
+	mtk::tcqr::qr32x16_batched<float, true>(
 			working_q_ptr,
 			working_r_ptr[0],
 			a_ptr, m, n,
@@ -224,7 +224,7 @@ void mtk::tsqr::tsqr16(
 		}
 #endif
 
-		mtk::tcqr::qr32x16_f32tc_batched(
+		mtk::tcqr::qr32x16_batched<float, true>(
 				working_q_ptr + working_q_sride,
 				working_r_ptr[1 - working_r_index],
 				working_r_ptr[working_r_index],
