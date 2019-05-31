@@ -247,7 +247,7 @@ void mtk::tsqr::tsqr16(
 	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
-	mtk::tcqr::qr32x16_f32tc(
+	mtk::tcqr::qr32x16<float, true>(
 			working_q_ptr + working_q_sride,
 			r_ptr,
 			working_r_ptr[1 - (batch_size_log2 % 2)],
