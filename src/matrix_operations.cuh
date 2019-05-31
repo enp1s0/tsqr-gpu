@@ -3,7 +3,7 @@
 #include <cutf/type.hpp>
 namespace mtk {
 namespace matrix_operation {
-template <class T, std::size_t FRAGMENT_DIM_M = 32>
+template <class T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 32>
 __device__ inline void make_zero_matrix(
 		T* const target_ptr,
 		const unsigned tid
@@ -23,7 +23,7 @@ __device__ inline void make_identity_matrix(
 		const unsigned tid
 		){
 	const auto unique_id = tid & 0x3f;
-	make_zero_matrix(target_ptr, unique_id);
+	make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(target_ptr, unique_id);
 	if(unique_id < FRAGMENT_DIM_M)
 		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::type::cast<T>(1.0f);
 	__syncthreads();
