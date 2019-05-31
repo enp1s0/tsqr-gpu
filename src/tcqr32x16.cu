@@ -141,27 +141,27 @@ __device__ void update_qr(
 	/* mma q 0 */
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane, in_q_ptr, out_q_ptr + lane * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_q_ptr + FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 
 	/* mma q 1 */
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 
 	/*  R */
 	/* mma q 1 */
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane, in_r_ptr, out_r_ptr + lane * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 	mtk::gemm_core16x16<T, 1>(
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, in_r_ptr + FRAGMENT_DIM_N, out_r_ptr + lane * FRAGMENT_DIM_N,
-		FRAGMENT_DIM_M, unique_id);
+		FRAGMENT_DIM_M, unique_id & 0x1f);
 }
 
 
