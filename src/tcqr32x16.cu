@@ -463,7 +463,6 @@ __global__ void qr32x16_kernel(
 	// qr core
 	qr32x16_core<T>(
 			shared_q, shared_r,
-			shared_q, shared_r,
 			shared_u, shared_h,
 			m, n,
 			tid
