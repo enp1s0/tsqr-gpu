@@ -492,6 +492,75 @@ __global__ void qr32x16_f32tc_kernel(
 }
 
 template <class T>
+__global__ void qr32x16_batched_kernel(
+		T* const q_ptr,
+		T* const r_ptr,
+		const T* const a_ptr,
+		const std::size_t m,
+		const unsigned n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 2;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / (warp_size * 2);
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	if(matrix_id >= batch_size) return;
+
+	__shared__ T shared_q0[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ T shared_r0[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_q1[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ T shared_r1[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_h[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ T shared_u[FRAGMENT_DIM_M * max_batch_size_per_block];
+
+	const auto shared_q0_ptr = shared_q0 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_r0_ptr = shared_r0 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_q1_ptr = shared_q1 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_r1_ptr = shared_r1 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_h_ptr = shared_h + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
+	const auto shared_u_ptr = shared_u + shared_memory_id * FRAGMENT_DIM_M;
+
+	const auto sub_a_position = a_start_position[matrix_id];
+	const auto sub_a_m = a_start_position[matrix_id + 1] - sub_a_position;
+
+	// init shared memory
+	mtk::matrix_copy::g2s32x16_2w(
+			shared_r0_ptr, sub_a_m, n,
+			a_ptr, sub_a_position, m,
+			tid
+			);
+	mtk::matrix_operation::make_identity_matrix<T, FRAGMENT_DIM_M>(
+			shared_q0_ptr,
+			tid
+			);
+
+	// qr core
+	qr32x16_core<T>(
+			shared_q0_ptr, shared_r0_ptr,
+			shared_q1_ptr, shared_r1_ptr,
+			shared_u_ptr, shared_h_ptr,
+			sub_a_m, n,
+			tid
+			);
+
+	// store result
+	mtk::matrix_copy::s2g32x32_16x32_t_2w(
+			q_ptr, sub_a_position, m,
+			shared_q1_ptr, n, sub_a_m,
+			tid
+			);
+	mtk::matrix_copy::s2g32x16_2w(
+			r_ptr, n * matrix_id, n * batch_size,
+			shared_r1_ptr, n, n,
+			tid
+			);
+	//printf("");
+}
+
+template <class T>
 __global__ void qr32x16_kernel(
 		T* const q_ptr,
 		T* const r_ptr,
@@ -543,9 +612,30 @@ __global__ void qr32x16_kernel(
 }
 }
 
-void mtk::tcqr::qr32x16_f32tc_batched(
-		float *const q, float *const r,
-		const float *const a, const unsigned int m, const unsigned int n,
+template <class T, bool UseTC>
+void mtk::tcqr::qr32x16_batched(
+		T* const q, T* const r,
+		const T* const a, const unsigned int m, const unsigned int n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		){
+	constexpr std::size_t max_batch_size_per_block = 2;
+	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * 2 * warp_size;
+
+	qr32x16_batched_kernel<T><<<grid_size, block_size>>>(
+			q, r,
+			a, m, n,
+			batch_size,
+			a_start_position
+			);
+}
+template void mtk::tcqr::qr32x16_batched<float,false>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<half,false>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+
+template <> void mtk::tcqr::qr32x16_batched<float, true>(
+		float* const q, float* const r,
+		const float* const a, const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
 		const unsigned* a_start_position
 		){
@@ -574,6 +664,7 @@ void mtk::tcqr::qr32x16(
 
 template void mtk::tcqr::qr32x16<float, false>(float* const, float* const, const float* const, const unsigned int, const unsigned int);
 template void mtk::tcqr::qr32x16<half, false>(half* const, half* const, const half* const, const unsigned int, const unsigned int);
+
 template<> void mtk::tcqr::qr32x16<float, true>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n){
 	qr32x16_f32tc_kernel<<<1, 2 * warp_size>>>(
 			q, r,
