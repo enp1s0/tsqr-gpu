@@ -400,7 +400,7 @@ __global__ void qr32x16_f32tc_batched_kernel(
 			a32_ptr, sub_a_position, m,
 			tid
 			);
-	mtk::matrix_operation::make_identity_matrix(
+	mtk::matrix_operation::make_identity_matrix<float, FRAGMENT_DIM_M>(
 			shared_q32_ptr,
 			tid
 			);
@@ -452,7 +452,7 @@ __global__ void qr32x16_f32tc_kernel(
 			a32_ptr, 0, m,
 			tid
 			);
-	mtk::matrix_operation::make_identity_matrix(
+	mtk::matrix_operation::make_identity_matrix<float, FRAGMENT_DIM_M>(
 			shared_q32,
 			tid
 			);
