@@ -359,8 +359,8 @@ __device__ void qr32x16_core(
 		// update q, r
 		__syncthreads();
 		update_qr<T>(
-				q_ptr0, r_ptr0,
 				q_ptr1, r_ptr1,
+				q_ptr0, r_ptr0,
 				h_ptr,
 				unique_id
 				);
