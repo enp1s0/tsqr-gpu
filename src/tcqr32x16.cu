@@ -40,23 +40,26 @@ __device__ OUTPUT_T get_norm2_32(
 	return cutf::type::cast<OUTPUT_T>(tmp);
 }
 
-template <class DST_T, class SRC_T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
 		DST_T* const dst_ptr,
 		const SRC_T* const src_ptr,
 		const unsigned unique_id
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr auto stride = 2 * warp_size;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N) / stride; i++){
 		dst_ptr[i * stride + unique_id] = cutf::type::cast<DST_T>(src_ptr[i * stride + unique_id]);
 	}
 }
 
-template <class T, class U_T, std::size_t FRAGMENT_DIM_M = 32>
+template <class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m, 
 		const U_T* const u_ptr, const U_T norm2_u_1, 
 		const unsigned unique_id){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2){
@@ -72,13 +75,14 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
 __device__ void update_qr_f32tc(
 		float* const q32_ptr, float* const r32_ptr,
 		const half* const q16_ptr, const half* const r16_ptr,
 		half* const h16_ptr,
 		const unsigned unique_id
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
@@ -122,7 +126,6 @@ __device__ void update_qr_f32tc(
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
 __device__ void qr32x16_f32tc_core(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
@@ -130,6 +133,8 @@ __device__ void qr32x16_f32tc_core(
 		const unsigned m, const unsigned n,
 		const unsigned tid
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n ; k++){
 		debug_func(
@@ -216,8 +221,7 @@ __device__ void qr32x16_f32tc_core(
 	}
 }
 
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
-__global__ void qr32x16_f32_batched_kernel(
+__global__ void qr32x16_f32tc_batched_kernel(
 		float* const q32_ptr,
 		float* const r32_ptr,
 		const float* const a32_ptr,
@@ -226,6 +230,9 @@ __global__ void qr32x16_f32_batched_kernel(
 		const std::size_t batch_size,
 		const unsigned* a_start_position
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / (warp_size * 2);
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -282,14 +289,15 @@ __global__ void qr32x16_f32_batched_kernel(
 	//printf("");
 }
 
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
-__global__ void qr32x16_f32_kernel(
+__global__ void qr32x16_f32tc_kernel(
 		float* const q32_ptr,
 		float* const r32_ptr,
 		const float* const a32_ptr,
 		const unsigned m,
 		const unsigned n
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 
 	__shared__ float shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
