@@ -9,6 +9,8 @@
 #include "tcqr.hpp"
 #include "utils.hpp"
 #include "matrix_copy.cuh"
+#include "matrix_operations.cuh"
+#include "gemm_core/gemm_core.cuh"
 
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
@@ -30,13 +32,87 @@ std::size_t get_batch_size(const std::size_t m){
 }
 
 // backward 1層目以外
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
+template <class T, bool UseTC>
 __global__ void tsqr_backward(
+		T* const ac_ptr,
+		const T* const b_ptr,
+		const unsigned n,
+		const std::size_t k
+		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = (1lu << (k)) * 2 * n;
+
+	if(matrix_id >= (1lu << k)) return;
+
+	__shared__ T shared_ac_in[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// AC(in)のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_in_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
+	// AC(out)の初期化
+	mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_N, 1>(
+			shared_ac_out_ptr, tid);
+
+	__syncthreads();
+	if(tid == 0)printf("\\ -----\n");
+	if(tid == 0)mtk::utils::print_matrix(shared_b_ptr, 16, 16, "in-b");
+	if(tid == 0)mtk::utils::print_matrix(shared_ac_in_ptr, 32, 16, "in-ac");
+	if(tid == 0)mtk::utils::print_matrix(shared_ac_out_ptr, 32, 16, "out-ac");
+	__syncthreads();
+
+	mtk::gemm_core16x16<T, 1>(
+			shared_ac_out_ptr, FRAGMENT_DIM_M,
+			shared_ac_in_ptr, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	mtk::gemm_core16x16<T, 1>(
+			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	__syncthreads();
+	if(tid == 0)mtk::utils::print_matrix(shared_ac_out_ptr, 32, 16, "out-b (after)");
+
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_out_ptr, 2 * n, n,
+			tid
+			);
+}
+template <>
+__global__ void tsqr_backward<float, true>(
 		float* const ac_ptr,
 		const float* const b_ptr,
 		const unsigned n,
 		const std::size_t k
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -90,8 +166,78 @@ __global__ void tsqr_backward(
 			);
 }
 
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16, std::size_t max_batch_size_per_block = 4>
+template <class T, bool UseTC>
 __global__ void tsqr_backward_layer0(
+		T* const q_ptr,
+		const T* const a_ptr,
+		const T* const b_ptr,
+		const unsigned n,
+		const std::size_t batch_size,
+		const unsigned* const q_start_position
+		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = q_start_position[batch_size];
+	const auto q_start_pos = q_start_position[matrix_id];
+	const auto sub_m = q_start_position[matrix_id + 1] - q_start_pos;
+
+	if(matrix_id >= batch_size) return;
+
+	__shared__ T shared_ac_in[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ T shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// A(in) のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_in_ptr, sub_m, n,
+			a_ptr, q_start_pos, ac_m,
+			tid
+			);
+	// AC(out)の初期化
+	mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_N, 1>(
+			shared_ac_out_ptr, tid);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_ptr, n, n,
+			b_ptr, matrix_id * n, n * batch_size,
+			tid
+			);
+
+	__syncthreads();
+
+	mtk::gemm_core16x16<T, 1>(
+			shared_ac_out_ptr, FRAGMENT_DIM_M,
+			shared_ac_in_ptr, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	mtk::gemm_core16x16<T, 1>(
+			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	__syncthreads();
+
+	mtk::matrix_copy::s2g32x16_1w(
+			q_ptr, q_start_pos, ac_m,
+			shared_ac_out_ptr, sub_m, n,
+			tid
+			);
+}
+
+template <>
+__global__ void tsqr_backward_layer0<float, true>(
 		float* const q_ptr,
 		const float* const a_ptr,
 		const float* const b_ptr,
@@ -99,6 +245,9 @@ __global__ void tsqr_backward_layer0(
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
 		){
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -165,14 +314,15 @@ std::size_t mtk::tsqr::get_working_memory_size(const std::size_t m, const std::s
 	return working_q_size + working_r_size_0 + working_r_size_1;
 }
 
+template <class T, bool UseTC>
 void mtk::tsqr::tsqr16(
-		float *const q_ptr, float *const r_ptr, 
-		const float *const a_ptr, const std::size_t m, const std::size_t n, 
-		float *const working_memory_ptr){
+		T* const q_ptr, T* const r_ptr, 
+		const T* const a_ptr, const std::size_t m, const std::size_t n, 
+		T* const working_memory_ptr){
 	const std::size_t max_batch_size_per_block = 4;
 	const auto batch_size_log2 = get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
-	float* const working_r_ptr[2] = {working_memory_ptr, working_memory_ptr + n * n * batch_size};
+	T* const working_r_ptr[2] = {working_memory_ptr, working_memory_ptr + n * n * batch_size};
 	const auto working_q_ptr = working_r_ptr[1] + n * n * batch_size / 2;
 
 	debug_func([&m, &n](){std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
@@ -195,7 +345,7 @@ void mtk::tsqr::tsqr16(
 
 	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
-	mtk::tcqr::qr32x16_batched<float, true>(
+	mtk::tcqr::qr32x16_batched<T, UseTC>(
 			working_q_ptr,
 			working_r_ptr[0],
 			a_ptr, m, n,
@@ -218,13 +368,13 @@ void mtk::tsqr::tsqr16(
 
 #ifdef DEBUG_INPUT_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<T>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_r_ptr[working_r_index], 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "input");
 		}
 #endif
 
-		mtk::tcqr::qr32x16_batched<float, true>(
+		mtk::tcqr::qr32x16_batched<T, UseTC>(
 				working_q_ptr + working_q_sride,
 				working_r_ptr[1 - working_r_index],
 				working_r_ptr[working_r_index],
@@ -233,9 +383,11 @@ void mtk::tsqr::tsqr16(
 				local_batch_size, d_sub_m_list.get()
 				);
 
+		debug_func([](){CUTF_HANDLE_ERROR(cudaGetLastError());});
+
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<T>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
 		}
@@ -247,7 +399,7 @@ void mtk::tsqr::tsqr16(
 	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
-	mtk::tcqr::qr32x16<float, true>(
+	mtk::tcqr::qr32x16<T, UseTC>(
 			working_q_ptr + working_q_sride,
 			r_ptr,
 			working_r_ptr[1 - (batch_size_log2 % 2)],
@@ -258,7 +410,7 @@ void mtk::tsqr::tsqr16(
 	debug_func([](){std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(2 * n * n);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
@@ -275,17 +427,18 @@ void mtk::tsqr::tsqr16(
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
 			const auto local_batch_size = 1lu << k;	
-			auto h_tmp = cutf::memory::get_host_unique_ptr<float>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<T>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
-		tsqr_backward<<<grid_size, block_size>>>(
+		tsqr_backward<T, UseTC><<<grid_size, block_size>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
 				n,
 				k
 				);
+
 	}
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
@@ -298,12 +451,12 @@ void mtk::tsqr::tsqr16(
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<float>(n * m);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(n * m);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif
-	tsqr_backward_layer0<<<grid_size, block_size>>>(
+	tsqr_backward_layer0<T, UseTC><<<grid_size, block_size>>>(
 			q_ptr,
 			working_q_ptr,
 			working_q_ptr + m * n,
@@ -311,4 +464,17 @@ void mtk::tsqr::tsqr16(
 			batch_size,
 			d_sub_m_list.get()
 			);
+	debug_func([](){CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
+#ifdef DEBUG_Q_MATRIX_PRINT
+	{
+		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(n * m);
+		cutf::memory::copy(h_tmp.get(), q_ptr, m * n);
+		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (result)");
+	}
+#endif
 }
+
+// (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
+template void mtk::tsqr::tsqr16<float, true>(float* const, float* const, const float* const, const std::size_t, const std::size_t, float* const);
+template void mtk::tsqr::tsqr16<float, false>(float* const, float* const, const float* const, const std::size_t, const std::size_t, float* const);
+template void mtk::tsqr::tsqr16<half, false>(half* const, half* const, const half* const, const std::size_t, const std::size_t, half* const);
