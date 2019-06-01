@@ -5,6 +5,7 @@
 #include <cuda_fp16.h>
 #include <cutf/memory.hpp>
 #include <cutf/type.hpp>
+#include <cutf/error.hpp>
 #include "tsqr.hpp"
 #include "tcqr.hpp"
 #include "utils.hpp"
