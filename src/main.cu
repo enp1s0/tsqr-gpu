@@ -9,9 +9,10 @@
 #include "utils.hpp"
 #include "validation.hpp"
 
-constexpr std::size_t m = 1 << 10;
+constexpr std::size_t m = 1 << 23;
 constexpr std::size_t n = 16;
-using compute_t = half;
+using compute_t = float;
+constexpr bool use_tc = true;
 
 int main(){
 	std::mt19937 mt(std::random_device{}());
@@ -40,7 +41,7 @@ int main(){
 	std::cout<<std::endl<<"# Start TSQR test"<<std::endl;
 	const auto elapsed_time = mtk::utils::get_elapsed_time(
 			[&d_q, &d_r, &d_a, &d_working_memory](){
-			mtk::tsqr::tsqr16<compute_t, false>(
+			mtk::tsqr::tsqr16<compute_t, use_tc>(
 					d_q.get(), d_r.get(),
 					d_a.get(), m, n,
 					d_working_memory.get()
