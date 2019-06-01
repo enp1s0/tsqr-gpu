@@ -4,7 +4,8 @@
 
 namespace mtk {
 namespace validation {
-float check_orthogonality16(const float* const matrix, const std::size_t m, const unsigned n);
+template <class T>
+float check_orthogonality16(const T* const matrix, const std::size_t m, const unsigned n);
 } // namespace validation
 } // namespace mtk
 
