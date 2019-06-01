@@ -75,11 +75,6 @@ __global__ void tsqr_backward(
 			shared_ac_out_ptr, tid);
 
 	__syncthreads();
-	if(tid == 0)printf("\\ -----\n");
-	if(tid == 0)mtk::utils::print_matrix(shared_b_ptr, 16, 16, "in-b");
-	if(tid == 0)mtk::utils::print_matrix(shared_ac_in_ptr, 32, 16, "in-ac");
-	if(tid == 0)mtk::utils::print_matrix(shared_ac_out_ptr, 32, 16, "out-ac");
-	__syncthreads();
 
 	mtk::gemm_core16x16<T, 1>(
 			shared_ac_out_ptr, FRAGMENT_DIM_M,
@@ -96,7 +91,6 @@ __global__ void tsqr_backward(
 			);
 
 	__syncthreads();
-	if(tid == 0)mtk::utils::print_matrix(shared_ac_out_ptr, 32, 16, "out-b (after)");
 
 	mtk::matrix_copy::s2g32x16_1w(
 			ac_ptr, matrix_id * 2 * n, ac_m,
