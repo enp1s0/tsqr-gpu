@@ -38,7 +38,7 @@ int main(){
 	std::cout<<std::endl<<"# Start TSQR test"<<std::endl;
 	const auto elapsed_time = mtk::utils::get_elapsed_time(
 			[&d_q, &d_r, &d_a, &d_working_memory](){
-			mtk::tsqr::tsqr16(
+			mtk::tsqr::tsqr16<float, false>(
 					d_q.get(), d_r.get(),
 					d_a.get(), m, n,
 					d_working_memory.get()
