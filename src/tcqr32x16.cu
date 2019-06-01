@@ -340,6 +340,7 @@ __device__ void qr32x16_core(
 				u_ptr, norm2_u_1,
 				unique_id
 				);
+		debug_func(0, [](){__syncthreads();});
 		debug_func(
 				unique_id,
 				[&h_ptr, &m](){mtk::utils::print_matrix_32x16(h_ptr, m, m, "H");}
