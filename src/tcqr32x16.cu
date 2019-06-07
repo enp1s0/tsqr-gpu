@@ -302,9 +302,10 @@ __device__ void qr32x16_core(
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M){
-			u_ptr[unique_id] = 0.0f;
 			if(unique_id >= k){
 				u_ptr[unique_id] = r_ptr0[FRAGMENT_DIM_M * k + unique_id];
+			}else{
+				u_ptr[unique_id] = 0.0f;
 			}
 		}
 		__syncthreads();
