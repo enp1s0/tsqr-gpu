@@ -50,8 +50,8 @@ __device__ void copy_32x16(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr auto stride = 2 * warp_size;
-	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N) / stride; i++){
-		dst_ptr[i * stride + unique_id] = cutf::type::cast<DST_T>(src_ptr[i * stride + unique_id]);
+	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i+=stride){
+		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
 	}
 }
 
