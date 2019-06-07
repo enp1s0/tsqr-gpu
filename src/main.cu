@@ -14,6 +14,10 @@ constexpr std::size_t n = 16;
 using compute_t = float;
 constexpr bool use_tc = true;
 
+template <class T> std::string get_type_name();
+template <> std::string get_type_name<float>(){return "float";}
+template <> std::string get_type_name<half>(){return "half";}
+
 int main(){
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
@@ -27,6 +31,7 @@ int main(){
 	auto h_q = cutf::memory::get_host_unique_ptr<compute_t>(m * n);
 	auto h_r = cutf::memory::get_host_unique_ptr<compute_t>(n * n);
 
+	std::cout<<"compute type : "<<get_type_name<compute_t>()<<std::endl;
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(compute_t))<<"MB"<<std::endl
 		<<" Working memory : "<<(mtk::tsqr::get_working_memory_size(m, n) / 1024.0 / 1024.0 * sizeof(compute_t))<<"MB"<<std::endl;
 
