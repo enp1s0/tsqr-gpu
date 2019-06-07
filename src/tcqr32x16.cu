@@ -27,11 +27,13 @@ template <class INPUT_T, class OUTPUT_T>
 __device__ OUTPUT_T get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 	   	unsigned warp_id){
-	auto tmp = cutf::type::cast<OUTPUT_T>(0.0f);
+	OUTPUT_T tmp;
 
 	if(warp_id < size){
 		tmp = cutf::type::cast<OUTPUT_T>(ptr[warp_id]);
 		tmp = tmp * tmp;
+	}else{
+		tmp = cutf::type::cast<OUTPUT_T>(0.0f);
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1){
