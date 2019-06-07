@@ -285,7 +285,7 @@ __device__ void qr32x16_core(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto unique_id = tid & 0x3f;
-	for(unsigned k = 0; k < n ; k++){
+	for(unsigned k = 0; k < n - 1; k++){
 		debug_func(
 				unique_id,
 				[&k](){printf("/* -------- %u ---------\n", k);}
