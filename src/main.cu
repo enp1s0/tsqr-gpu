@@ -31,7 +31,7 @@ int main(){
 	auto h_q = cutf::memory::get_host_unique_ptr<compute_t>(m * n);
 	auto h_r = cutf::memory::get_host_unique_ptr<compute_t>(n * n);
 
-	std::cout<<"compute type : "<<get_type_name<compute_t>()<<std::endl;
+	std::cout<<"compute_t : "<<get_type_name<compute_t>()<<std::endl;
 	std::cout<<"Use TC? : "<<(use_tc?"Yes":"No")<<std::endl;
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(compute_t))<<"MB"<<std::endl
 		<<" Working memory : "<<(mtk::tsqr::get_working_memory_size(m, n) / 1024.0 / 1024.0 * sizeof(compute_t))<<"MB"<<std::endl;
