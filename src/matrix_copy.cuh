@@ -98,13 +98,16 @@ __device__ inline void g2s32x16_2w(
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	if(y >= shared_m) return;
-	for(std::size_t i = 0; i < FRAGMENT_DIM_N; i+=2){
-		const auto x = i + lane;
-		if(x >= shared_n) return;
-		const auto shared_index = FRAGMENT_DIM_M * x + y;
-		const auto global_index = global_ld * x + y + global_p_y;
-
-		shared_ptr[shared_index] = cutf::type::cast<DST_T>( global_ptr[global_index] );
+	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x+=2){
+		//const auto x = i + lane;
+		auto val = cutf::type::cast<DST_T>(0.0f);
+		if(x < shared_n){
+			// copy
+			const auto global_index = x * global_ld + y + global_p_y;
+			val = cutf::type::cast<DST_T>( global_ptr[global_index] );
+		}
+		const auto shared_index = x * FRAGMENT_DIM_M + y;
+		shared_ptr[shared_index] = val;
 	}
 }
 template <class DST_T, class SRC_T, std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
@@ -117,8 +120,8 @@ __device__ inline void s2g32x16_2w(
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	if(y >= shared_m) return;
-	for(std::size_t i = 0; i < FRAGMENT_DIM_N; i+=2){
-		const auto x = i + lane;
+	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x+=2){
+		//const auto x = i + lane;
 		if(x >= shared_n) return;
 		const auto shared_index = FRAGMENT_DIM_M * x + y;
 		const auto global_index = global_ld * x + y + global_p_y;
