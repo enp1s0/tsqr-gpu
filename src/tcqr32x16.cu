@@ -580,7 +580,6 @@ __global__ void qr32x16_f32tc_batched_kernel(
 			shared_r32_ptr, n, n,
 			tid
 			);
-	//printf("");
 }
 __global__ void qr32x16_f16tc_batched_kernel(
 		half* const q16_ptr,
@@ -642,7 +641,6 @@ __global__ void qr32x16_f16tc_batched_kernel(
 			shared_r16_ptr, n, n,
 			tid
 			);
-	//printf("");
 }
 
 template <class Q_T, class R_T>
@@ -809,7 +807,6 @@ __global__ void qr32x16_batched_kernel(
 			shared_r1_ptr, n, n,
 			tid
 			);
-	//printf("");
 }
 
 template <class Q_T, class R_T, class A_T>
