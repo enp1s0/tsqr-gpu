@@ -696,6 +696,53 @@ __global__ void qr32x16_f32tc_kernel(
 			);
 }
 
+__global__ void qr32x16_f16tc_kernel(
+		half* const q16_ptr,
+		half* const r16_ptr,
+		const half* const a16_ptr,
+		const unsigned m,
+		const unsigned n
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+	__shared__ half shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ half shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
+	__shared__ half shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ half shared_u16[FRAGMENT_DIM_M];
+
+	// init shared memory
+	mtk::matrix_copy::g2s32x16_2w(
+			shared_r16, m, n,
+			a16_ptr, 0, m,
+			tid
+			);
+	mtk::matrix_operation::make_identity_matrix<half, FRAGMENT_DIM_M>(
+			shared_q16,
+			tid
+			);
+
+	// qr core
+	qr32x16_f16tc_core(
+			shared_q16, shared_r16,
+			shared_u16, shared_h16,
+			m, n,
+			tid
+			);
+	// store result
+	mtk::matrix_copy::s2g32x32_16x32_t_2w(
+			q16_ptr, 0, m,
+			shared_q16, n, m,
+			tid
+			);
+	mtk::matrix_copy::s2g32x16_2w(
+			r16_ptr, 0, n,
+			shared_r16, n, n,
+			tid
+			);
+}
+
 template <class Q_T, class R_T, class A_T>
 __global__ void qr32x16_batched_kernel(
 		Q_T* const q_ptr,
