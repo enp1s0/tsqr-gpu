@@ -3,10 +3,10 @@
 
 namespace mtk {
 namespace tcqr{
-template <class T, bool UseTC>
-void qr32x16(T* const q, T* const r,const T* const a, const unsigned int m, const unsigned int n);
-template <class T, bool UseTC>
-void qr32x16_batched(T *const q, T *const r, const T *const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template <bool UseTC, class Q_T, class R_T, class A_T>
+void qr32x16(Q_T* const q, R_T* const r,const A_T* const a, const unsigned int m, const unsigned int n);
+template <bool UseTC, class Q_T, class R_T, class A_T>
+void qr32x16_batched(Q_T *const q, R_T *const r, const A_T *const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
 }
 } // namespace mtk
 
