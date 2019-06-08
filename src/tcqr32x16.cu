@@ -903,6 +903,23 @@ template <> void mtk::tcqr::qr32x16_batched<true, float, float, float>(
 			);
 }
 
+template <> void mtk::tcqr::qr32x16_batched<true, half, half, half>(
+		half* const q, half* const r,
+		const half* const a, const unsigned int m, const unsigned int n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		) {
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * 2 * warp_size;
+
+	qr32x16_f16tc_batched_kernel<<<grid_size, block_size>>>(
+			q, r,
+			a, m, n,
+			batch_size,
+			a_start_position
+			);
+}
 template <> void mtk::tcqr::qr32x16_batched<true, half, float, float>(
 		half* const q, float* const r,
 		const float* const a, const unsigned int m, const unsigned int n,
