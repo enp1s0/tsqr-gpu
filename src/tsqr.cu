@@ -20,15 +20,15 @@
 namespace{
 constexpr unsigned warp_size = 32;
 template <class Func>
-void debug_func(Func func){
+void debug_func(Func func) {
 #ifdef DEBUG
 	func();
 #endif
 }
-std::size_t get_batch_size_log2(const std::size_t m){
+std::size_t get_batch_size_log2(const std::size_t m) {
 	return (std::max(5u, static_cast<unsigned>( std::ceil( std::log2(static_cast<float>(m))))) - 5u);
 }
-std::size_t get_batch_size(const std::size_t m){
+std::size_t get_batch_size(const std::size_t m) {
 	return 1lu << get_batch_size_log2(m);
 }
 
@@ -39,7 +39,7 @@ __global__ void tsqr_backward(
 		const T* const b_ptr,
 		const unsigned n,
 		const std::size_t k
-		){
+		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
@@ -104,7 +104,7 @@ __global__ void tsqr_backward<true, half>(
 		const half* const b_ptr,
 		const unsigned n,
 		const std::size_t k
-		){
+		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
@@ -169,7 +169,7 @@ __global__ void tsqr_backward_layer0(
 		const unsigned n,
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
-		){
+		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
@@ -239,7 +239,7 @@ __global__ void tsqr_backward_layer0<true, float, half>(
 		const unsigned n,
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
-		){
+		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
@@ -300,13 +300,13 @@ __global__ void tsqr_backward_layer0<true, float, half>(
 }
 
 // 必要な作業用メモリ
-std::size_t mtk::tsqr::get_working_q_size(const std::size_t m, const std::size_t n){
+std::size_t mtk::tsqr::get_working_q_size(const std::size_t m, const std::size_t n) {
 	const auto batch_size = get_batch_size(m);
 	const auto working_q_size = n * m + 2 * n * n * (batch_size - 1);
 
 	return working_q_size;
 }
-std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t n){
+std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t n) {
 	const auto batch_size = get_batch_size(m);
 	const auto working_r_size_0 = n * n * batch_size;
 	const auto working_r_size_1 = n * n * batch_size / 2;
@@ -325,25 +325,25 @@ void mtk::tsqr::tsqr16(
 	const auto batch_size = 1lu << batch_size_log2;
 	typename get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
 
-	debug_func([&m, &n](){std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
-	debug_func([&batch_size](){std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
-	debug_func([&working_r_ptrs](){std::printf("%s : working_r_ptr[0] = 0x%x\n", __func__, working_r_ptrs[0]);});
-	debug_func([&working_r_ptrs](){std::printf("%s : working_r_ptr[1] = 0x%x\n", __func__, working_r_ptrs[1]);});
-	debug_func([&working_q_ptr](){std::printf("%s : working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
+	debug_func([&m, &n]() {std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
+	debug_func([&batch_size]() {std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
+	debug_func([&working_r_ptrs]() {std::printf("%s : working_r_ptr[0] = 0x%x\n", __func__, working_r_ptrs[0]);});
+	debug_func([&working_r_ptrs]() {std::printf("%s : working_r_ptr[1] = 0x%x\n", __func__, working_r_ptrs[1]);});
+	debug_func([&working_q_ptr]() {std::printf("%s : working_q_ptr    = 0x%x\n", __func__, working_q_ptr);});
 
 	const auto d_sub_m_list = cutf::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
 	const auto h_sub_m_list = cutf::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
 
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
-	for(std::size_t i = 1; i < batch_size; i++){
+	for(std::size_t i = 1; i < batch_size; i++) {
 		h_sub_m_list.get()[i] = m * i / batch_size;
 	}
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 
-	debug_func([&batch_size_log2](){std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
-	debug_func([](){std::printf("%s : a -> wr[0]\n", __func__);});
+	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
+	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
 	mtk::tcqr::qr32x16_batched<UseTC>(
 			working_q_ptr,
 			working_r_ptrs[0],
@@ -352,18 +352,18 @@ void mtk::tsqr::tsqr16(
 			);
 
 	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
-	for(std::size_t i = 0; i < batch_size / 2 + 1; i++){
+	for(std::size_t i = 0; i < batch_size / 2 + 1; i++) {
 		h_sub_m_list.get()[i] = 2 * n * i;
 	}
 	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1);
 
 	// 再帰的QR分解のfor展開
-	for(std::size_t k = batch_size_log2 - 1; k > 0; k--){
-		debug_func([&k](){std::printf("%s : %lu bQR\n", __func__, k);});
+	for(std::size_t k = batch_size_log2 - 1; k > 0; k--) {
+		debug_func([&k]() {std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
 		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
 		const auto working_r_index = 1lu - (batch_size_log2 - k) % 2;
-		debug_func([&working_r_index, local_batch_size](){std::printf("%s : a(wr[%lu]) -> a(wr[%lu]) [l_bs : %lu]\n", __func__, working_r_index, 1-working_r_index, local_batch_size);});
+		debug_func([&working_r_index, local_batch_size]() {std::printf("%s : a(wr[%lu]) -> a(wr[%lu]) [l_bs : %lu]\n", __func__, working_r_index, 1-working_r_index, local_batch_size);});
 
 #ifdef DEBUG_INPUT_MATRIX_PRINT
 		{
@@ -382,7 +382,7 @@ void mtk::tsqr::tsqr16(
 				local_batch_size, d_sub_m_list.get()
 				);
 
-		debug_func([](){CUTF_HANDLE_ERROR(cudaGetLastError());});
+		debug_func([]() {CUTF_HANDLE_ERROR(cudaGetLastError());});
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
@@ -395,8 +395,8 @@ void mtk::tsqr::tsqr16(
 	}
 
 	// 最終層はrの保存先が異なる
-	debug_func([](){std::printf("%s : 1 bQR\n", __func__);});
-	debug_func([&batch_size_log2](){std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
+	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
+	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
 	mtk::tcqr::qr32x16<UseTC>(
 			working_q_ptr + working_q_sride,
@@ -406,7 +406,7 @@ void mtk::tsqr::tsqr16(
 			n
 			);
 
-	debug_func([](){std::printf("%s : last Q\n", __func__);});
+	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
 		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(2 * n * n);
@@ -415,11 +415,11 @@ void mtk::tsqr::tsqr16(
 	}
 #endif
 
-	debug_func([](){std::printf("%s : Backword\n", __func__);});
+	debug_func([]() {std::printf("%s : Backword\n", __func__);});
 
 	// Backward
-	for(std::size_t k = 1; k < batch_size_log2; k++){
-		debug_func([&k](){std::printf("%s : %lu\n", __func__, k);});
+	for(std::size_t k = 1; k < batch_size_log2; k++) {
+		debug_func([&k]() {std::printf("%s : %lu\n", __func__, k);});
 		const auto working_q_sride = 2 * n * n * (batch_size - (1lu << (k + 1))) + m * n;
 		const auto grid_size = ((1lu<<k) + max_batch_size_per_block - 1) / max_batch_size_per_block;
 		const auto block_size = max_batch_size_per_block * warp_size;
@@ -441,7 +441,7 @@ void mtk::tsqr::tsqr16(
 	}
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
-	for(std::size_t i = 1; i < batch_size; i++){
+	for(std::size_t i = 1; i < batch_size; i++) {
 		h_sub_m_list.get()[i] = m * i / batch_size;
 	}
 	h_sub_m_list.get()[batch_size] = m;
@@ -463,7 +463,7 @@ void mtk::tsqr::tsqr16(
 			batch_size,
 			d_sub_m_list.get()
 			);
-	debug_func([](){CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
+	debug_func([]() {CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
 		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(n * m);

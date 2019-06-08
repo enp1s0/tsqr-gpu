@@ -11,11 +11,11 @@ float mtk::validation::check_orthogonality16(
 		const T* const matrix,
 		const std::size_t m,
 		const unsigned n
-		){
+		) {
 	auto d_qqt = cutf::memory::get_device_unique_ptr<T>(n * n);
 	auto h_qqt = cutf::memory::get_host_unique_ptr<T>(n * n);
-	for(std::size_t i = 0; i < n; i++){
-		for(std::size_t j = 0; j < n; j++){
+	for(std::size_t i = 0; i < n; i++) {
+		for(std::size_t j = 0; j < n; j++) {
 			h_qqt.get()[i + n * j] = cutf::type::cast<T>((i == j) ? 1.0f : 0.0f);
 		}
 	}
@@ -35,7 +35,7 @@ float mtk::validation::check_orthogonality16(
 			);
 	cutf::memory::copy(h_qqt.get(), d_qqt.get(), n * n);
 	float sum = 0;
-	for(std::size_t i = 0; i < n * n; i++){
+	for(std::size_t i = 0; i < n * n; i++) {
 		const auto tmp = cutf::type::cast<float>(h_qqt.get()[i]);
 		sum += tmp * tmp;
 	}

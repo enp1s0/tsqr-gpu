@@ -15,10 +15,10 @@ using compute_t = float;
 constexpr bool use_tc = true;
 
 template <class T> std::string get_type_name();
-template <> std::string get_type_name<float>(){return "float";}
-template <> std::string get_type_name<half>(){return "half";}
+template <> std::string get_type_name<float>() {return "float";}
+template <> std::string get_type_name<half>() {return "half";}
 
-int main(){
+int main() {
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
@@ -36,10 +36,11 @@ int main(){
 	std::cout<<"compute_t : "<<get_type_name<compute_t>()<<std::endl;
 	std::cout<<"Use TC? : "<<(use_tc ? "Yes" : "No")<<std::endl;
 	std::cout<<" A ("<<m<<" x "<<n<<") : "<<(m * n /1024.0/1024.0 * sizeof(compute_t))<<"MB"<<std::endl;
-		//<<" Working memory : "<<((mtk::tsqr::get_working_q_size(m, n)  * sizeof(typename mtk::tsqr::get_working_q_type<compute_t, use_tc>::type) + (mtk::tsqr::get_working_r_size(m, n)  * sizeof(typename mtk::tsqr::get_working_r_type<compute_t, use_tc>::type))/ 1024.0 / 1024.0)<<"MB"<<std::endl;
+	std::cout<<" Wq : "<<(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<compute_t, use_tc>::type) / 1024.0 / 1024.0)<<"MB"<<std::endl;
+	std::cout<<" Wr : "<<(mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<compute_t, use_tc>::type) / 1024.0 / 1024.0)<<"MB"<<std::endl;
 
 	float norm_a = 0.0f;
-	for(std::size_t i = 0; i < m * n; i++){
+	for(std::size_t i = 0; i < m * n; i++) {
 		const auto tmp = dist(mt);
 		h_a.get()[i] = cutf::type::cast<compute_t>(tmp);
 		norm_a += tmp * tmp;
@@ -48,7 +49,7 @@ int main(){
 
 	std::cout<<std::endl<<"# Start TSQR test"<<std::endl;
 	const auto elapsed_time = mtk::utils::get_elapsed_time(
-			[&d_q, &d_r, &d_a, &d_working_q, &d_working_r](){
+			[&d_q, &d_r, &d_a, &d_working_q, &d_working_r]() {
 			mtk::tsqr::tsqr16<use_tc, compute_t>(
 					d_q.get(), d_r.get(),
 					d_a.get(), m, n,
@@ -81,7 +82,7 @@ int main(){
 
 	cutf::memory::copy(h_a.get(), d_a.get(), m * n);
 	float norm_diff = 0.0f;
-	for(std::size_t i = 0; i < m * n; i++){
+	for(std::size_t i = 0; i < m * n; i++) {
 		const auto tmp = cutf::type::cast<float>(h_a.get()[i]);
 		norm_diff += tmp * tmp;
 	}

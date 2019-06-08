@@ -9,13 +9,13 @@ __device__ inline void g2s16x16_1w(
 		DST_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const SRC_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
-		){
+		) {
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
 	const auto unique_id = tid & 0x1f;
 	const auto x = unique_id >> 1;
 
 	const auto start_y = (unique_id & 0b1) * load_size;
-	for(std::size_t i = 0; i < load_size; i++){
+	for(std::size_t i = 0; i < load_size; i++) {
 		const auto y = start_y + i;
 		DST_T val;
 		if(y < shared_m && x < shared_n) {
@@ -34,7 +34,7 @@ __device__ inline void s2g16x16_1w(
 		DST_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const SRC_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
-		){
+		) {
 	constexpr auto load_size = FRAGMENT_DIM >> 1;
 	const auto unique_id = tid & 0x1f;
 	const auto x = unique_id >> 1;
@@ -57,7 +57,7 @@ __device__ inline void s2g32x16_1w(
 		DST_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const SRC_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
-		){
+		) {
 	const auto y = tid & 0x1f;
 	if(y >= shared_m) return;
 	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++) {
@@ -73,9 +73,9 @@ __device__ inline void g2s32x16_1w(
 		DST_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const SRC_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
-		){
+		) {
 	const auto y = tid & 0x1f;
-	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++){
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x++) {
 		DST_T val;
 		if(y < shared_m && x < shared_n) {
 			// copy
@@ -97,7 +97,7 @@ __device__ inline void g2s32x16_2w(
 		DST_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const SRC_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const unsigned tid
-		){
+		) {
 	const auto unique_id = tid & 0x3f;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
@@ -105,7 +105,7 @@ __device__ inline void g2s32x16_2w(
 	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
 		//const auto x = i + lane;
 		DST_T val;
-		if(x < shared_n){
+		if(x < shared_n) {
 			// copy
 			const auto global_index = x * global_ld + y + global_p_y;
 			val = cutf::type::cast<DST_T>( global_ptr[global_index] );
@@ -121,7 +121,7 @@ __device__ inline void s2g32x16_2w(
 		DST_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const SRC_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
-		){
+		) {
 	const auto unique_id = tid & 0x3f;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
@@ -139,7 +139,7 @@ __device__ inline void s2g32x32_16x32_t_2w(
 		DST_T* const global_ptr, const std::size_t global_p_y, const std::size_t global_ld,
 		const SRC_T* const shared_ptr, const std::size_t shared_m, const std::size_t shared_n,
 		const unsigned tid
-		){
+		) {
 	__syncthreads();
 	constexpr unsigned warp_size = 32;
 	constexpr unsigned stride = (2 * warp_size) / FRAGMENT_DIM_M;
