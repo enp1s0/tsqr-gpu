@@ -952,6 +952,12 @@ void mtk::tcqr::qr32x16(
 template void mtk::tcqr::qr32x16<false, float, float, float>(float* const, float* const, const float* const, const unsigned int, const unsigned int);
 template void mtk::tcqr::qr32x16<false, half, half, half>(half* const, half* const, const half* const, const unsigned int, const unsigned int);
 
+template<> void mtk::tcqr::qr32x16<true, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n) {
+	qr32x16_f16tc_kernel<<<1, 2 * warp_size>>>(
+			q, r,
+			a, m, n
+			);
+}
 template<> void mtk::tcqr::qr32x16<true, half, float, float>(half* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
 	qr32x16_f32tc_kernel<half, float><<<1, 2 * warp_size>>>(
 			q, r,
