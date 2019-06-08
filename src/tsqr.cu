@@ -300,13 +300,18 @@ __global__ void tsqr_backward_layer0<true, float, half>(
 }
 
 // 必要な作業用メモリ
-std::size_t mtk::tsqr::get_working_memory_size(const std::size_t m, const std::size_t n){
+std::size_t mtk::tsqr::get_working_q_size(const std::size_t m, const std::size_t n){
 	const auto batch_size = get_batch_size(m);
 	const auto working_q_size = n * m + 2 * n * n * (batch_size - 1);
+
+	return working_q_size;
+}
+std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t n){
+	const auto batch_size = get_batch_size(m);
 	const auto working_r_size_0 = n * n * batch_size;
 	const auto working_r_size_1 = n * n * batch_size / 2;
 
-	return working_q_size + working_r_size_0 + working_r_size_1;
+	return working_r_size_0 + working_r_size_1;
 }
 
 template <bool UseTC, class T>
