@@ -51,21 +51,21 @@ __global__ void kernel16x16(test_t* ptr){
 int main(){
 	std::cout<<"test : "<<__FILE__<<std::endl;
 
-	auto h_mem_0 = cutf::cuda::memory::get_host_unique_ptr<test_t>(g_size_m * g_size_n);
-	auto h_mem_1 = cutf::cuda::memory::get_host_unique_ptr<test_t>(g_size_m * g_size_n);
-	auto g_mem = cutf::cuda::memory::get_device_unique_ptr<test_t>(g_size_m * g_size_n);
+	auto h_mem_0 = cutf::memory::get_host_unique_ptr<test_t>(g_size_m * g_size_n);
+	auto h_mem_1 = cutf::memory::get_host_unique_ptr<test_t>(g_size_m * g_size_n);
+	auto g_mem = cutf::memory::get_device_unique_ptr<test_t>(g_size_m * g_size_n);
 
 	for(std::size_t i = 0; i < g_size_m * g_size_n; i++){
-		h_mem_0.get()[i] = cutf::cuda::type::cast<test_t>(static_cast<float>(i));
+		h_mem_0.get()[i] = cutf::type::cast<test_t>(static_cast<float>(i));
 	}
 	mtk::utils::print_matrix(h_mem_0.get(), g_size_m, g_size_n, "g");
-	cutf::cuda::memory::copy(g_mem.get(), h_mem_0.get(), g_size_m * g_size_n);
+	cutf::memory::copy(g_mem.get(), h_mem_0.get(), g_size_m * g_size_n);
 
 	constexpr auto grid_size = (batch_size + batch_per_block - 1) / batch_per_block;
 
 	kernel16x16<<<grid_size, batch_per_block * warp_size>>>(g_mem.get());
 
-	cutf::cuda::memory::copy(h_mem_1.get(), g_mem.get(), g_size_m * g_size_n);
+	cutf::memory::copy(h_mem_1.get(), g_mem.get(), g_size_m * g_size_n);
 	mtk::utils::print_matrix(h_mem_1.get(), g_size_m, g_size_n, "g (g2s2g)");
 
 	cudaDeviceSynchronize();

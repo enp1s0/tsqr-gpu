@@ -2,7 +2,7 @@ CXX=g++
 CXXFLAGS=-std=c++14 -I./src/cutf -O3
 OMPFLAGS=-fopenmp
 NVCC=nvcc
-NVCCFLAGS=$(CXXFLAGS)  --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas
+NVCCFLAGS=$(CXXFLAGS)  --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas --ptxas-options=-v
 SRCDIR=src
 SRCS=$(shell find src -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
