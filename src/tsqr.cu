@@ -17,6 +17,16 @@
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
 
+namespace mtk {
+namespace tsqr {
+std::size_t get_batch_size_log2(const std::size_t m) {
+	return (std::max(5u, static_cast<unsigned>( std::ceil( std::log2(static_cast<float>(m))))) - 5u);
+}
+std::size_t get_batch_size(const std::size_t m) {
+	return 1lu << get_batch_size_log2(m);
+}
+} // namespace tsqr
+} // namespace mtk
 namespace{
 constexpr unsigned warp_size = 32;
 template <class Func>
@@ -24,12 +34,6 @@ void debug_func(Func func) {
 #ifdef DEBUG
 	func();
 #endif
-}
-std::size_t get_batch_size_log2(const std::size_t m) {
-	return (std::max(5u, static_cast<unsigned>( std::ceil( std::log2(static_cast<float>(m))))) - 5u);
-}
-std::size_t get_batch_size(const std::size_t m) {
-	return 1lu << get_batch_size_log2(m);
 }
 
 // backward 1層目以外
