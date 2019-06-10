@@ -3,6 +3,9 @@
 #include <cstddef>
 namespace mtk {
 namespace tsqr {
+// get batch size
+std::size_t get_batch_size_log2(const std::size_t m);
+std::size_t get_batch_size(const std::size_t m);
 // get working memory type
 template <class T, bool UseTC>
 struct get_working_q_type{using type = T;};
