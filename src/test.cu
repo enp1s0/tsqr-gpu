@@ -20,7 +20,7 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::cout<<"m,n,precision,tc,error,orthogonality"<<std::endl;
+	std::cout<<"m,n,type,tc,error,orthogonality"<<std::endl;
 	for(std::size_t m = min_m; m < max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -93,7 +93,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::cout<<"m,n,speed,tc,elapsed_time"<<std::endl;
+	std::cout<<"m,n,type,tc,elapsed_time,tflops"<<std::endl;
 	for(std::size_t m = min_m; m < max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
