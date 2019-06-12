@@ -270,7 +270,7 @@ __device__ void qr32x16_f32tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u32_ptr, m, unique_id & 0x1f));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", norm_u_0);}
@@ -285,7 +285,7 @@ __device__ void qr32x16_f32tc_core(
 				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u32_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
@@ -363,7 +363,7 @@ __device__ void qr32x16_f16tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<half>(get_norm2_32<half, half>(u16_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::type::cast<half>(cutf::math::sqrt(get_norm2_32(u16_ptr, m, unique_id & 0x1f)));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -378,7 +378,7 @@ __device__ void qr32x16_f16tc_core(
 				[&u16_ptr, &m]() {mtk::utils::print_matrix(u16_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<half, half>(u16_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u16_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
@@ -455,7 +455,7 @@ __device__ void qr32x16_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<T>(get_norm2_32<T, T>(u_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::type::cast<T>(cutf::math::sqrt(get_norm2_32(u_ptr, m, unique_id & 0x1f)));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -470,7 +470,7 @@ __device__ void qr32x16_core(
 				[&u_ptr, &m]() {mtk::utils::print_matrix(u_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<T, T>(u_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
