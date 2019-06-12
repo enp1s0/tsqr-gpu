@@ -23,24 +23,24 @@ __device__ void debug_func(unsigned unique_id, Func run_func) {
 #endif
 }
 
-template <class INPUT_T, class OUTPUT_T>
-__device__ OUTPUT_T get_norm2_32(
+template <class INPUT_T>
+__device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	OUTPUT_T tmp;
+	float tmp;
 
 	if(warp_id < size) {
-		tmp = cutf::type::cast<OUTPUT_T>(ptr[warp_id]);
+		tmp = cutf::type::cast<float>(ptr[warp_id]);
 		tmp = tmp * tmp;
 	} else {
-		tmp = cutf::type::cast<OUTPUT_T>(0.0f);
+		tmp = 0.0f;
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
 		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
 	}
 
-	return cutf::type::cast<OUTPUT_T>(tmp);
+	return tmp;
 }
 
 template <class DST_T, class SRC_T>
@@ -60,20 +60,20 @@ __device__ void copy_32x16(
 template <class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m, 
-		const U_T* const u_ptr, const U_T norm2_u_1, 
+		const U_T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
 		const auto x = k + lane;
-		U_T tmp;
+		float tmp;
 		if(x == y) {
-			tmp = cutf::type::cast<U_T>(1.0f);
+			tmp = 1.0f;
 		} else {
-			tmp = cutf::type::cast<U_T>(0.0f);
+			tmp = 0.0f;
 		}
-		tmp -= cutf::type::cast<U_T>(2.0f) * u_ptr[y] * u_ptr[x] / norm2_u_1;
+		tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
@@ -270,7 +270,7 @@ __device__ void qr32x16_f32tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<float>(get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u32_ptr, m, unique_id & 0x1f));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", norm_u_0);}
@@ -285,7 +285,7 @@ __device__ void qr32x16_f32tc_core(
 				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<float, float>(u32_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u32_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
@@ -363,7 +363,7 @@ __device__ void qr32x16_f16tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<half>(get_norm2_32<half, half>(u16_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::type::cast<half>(cutf::math::sqrt(get_norm2_32(u16_ptr, m, unique_id & 0x1f)));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -378,7 +378,7 @@ __device__ void qr32x16_f16tc_core(
 				[&u16_ptr, &m]() {mtk::utils::print_matrix(u16_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<half, half>(u16_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u16_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
@@ -455,7 +455,7 @@ __device__ void qr32x16_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::math::sqrt<T>(get_norm2_32<T, T>(u_ptr, m, unique_id & 0x1f));
+		const auto norm_u_0 = cutf::type::cast<T>(cutf::math::sqrt(get_norm2_32(u_ptr, m, unique_id & 0x1f)));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -470,7 +470,7 @@ __device__ void qr32x16_core(
 				[&u_ptr, &m]() {mtk::utils::print_matrix(u_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
-		const auto norm2_u_1 = get_norm2_32<T, T>(u_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u_ptr, m, unique_id & 0x1f);
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
