@@ -100,7 +100,7 @@ inline double get_elapsed_time(RunFunc run_func) {
 	const auto start_clock = std::chrono::system_clock::now();
 	run_func();
 	const auto end_clock = std::chrono::system_clock::now();
-	return std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() / 1000.0;
+	return std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() / 1000.0 / 1000.0;
 }
 
 template <class T>
