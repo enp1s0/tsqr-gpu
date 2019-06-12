@@ -4,6 +4,7 @@
 #include <iostream>
 #include <random>
 #include <cmath>
+#include <vector>
 #include "test.hpp"
 #include "tcqr.hpp"
 #include "tsqr.hpp"
@@ -20,7 +21,7 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::cout<<"m,n,type,tc,error,orthogonality"<<std::endl;
+	std::cout<<"m,n,type,tc,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m < max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -33,8 +34,8 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-		float error = 0.0f;
-		float orthogonality = 0.0f;
+		std::vector<float> error_list;
+		std::vector<float> orthogonality_list;
 
 		for(std::size_t c = 0; c < C; c++) {
 			float norm_a = 0.0f;
@@ -74,11 +75,28 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 				const auto tmp = cutf::type::cast<float>(h_a.get()[i]);
 				norm_diff += tmp * tmp;
 			}
-			error += std::sqrt(norm_diff/norm_a);
-			orthogonality += mtk::validation::check_orthogonality16(d_q.get(), m, n);
+			error_list.push_back(std::sqrt(norm_diff/norm_a));
+			orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 		}
+		float error = 0.0f;
+		float orthogonality = 0.0f;
+		for(std::size_t c = 0; c < C; c++) {
+			error += error_list[c];
+			orthogonality += orthogonality_list[c];
+		}
+		error /= C;
+		orthogonality /= C;
 
-		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(error / C)<<","<<(orthogonality / C)<<std::endl;
+		float error_deviation = 0.0f;
+		float orthogonality_deviation = 0.0f;
+		for(std::size_t c = 0; c < C; c++) {
+			error_deviation += (error_list[c] - error) * (error_list[c] - error);
+			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+		}
+		error_deviation /= C;
+		orthogonality_deviation /= C;
+
+		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
 }
 
