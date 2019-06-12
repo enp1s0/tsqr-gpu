@@ -23,24 +23,24 @@ __device__ void debug_func(unsigned unique_id, Func run_func) {
 #endif
 }
 
-template <class INPUT_T, class OUTPUT_T>
-__device__ OUTPUT_T get_norm2_32(
+template <class INPUT_T>
+__device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	OUTPUT_T tmp;
+	float tmp;
 
 	if(warp_id < size) {
-		tmp = cutf::type::cast<OUTPUT_T>(ptr[warp_id]);
+		tmp = cutf::type::cast<float>(ptr[warp_id]);
 		tmp = tmp * tmp;
 	} else {
-		tmp = cutf::type::cast<OUTPUT_T>(0.0f);
+		tmp = 0.0f;
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
 		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
 	}
 
-	return cutf::type::cast<OUTPUT_T>(tmp);
+	return tmp;
 }
 
 template <class DST_T, class SRC_T>
