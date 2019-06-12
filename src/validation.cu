@@ -16,7 +16,7 @@ float mtk::validation::check_orthogonality16<float>(
 	auto h_qqt = cutf::memory::get_host_unique_ptr<float>(n * n);
 	for(std::size_t i = 0; i < n; i++) {
 		for(std::size_t j = 0; j < n; j++) {
-			h_qqt.get()[i + n * j] = 0.0f;
+			h_qqt.get()[i + n * j] = (i == j) ? 1.0f : 0.0f;
 		}
 	}
 	cutf::memory::copy(d_qqt.get(), h_qqt.get(), n * n);
