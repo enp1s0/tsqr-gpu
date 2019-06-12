@@ -60,20 +60,20 @@ __device__ void copy_32x16(
 template <class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m, 
-		const U_T* const u_ptr, const U_T norm2_u_1, 
+		const U_T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
 		const auto x = k + lane;
-		U_T tmp;
+		float tmp;
 		if(x == y) {
-			tmp = cutf::type::cast<U_T>(1.0f);
+			tmp = 1.0f;
 		} else {
-			tmp = cutf::type::cast<U_T>(0.0f);
+			tmp = 0.0f;
 		}
-		tmp -= cutf::type::cast<U_T>(2.0f) * u_ptr[y] * u_ptr[x] / norm2_u_1;
+		tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
