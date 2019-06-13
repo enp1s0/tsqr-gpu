@@ -18,7 +18,9 @@ $(TARGET): $(OBJS)
 
 library: $(SL_OBJS)
 	[ -d lib ] || mkdir lib
-	$(NVCC) $(NVCCFLAGS) $+ -dlink -lcudart -shared -o lib/libtsqr.so
+	$(NVCC) $(NVCCFLAGS) $+ -dlink -lcudart -o $(OBJDIR)/libtsqr.o
+	ar cru lib/libtsqr.a $(OBJDIR)/libtsqr.o $(SL_OBJS)
+	ranlib lib/libtsqr.a
 
 $(SRCDIR)/%.cpp: $(SRCDIR)/%.cu $(HEADERS)
 	$(NVCC) $(NVCCFLAGS) --cuda $< -o $@
