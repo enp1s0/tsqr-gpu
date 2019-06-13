@@ -57,10 +57,10 @@ __device__ void copy_32x16(
 	}
 }
 
-template <class T, class U_T>
+template <class T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m, 
-		const U_T* const u_ptr, const float norm2_u_1,
+		const float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
@@ -73,7 +73,7 @@ __device__ void make_h(
 		} else {
 			tmp = 0.0f;
 		}
-		tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
+		tmp -= 2.0f * u_ptr[y] * u_ptr[x] / norm2_u_1;
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
@@ -326,7 +326,7 @@ __device__ void qr32x16_f32tc_core(
 
 __device__ void qr32x16_f16tc_core(
 		half* const q16_ptr, half* const r16_ptr,
-		half* const u16_ptr, half* h16_ptr,
+		float* const u16_ptr, half* h16_ptr,
 		const unsigned m, const unsigned n,
 		const unsigned tid
 		) {
@@ -351,9 +351,9 @@ __device__ void qr32x16_f16tc_core(
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
-			u16_ptr[unique_id] = cutf::type::cast<half>(0.0f);
+			u16_ptr[unique_id] = 0.0f;
 			if(unique_id >= k) {
-				u16_ptr[unique_id] = r16_ptr[FRAGMENT_DIM_M * k + unique_id];
+				u16_ptr[unique_id] = cutf::type::cast<float>(r16_ptr[FRAGMENT_DIM_M * k + unique_id]);
 			}
 		}
 		__syncthreads();
@@ -363,7 +363,7 @@ __device__ void qr32x16_f16tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::type::cast<half>(cutf::math::sqrt(get_norm2_32(u16_ptr, m, unique_id & 0x1f)));
+		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u16_ptr, m, unique_id & 0x1f));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -416,7 +416,7 @@ template <class T>
 __device__ void qr32x16_core(
 		T* const q_ptr0, T* const r_ptr0,
 		T* const q_ptr1, T* const r_ptr1,
-		T* const u_ptr, T* h_ptr,
+		float* const u_ptr, T* h_ptr,
 		const unsigned m, const unsigned n,
 		const unsigned tid
 		) {
@@ -443,7 +443,7 @@ __device__ void qr32x16_core(
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
 			if(unique_id >= k) {
-				u_ptr[unique_id] = r_ptr0[FRAGMENT_DIM_M * k + unique_id];
+				u_ptr[unique_id] = cutf::type::cast<float>(r_ptr0[FRAGMENT_DIM_M * k + unique_id]);
 			} else {
 				u_ptr[unique_id] = 0.0f;
 			}
@@ -455,7 +455,7 @@ __device__ void qr32x16_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
-		const auto norm_u_0 = cutf::type::cast<T>(cutf::math::sqrt(get_norm2_32(u_ptr, m, unique_id & 0x1f)));
+		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u_ptr, m, unique_id & 0x1f));
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -601,7 +601,7 @@ __global__ void qr32x16_f16tc_batched_kernel(
 	__shared__ half shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
 	__shared__ half shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ half shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
-	__shared__ half shared_u16[FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ float shared_u16[FRAGMENT_DIM_M * max_batch_size_per_block];
 
 	const auto shared_q16_ptr = shared_q16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
 	const auto shared_r16_ptr = shared_r16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
@@ -708,7 +708,7 @@ __global__ void qr32x16_f16tc_kernel(
 	__shared__ half shared_q16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
 	__shared__ half shared_r16[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
 	__shared__ half shared_h16[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
-	__shared__ half shared_u16[FRAGMENT_DIM_M];
+	__shared__ float shared_u16[FRAGMENT_DIM_M];
 
 	// init shared memory
 	mtk::matrix_copy::g2s32x16_2w(
@@ -764,7 +764,7 @@ __global__ void qr32x16_batched_kernel(
 	__shared__ A_T shared_q1[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
 	__shared__ A_T shared_r1[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ A_T shared_h[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
-	__shared__ A_T shared_u[FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ float shared_u[FRAGMENT_DIM_M * max_batch_size_per_block];
 
 	const auto shared_q0_ptr = shared_q0 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
 	const auto shared_r0_ptr = shared_r0 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
@@ -826,7 +826,7 @@ __global__ void qr32x16_kernel(
 	__shared__ A_T shared_q1[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
 	__shared__ A_T shared_r1[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
 	__shared__ A_T shared_h[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
-	__shared__ A_T shared_u[FRAGMENT_DIM_M];
+	__shared__ float shared_u[FRAGMENT_DIM_M];
 
 	// init shared memory
 	mtk::matrix_copy::g2s32x16_2w(
