@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdexcept>
 #include <cuda_fp16.h>
 #include "test.hpp"
 
@@ -12,6 +13,9 @@ int main() {
 	mtk::test::precision<true, half>(min_m, max_m, n);
 	mtk::test::precision<false, float>(min_m, max_m, n);
 	mtk::test::precision<false, half>(min_m, max_m, n);
+	try{
+		mtk::test::cusolver_precision(min_m, max_m, n);
+	}catch(std::runtime_error& e){};
 
 	std::cout<<"# speed test"<<std::endl;
 	mtk::test::speed<true, float>(min_m, max_m, n);
