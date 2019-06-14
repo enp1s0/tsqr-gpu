@@ -15,7 +15,9 @@ int main() {
 	mtk::test::precision<false, half>(min_m, max_m, n);
 	try{
 		mtk::test::cusolver_precision(min_m, max_m, n);
-	}catch(std::runtime_error& e){};
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
 
 	std::cout<<"# speed test"<<std::endl;
 	mtk::test::speed<true, float>(min_m, max_m, n);
@@ -24,5 +26,7 @@ int main() {
 	mtk::test::speed<false, half>(min_m, max_m, n);
 	try{
 		mtk::test::cusolver_speed(min_m, max_m, n);
-	}catch(std::runtime_error& e){};
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
 }
