@@ -38,6 +38,7 @@ __global__ void convert_copy(DST_T* const dst, const SRC_T* const src, const std
 
 template <bool UseTC, class T>
 void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
@@ -82,9 +83,9 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 
 			cutf::memory::copy(h_r.get(), d_r.get(), n * n);
 
-			constexpr std::size_t block_size = 256;
 			convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
 			convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
+			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r_test.get(), n, n);
 
 			// verify
 			auto cublas = cutf::cublas::get_cublas_unique_ptr();
