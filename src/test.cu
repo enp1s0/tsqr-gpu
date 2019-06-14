@@ -177,3 +177,112 @@ template void mtk::test::speed<true, float>(const std::size_t, const std::size_t
 template void mtk::test::speed<true, half>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::speed<false, float>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::speed<false, half>(const std::size_t, const std::size_t, const std::size_t);
+
+void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+	constexpr std::size_t block_size = 1 << 8;
+	constexpr std::size_t C = 16;
+	std::mt19937 mt(std::random_device{}());
+	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
+
+	std::cout<<"m,n,type,tc,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
+	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
+		auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
+		auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
+		auto d_r = cutf::memory::get_device_unique_ptr<float>(n * n);
+		auto d_tau = cutf::memory::get_device_unique_ptr<float>(n * n);
+		auto h_a = cutf::memory::get_host_unique_ptr<float>(m * n);
+		auto h_r = cutf::memory::get_host_unique_ptr<float>(n * n);
+
+		std::vector<float> error_list;
+		std::vector<float> orthogonality_list;
+
+		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
+
+		// working memory
+		int geqrf_working_memory_size, gqr_working_memory_size;
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+					*cusolver.get(), m, n,
+					d_a.get(), m, &geqrf_working_memory_size
+					));
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+					*cusolver.get(), m, n, n,
+					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
+					));
+
+		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<float>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<float>(gqr_working_memory_size);
+		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
+
+		for(std::size_t c = 0; c < C; c++) {
+			float norm_a = 0.0f;
+			for(std::size_t i = 0; i < m * n; i++) {
+				const auto tmp = dist(mt);
+				h_a.get()[i] = cutf::type::cast<float>(tmp);
+				norm_a += tmp * tmp;
+			}
+			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+						*cusolver.get(), m, n,
+						d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+						geqrf_working_memory_size, d_info.get()
+						));
+			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
+
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+						*cusolver.get(), m, n, n,
+						d_a.get(), m,
+						d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+						d_info.get()
+						));
+
+			cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+			//cutf::memory::copy(h_r.get(), d_r.get(), n * n);
+			//mtk::utils::print_matrix(h_r.get(), n, n, "R");
+
+			// verify
+			auto cublas = cutf::cublas::get_cublas_unique_ptr();
+			const auto alpha = 1.0f, beta = -1.0f;
+			cutf::cublas::gemm(
+					*cublas.get(),
+					CUBLAS_OP_N, CUBLAS_OP_N,
+					m, n, n,
+					&alpha,
+					d_q.get(), m,
+					d_r.get(), n,
+					&beta,
+					d_a.get(), m
+					);
+
+			cutf::memory::copy(h_a.get(), d_a.get(), m * n);
+			float norm_diff = 0.0f;
+			for(std::size_t i = 0; i < m * n; i++) {
+				const auto tmp = cutf::type::cast<float>(h_a.get()[i]);
+				norm_diff += tmp * tmp;
+			}
+			error_list.push_back(std::sqrt(norm_diff/norm_a));
+			orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
+		}
+		float error = 0.0f;
+		float orthogonality = 0.0f;
+		for(std::size_t c = 0; c < C; c++) {
+			error += error_list[c];
+			orthogonality += orthogonality_list[c];
+		}
+		error /= C;
+		orthogonality /= C;
+
+		float error_deviation = 0.0f;
+		float orthogonality_deviation = 0.0f;
+		for(std::size_t c = 0; c < C; c++) {
+			error_deviation += (error_list[c] - error) * (error_list[c] - error);
+			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+		}
+		error_deviation /= C;
+		orthogonality_deviation /= C;
+
+
+		std::cout<<m<<","<<n<<",float,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+	}
+}
