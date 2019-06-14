@@ -24,7 +24,7 @@ __global__ void convert_copy(DST_T* const dst, const SRC_T* const src, const std
 
 template <bool UseTC, class T>
 void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
-	constexpr std::size_t C = 4;
+	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
