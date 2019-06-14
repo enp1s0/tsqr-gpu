@@ -1,6 +1,8 @@
 #include <cutf/type.hpp>
+#include <cutf/error.hpp>
 #include <cutf/memory.hpp>
 #include <cutf/cublas.hpp>
+#include <cutf/cusolver.hpp>
 #include <iostream>
 #include <random>
 #include <cmath>
