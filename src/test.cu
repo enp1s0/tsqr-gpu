@@ -303,3 +303,80 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 		std::cout<<m<<","<<n<<",float,cusolver,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
 }
+
+void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+	constexpr std::size_t C = 16;
+	std::mt19937 mt(std::random_device{}());
+	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
+
+	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
+		return 2 * n * (m * m * n + m * m * m);
+	};
+
+	std::cout<<"m,n,type,tc,elapsed_time,tflops"<<std::endl;
+	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
+		auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
+		auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
+		auto d_r = cutf::memory::get_device_unique_ptr<float>(n * n);
+		auto d_tau = cutf::memory::get_device_unique_ptr<float>(n * n);
+		auto h_a = cutf::memory::get_host_unique_ptr<float>(m * n);
+
+		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
+
+		// working memory
+		int geqrf_working_memory_size, gqr_working_memory_size;
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+					*cusolver.get(), m, n,
+					d_a.get(), m, &geqrf_working_memory_size
+					));
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+					*cusolver.get(), m, n, n,
+					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
+					));
+
+		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<float>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<float>(gqr_working_memory_size);
+		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
+
+		for(std::size_t i = 0; i < m * n; i++) {
+			const auto tmp = dist(mt);
+			h_a.get()[i] = tmp;
+		}
+		cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+
+		// for cache
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+					*cusolver.get(), m, n,
+					d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+					geqrf_working_memory_size, d_info.get()
+					));
+
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+					*cusolver.get(), m, n, n,
+					d_a.get(), m,
+					d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+					d_info.get()
+					));
+
+		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
+				for(std::size_t c = 0; c < C; c++) {
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+							*cusolver.get(), m, n,
+							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+							geqrf_working_memory_size, d_info.get()
+							));
+
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+							*cusolver.get(), m, n, n,
+							d_a.get(), m,
+							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+							d_info.get()
+							));
+				}}) / C;
+
+		const auto batch_size = mtk::tsqr::get_batch_size(m);
+		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
+
+		std::cout<<m<<","<<n<<",floatoat,cusolver,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<std::endl;
+	}
+}
