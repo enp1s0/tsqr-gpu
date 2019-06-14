@@ -29,6 +29,12 @@ __global__ void cut_r(float* const dst, const float* const src, const std::size_
 	dst[tid] = src[m * x + y];
 }
 } // namespace 
+template <class DST_T, class SRC_T>
+__global__ void convert_copy(DST_T* const dst, const SRC_T* const src, const std::size_t size){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if(tid >= size) return;
+	dst[tid] = cutf::type::cast<DST_T>(src[tid]);
+}
 
 template <bool UseTC, class T>
 void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
@@ -39,13 +45,17 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	std::cout<<"m,n,type,tc,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto d_a_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+		auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
+		auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(
 				mtk::tsqr::get_working_q_size(m, n));
 		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_r_type<T, UseTC>::type>(
 				mtk::tsqr::get_working_r_size(m, n));
 		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+		auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
 		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
@@ -57,9 +67,11 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			for(std::size_t i = 0; i < m * n; i++) {
 				const auto tmp = dist(mt);
 				h_a.get()[i] = cutf::type::cast<T>(tmp);
+				h_a_test.get()[i] = tmp;
 				norm_a += tmp * tmp;
 			}
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 
 			mtk::tsqr::tsqr16<UseTC, T>(
 					d_q.get(), d_r.get(),
@@ -70,24 +82,28 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 
 			cutf::memory::copy(h_r.get(), d_r.get(), n * n);
 
+			constexpr std::size_t block_size = 256;
+			convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
+			convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
+
 			// verify
 			auto cublas = cutf::cublas::get_cublas_unique_ptr();
-			const auto alpha = cutf::type::cast<T>(1.0f), beta = cutf::type::cast<T>(-1.0f);
+			const float alpha = 1.0f, beta = -1.0f;
 			cutf::cublas::gemm(
 					*cublas.get(),
 					CUBLAS_OP_N, CUBLAS_OP_N,
 					m, n, n,
 					&alpha,
-					d_q.get(), m,
-					d_r.get(), n,
+					d_q_test.get(), m,
+					d_r_test.get(), n,
 					&beta,
-					d_a.get(), m
+					d_a_test.get(), m
 					);
 
-			cutf::memory::copy(h_a.get(), d_a.get(), m * n);
+			cutf::memory::copy(h_a_test.get(), d_a_test.get(), m * n);
 			float norm_diff = 0.0f;
 			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = cutf::type::cast<float>(h_a.get()[i]);
+				const auto tmp = h_a_test.get()[i];
 				norm_diff += tmp * tmp;
 			}
 			error_list.push_back(std::sqrt(norm_diff/norm_a));
@@ -108,8 +124,8 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			error_deviation += (error_list[c] - error) * (error_list[c] - error);
 			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 		}
-		error_deviation /= C;
-		orthogonality_deviation /= C;
+		error_deviation = std::sqrt(error_deviation / C);
+		orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
 
 		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
