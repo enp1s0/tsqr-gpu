@@ -305,6 +305,7 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 }
 
 void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
@@ -360,19 +361,24 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 
 		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 				for(std::size_t c = 0; c < C; c++) {
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
-							*cusolver.get(), m, n,
-							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
-							geqrf_working_memory_size, d_info.get()
-							));
+					CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+								*cusolver.get(), m, n,
+								d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+								geqrf_working_memory_size, d_info.get()
+								));
+					cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
 
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
-							*cusolver.get(), m, n, n,
-							d_a.get(), m,
-							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
-							d_info.get()
-							));
-				}}) / C;
+					CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+								*cusolver.get(), m, n, n,
+								d_a.get(), m,
+								d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+								d_info.get()
+								));
+
+					cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+				}
+				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				}) / C;
 
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
