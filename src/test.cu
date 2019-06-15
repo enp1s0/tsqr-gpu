@@ -147,7 +147,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
-	std::cout<<"m,n,type,tc,elapsed_time,tflops"<<std::endl;
+	std::cout<<"m,n,type,tc,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -186,7 +186,8 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<std::endl;
+		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
+			(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC>::type) + mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC>::type))<<std::endl;
 	}
 }
 
@@ -314,7 +315,7 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
-	std::cout<<"m,n,type,tc,elapsed_time,tflops"<<std::endl;
+	std::cout<<"m,n,type,tc,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
@@ -383,6 +384,6 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		std::cout<<m<<","<<n<<",float,cusolver,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<std::endl;
+		std::cout<<m<<","<<n<<",float,cusolver,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(float))<<std::endl;
 	}
 }
