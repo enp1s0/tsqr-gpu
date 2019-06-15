@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <chrono>
 #include <mma.h>
 #include <cuda_fp16.h>
 #include <cutf/memory.hpp>
@@ -16,6 +17,7 @@
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
+//#define MEASURE_QR_TIME
 
 namespace mtk {
 namespace tsqr {
@@ -346,6 +348,11 @@ void mtk::tsqr::tsqr16(
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
 
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t0 = std::chrono::system_clock::now();
+#endif
+
 	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
 	mtk::tcqr::qr32x16_batched<UseTC>(
@@ -419,6 +426,10 @@ void mtk::tsqr::tsqr16(
 	}
 #endif
 
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t1 = std::chrono::system_clock::now();
+#endif
 	debug_func([]() {std::printf("%s : Backword\n", __func__);});
 
 	// Backward
@@ -474,6 +485,16 @@ void mtk::tsqr::tsqr16(
 		cutf::memory::copy(h_tmp.get(), q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (result)");
 	}
+#endif
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t2 = std::chrono::system_clock::now();
+
+	// analyze
+	const auto computing_q_time = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() / 1000000.0;
+	const auto computing_r_time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000000.0;
+	std::printf("computing_q_time,computing_r_time\n");
+	std::printf("%e,%e\n", computing_q_time, computing_r_time);
 #endif
 }
 
