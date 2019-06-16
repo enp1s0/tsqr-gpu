@@ -174,6 +174,7 @@ __device__ void update_qr_f16tc(
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
 
 	// store
+	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(q16_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(q16_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(r16_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
