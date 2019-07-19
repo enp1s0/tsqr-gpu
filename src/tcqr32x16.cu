@@ -241,6 +241,7 @@ __device__ void qr32x16_f32tc_core(
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n; k++) {
+		const auto t1 = clock64();
 		debug_func(
 				unique_id,
 				[&k]() {printf("/* -------- %u ---------\n", k);}
@@ -314,6 +315,7 @@ __device__ void qr32x16_f32tc_core(
 				[&q16_ptr, &m]() {mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
 				);
 		__syncthreads();
+		const auto t2 = clock64();
 		// update q, r
 		update_qr_f32tc(
 				q32_ptr, r32_ptr,
@@ -322,6 +324,9 @@ __device__ void qr32x16_f32tc_core(
 				unique_id
 				);
 		__syncthreads();
+		const auto t3 = clock64();
+		if(tid == 0)
+			printf("%lu,%lu\n", t2 - t1, t3 - t2);
 	}
 }
 
@@ -334,6 +339,7 @@ __device__ void qr32x16_f16tc_core(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n; k++) {
+		const auto t1 = clock64();
 		debug_func(
 				unique_id,
 				[&k]() {printf("/* -------- %u ---------\n", k);}
@@ -403,6 +409,7 @@ __device__ void qr32x16_f16tc_core(
 				[&q16_ptr, &m]() {mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
 				);
 		__syncthreads();
+		const auto t2 = clock64();
 		// update q, r
 		update_qr_f16tc(
 				q16_ptr, r16_ptr,
@@ -410,6 +417,9 @@ __device__ void qr32x16_f16tc_core(
 				unique_id
 				);
 		__syncthreads();
+		const auto t3 = clock64();
+		if(tid == 0)
+			printf("%lu,%lu\n", t2 - t1, t3 - t2);
 	}
 }
 
