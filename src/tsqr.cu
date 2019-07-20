@@ -321,7 +321,7 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 }
 
 template <bool UseTC, class T>
-void tsqr16_geq64(
+void tsqr16_geq32(
 		T* const q_ptr, T* const r_ptr, 
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
 		typename mtk::tsqr::get_working_q_type<T, UseTC>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptr) {
@@ -503,11 +503,10 @@ void mtk::tsqr::tsqr16(
 		T* const q_ptr, T* const r_ptr,
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
 		typename get_working_q_type<T, UseTC>::type* const working_q_ptr, typename get_working_r_type<T, UseTC>::type* const working_r_ptr) {
-	if(m >= 64) {
-		tsqr16_geq64<UseTC>(q_ptr, r_ptr,
+	if(m > 32) {
+		tsqr16_geq32<UseTC>(q_ptr, r_ptr,
 				a_ptr, m, n,
 				working_q_ptr, working_r_ptr);
-	}else if(m > 32) {
 	}else {
 		mtk::tcqr::qr32x16<UseTC>(q_ptr, r_ptr,
 				a_ptr, m, n
