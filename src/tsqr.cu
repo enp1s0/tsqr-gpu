@@ -321,15 +321,15 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 }
 
 template <bool UseTC, class T>
-void mtk::tsqr::tsqr16(
+void tsqr16_geq64(
 		T* const q_ptr, T* const r_ptr, 
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
-		typename get_working_q_type<T, UseTC>::type* const working_q_ptr, typename get_working_r_type<T, UseTC>::type* const working_r_ptr) {
+		typename mtk::tsqr::get_working_q_type<T, UseTC>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptr) {
 
 	const std::size_t max_batch_size_per_block = 4;
-	const auto batch_size_log2 = get_batch_size_log2(m);
+	const auto batch_size_log2 = mtk::tsqr::get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
-	typename get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
+	typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
 
 	debug_func([&m, &n]() {std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
 	debug_func([&batch_size]() {std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
