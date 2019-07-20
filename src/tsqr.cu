@@ -397,7 +397,7 @@ void tsqr16_geq64(
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
 		}
@@ -420,7 +420,7 @@ void tsqr16_geq64(
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
@@ -441,7 +441,7 @@ void tsqr16_geq64(
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
 			const auto local_batch_size = 1lu << k;	
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
@@ -465,7 +465,7 @@ void tsqr16_geq64(
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(n * m);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(n * m);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
