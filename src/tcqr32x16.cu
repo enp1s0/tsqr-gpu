@@ -67,13 +67,12 @@ __device__ void make_h(
 	const auto lane = unique_id >> 5;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
 		const auto x = k + lane;
-		float tmp;
+		float tmp = 0.0f;
 		if(x == y) {
 			tmp = 1.0f;
-		} else {
-			tmp = 0.0f;
 		}
-		tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
+		if(x < m && y < m)
+			tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
