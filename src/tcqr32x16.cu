@@ -272,7 +272,11 @@ __device__ void qr32x16_f32tc_core(
 				);
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
+		__syncthreads();
+		const auto t_norm_1 = clock64();
 		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u32_ptr, m, unique_id & 0x1f));
+		__syncthreads();
+		const auto t_norm_2 = clock64();
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", norm_u_0);}
@@ -287,7 +291,11 @@ __device__ void qr32x16_f32tc_core(
 				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
+		__syncthreads();
+		const auto t_norm_3 = clock64();
 		const auto norm2_u_1 = get_norm2_32(u32_ptr, m, unique_id & 0x1f);
+		__syncthreads();
+		const auto t_norm_4 = clock64();
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
@@ -326,7 +334,7 @@ __device__ void qr32x16_f32tc_core(
 		__syncthreads();
 		const auto t3 = clock64();
 		if(tid == 0)
-			printf("%lu,%lu\n", t2 - t1, t3 - t2);
+			printf("%lu,%lu,%lu,%lu\n", t2 - t1, t3 - t2, t_norm_4 - t_norm_3, t_norm_2 - t_norm_1);
 	}
 }
 
@@ -364,6 +372,7 @@ __device__ void qr32x16_f16tc_core(
 			}
 		}
 		__syncthreads();
+		const auto t_norm_1 = clock64();
 		debug_func(
 				unique_id,
 				[&u16_ptr, &m]() {mtk::utils::print_matrix(u16_ptr, 1, m, "u");}
@@ -371,6 +380,8 @@ __device__ void qr32x16_f16tc_core(
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
 		const auto norm_u_0 = cutf::type::cast<half>(cutf::math::sqrt(get_norm2_32(u16_ptr, m, unique_id & 0x1f)));
+		__syncthreads();
+		const auto t_norm_2 = clock64();
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -380,12 +391,15 @@ __device__ void qr32x16_f16tc_core(
 			u16_ptr[unique_id] += cutf::math::sign(u16_ptr[unique_id]) * norm_u_0;
 		}
 		__syncthreads();
+		const auto t_norm_3 = clock64();
 		debug_func(
 				unique_id,
 				[&u16_ptr, &m]() {mtk::utils::print_matrix(u16_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
 		const auto norm2_u_1 = get_norm2_32(u16_ptr, m, unique_id & 0x1f);
+		__syncthreads();
+		const auto t_norm_4 = clock64();
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
@@ -419,7 +433,7 @@ __device__ void qr32x16_f16tc_core(
 		__syncthreads();
 		const auto t3 = clock64();
 		if(tid == 0)
-			printf("%lu,%lu\n", t2 - t1, t3 - t2);
+			printf("%lu,%lu,%lu,%lu\n", t2 - t1, t3 - t2, t_norm_4 - t_norm_3, t_norm_2 - t_norm_1);
 	}
 }
 
@@ -435,6 +449,7 @@ __device__ void qr32x16_core(
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n; k++) {
+		const auto t1 = clock64();
 		debug_func(
 				unique_id,
 				[&k]() {printf("/* -------- %u ---------\n", k);}
@@ -459,6 +474,7 @@ __device__ void qr32x16_core(
 				u_ptr[unique_id] = 0.0f;
 			}
 		}
+		const auto t_norm_1 = clock64();
 		__syncthreads();
 		debug_func(
 				unique_id,
@@ -467,6 +483,8 @@ __device__ void qr32x16_core(
 		// compute |u|
 		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
 		const auto norm_u_0 = cutf::type::cast<T>(cutf::math::sqrt(get_norm2_32(u_ptr, m, unique_id & 0x1f)));
+		__syncthreads();
+		const auto t_norm_2 = clock64();
 		debug_func(
 				unique_id,
 				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", cutf::type::cast<float>(norm_u_0));}
@@ -476,6 +494,7 @@ __device__ void qr32x16_core(
 			u_ptr[unique_id] += cutf::math::sign(u_ptr[unique_id]) * norm_u_0;
 		}
 		__syncthreads();
+		const auto t_norm_3 = clock64();
 		debug_func(
 				unique_id,
 				[&u_ptr, &m]() {mtk::utils::print_matrix(u_ptr, 1, m, "u`");}
@@ -486,6 +505,8 @@ __device__ void qr32x16_core(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
 				);
+		__syncthreads();
+		const auto t_norm_4 = clock64();
 		// compute h
 		make_h(
 				h_ptr, m,
@@ -509,6 +530,8 @@ __device__ void qr32x16_core(
 		// initialize *1
 		mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(q_ptr1, tid);
 		mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(r_ptr1, tid);
+		__syncthreads();
+		const auto t2 = clock64();
 		// update q, r
 		update_qr<T>(
 				q_ptr1, r_ptr1,
@@ -517,11 +540,14 @@ __device__ void qr32x16_core(
 				unique_id
 				);
 		__syncthreads();
+		const auto t3 = clock64();
 		// copy f32 to f16
 		copy_32x16(r_ptr0, r_ptr1, unique_id);
 		copy_32x16(q_ptr0, q_ptr1, unique_id);
 		copy_32x16(q_ptr0 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q_ptr1 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 		__syncthreads();
+		if(tid == 0)
+			printf("%lu,%lu,%lu,%lu\n", t2 - t1, t3 - t2, t_norm_4 - t_norm_3, t_norm_2 - t_norm_1);
 	}
 }
 
