@@ -786,6 +786,22 @@ __global__ void qr32x16_batched_kernel(
 			shared_q0_ptr,
 			tid
 			);
+	mtk::matrix_operation::make_zero_matrix<A_T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(
+			shared_q1_ptr,
+			tid
+			);
+	mtk::matrix_operation::make_zero_matrix<A_T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(
+			shared_r1_ptr,
+			tid
+			);
+	mtk::matrix_operation::make_zero_matrix<A_T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(
+			shared_h_ptr,
+			tid
+			);
+	/*mtk::matrix_operation::make_zero_matrix<A_T, FRAGMENT_DIM_M, 1>(
+			shared_u_ptr,
+			tid
+			);*/
 
 	// qr core
 	qr32x16_core<A_T>(
