@@ -101,11 +101,10 @@ __device__ inline void g2s32x16_2w(
 	const auto unique_id = tid & 0x3f;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	if(y >= shared_m) return;
 	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
 		//const auto x = i + lane;
 		DST_T val;
-		if(x < shared_n) {
+		if(x < shared_n && y < shared_m) {
 			// copy
 			const auto global_index = x * global_ld + y + global_p_y;
 			val = cutf::type::cast<DST_T>( global_ptr[global_index] );
