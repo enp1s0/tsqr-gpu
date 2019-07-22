@@ -259,7 +259,7 @@ __device__ void qr32x16_f32tc_core(
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
 			u32_ptr[unique_id] = 0.0f;
-			if(unique_id >= k) {
+			if(unique_id >= k && unique_id < m) {
 				u32_ptr[unique_id] = r32_ptr[FRAGMENT_DIM_M * k + unique_id];
 			}
 		}
@@ -352,7 +352,7 @@ __device__ void qr32x16_f16tc_core(
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
 			u16_ptr[unique_id] = cutf::type::cast<half>(0.0f);
-			if(unique_id >= k) {
+			if(unique_id >= k && unique_id < m) {
 				u16_ptr[unique_id] = r16_ptr[FRAGMENT_DIM_M * k + unique_id];
 			}
 		}
