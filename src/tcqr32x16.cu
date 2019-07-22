@@ -67,13 +67,12 @@ __device__ void make_h(
 	const auto lane = unique_id >> 5;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
 		const auto x = k + lane;
-		float tmp;
+		float tmp = 0.0f;
 		if(x == y) {
 			tmp = 1.0f;
-		} else {
-			tmp = 0.0f;
 		}
-		tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
+		if(x < m && y < m)
+			tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
@@ -261,7 +260,7 @@ __device__ void qr32x16_f32tc_core(
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
 			u32_ptr[unique_id] = 0.0f;
-			if(unique_id >= k) {
+			if(unique_id >= k && unique_id < m) {
 				u32_ptr[unique_id] = r32_ptr[FRAGMENT_DIM_M * k + unique_id];
 			}
 		}
@@ -367,7 +366,7 @@ __device__ void qr32x16_f16tc_core(
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
 			u16_ptr[unique_id] = cutf::type::cast<half>(0.0f);
-			if(unique_id >= k) {
+			if(unique_id >= k && unique_id < m) {
 				u16_ptr[unique_id] = r16_ptr[FRAGMENT_DIM_M * k + unique_id];
 			}
 		}
@@ -468,10 +467,9 @@ __device__ void qr32x16_core(
 		// copy u
 		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
 		if(unique_id < FRAGMENT_DIM_M) {
-			if(unique_id >= k) {
+			u_ptr[unique_id] = 0.0f;
+			if(unique_id >= k && unique_id < m) {
 				u_ptr[unique_id] = r_ptr0[FRAGMENT_DIM_M * k + unique_id];
-			} else {
-				u_ptr[unique_id] = 0.0f;
 			}
 		}
 		const auto t_norm_1 = clock64();
