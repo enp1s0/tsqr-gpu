@@ -1,16 +1,31 @@
 # TSQRのGPU実装 (using TensorCore)
 
-![STQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
+![TSQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
+
+## ビルド
+
+```
+git clone [this remote repository] --recursive
+cd tsqr-gpu
+make
+```
+
+## 依存
+- cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
+- gemm_core : [https://gitlab.momo86.net/mutsuki/gemm_core](https://gitlab.momo86.net/mutsuki/gemm_core)
+
+## 実装済み
+- m x n (n <= 16) な行列に対するTSQR
+	- FP16 using TensorCore
+	- FP32 using TensorCore
+	- FP16
+	- FP32
 
 ## 予定
-1. 幅が16以下限定の行列に対するTSQRを実装
-2. 幅がN以下限定の行列に対するTSQRの実装
+- 幅がN以下限定の行列に対するTSQRの実装
 
 ## その後の予定
 - rsvdへの応用
 
 ## 関連リポジトリ
 - [TCQR](https://gitlab.momo86.net/mutsuki/tcqr)
-
-## TSQRの参考文献
--  
