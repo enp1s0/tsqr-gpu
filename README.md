@@ -10,6 +10,11 @@ cd tsqr-gpu
 make
 ```
 
+## 実行環境
+- 少なくともC++ 11
+- CUDA 9.1 以上
+- Tensorコアを使いたければTensotコアを積んでいるGPU
+
 ## 依存
 - cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
 - gemm_core : [https://gitlab.momo86.net/mutsuki/gemm_core](https://gitlab.momo86.net/mutsuki/gemm_core)
