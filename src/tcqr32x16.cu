@@ -79,6 +79,16 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
+
+template <class U_T>
+__device__ void make_h_tc(
+		half* const h_ptr, const unsigned m,
+		const U_T* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto lane = unique_id >> 5;
+}
+
 __device__ void update_qr_f32tc(
 		float* const q32_ptr, float* const r32_ptr,
 		const half* const q16_ptr, const half* const r16_ptr,
