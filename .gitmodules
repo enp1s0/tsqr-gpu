@@ -4,3 +4,6 @@
 [submodule "src/gemm_core"]
 	path = src/gemm_core
 	url = git@gitlab.momo86.net:mutsuki/gemm_core.git
+[submodule "src/wmma-load-vector"]
+	path = src/wmma-load-vector
+	url = https://gitlab.momo86.net/mutsuki/wmma-load-vector.git
