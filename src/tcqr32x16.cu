@@ -136,8 +136,6 @@ __device__ void make_h_tc(
 	mtk::wmma::make_identity_matrix_sm70(i_frag);
 	__syncthreads();
 
-	if(unique_id == 0) mtk::utils::print_matrix(u_ptr, 1, 32, "U @ make_h_tc");
-
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
