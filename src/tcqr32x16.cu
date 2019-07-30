@@ -125,29 +125,50 @@ __device__ void make_h_tc(
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1, i_frag;
 
 	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
 	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(i_frag, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(u_frag, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(ut_frag, cutf::type::cast<half>(0.0f));
+
+	mtk::wmma::make_identity_matrix_sm70(i_frag);
 
 	if(lane == 0) {
-		const auto rnorm = 2.0f * cutf::math::rsqrt(norm2_u_1);
+		const auto rnorm = cutf::math::rsqrt(2.0f * norm2_u_1);
 		u_ptr[unique_id] *= rnorm;
 	}
 	__syncthreads();
 
+	if(unique_id == 0) mtk::utils::print_matrix(u_ptr, 1, 32, "U @ make_h_tc");
+
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
+	__syncthreads();
 #elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
+	__syncthreads();
 #elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	/*if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
+			h_frag_1.x[i] = - h_frag_1.x[i];
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
+			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+		}
+	}*/
 
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
