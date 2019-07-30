@@ -2,6 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include <wmma_load_vector.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
 #include "utils.hpp"
@@ -80,13 +81,76 @@ __device__ void make_h(
 	}
 }
 
-template <class U_T>
 __device__ void make_h_tc(
 		half* const h_ptr, const unsigned m,
-		const U_T* const u_ptr, const float norm2_u_1,
+		half* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+
+	if(lane == 0) {
+		const auto rnorm = cutf::math::rsqrt(2.0f * norm2_u_1);
+		u_ptr[unique_id] *= rnorm;
+	}
+	__syncthreads();
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
+#elif __CUDA_ARCH__ == 7500
+#endif
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
+#elif __CUDA_ARCH__ == 7500
+#endif
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
+__device__ void make_h_tc(
+		half* const h_ptr, const unsigned m,
+		float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+
+	if(lane == 0) {
+		const auto rnorm = 2.0f * cutf::math::rsqrt(norm2_u_1);
+		u_ptr[unique_id] *= rnorm;
+	}
+	__syncthreads();
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
+#elif __CUDA_ARCH__ == 7500
+#endif
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
+#elif __CUDA_ARCH__ == 7500
+#endif
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
 __device__ void update_qr_f32tc(
@@ -322,7 +386,7 @@ __device__ void qr32x16_f32tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
 				);
 		// compute h
-		make_h(
+		make_h_tc(
 				h16_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
@@ -450,7 +514,7 @@ __device__ void qr32x16_f16tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
 				);
 		// compute h
-		make_h(
+		make_h_tc(
 				h16_ptr, m,
 				u16_ptr, norm2_u_1,
 				unique_id
