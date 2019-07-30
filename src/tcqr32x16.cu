@@ -61,7 +61,7 @@ __device__ void copy_32x16(
 
 template <class T, class U_T>
 __device__ void make_h(
-		T* const h_ptr, const unsigned m, 
+		T* const h_ptr, const unsigned m,
 		const U_T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
