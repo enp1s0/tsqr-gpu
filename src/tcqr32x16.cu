@@ -134,11 +134,6 @@ __device__ void make_h_tc(
 	nvcuda::wmma::fill_fragment(ut_frag, cutf::type::cast<half>(0.0f));
 
 	mtk::wmma::make_identity_matrix_sm70(i_frag);
-
-	if(lane == 0) {
-		const auto rnorm = cutf::math::rsqrt(2.0f * norm2_u_1);
-		u_ptr[unique_id] *= rnorm;
-	}
 	__syncthreads();
 
 	if(unique_id == 0) mtk::utils::print_matrix(u_ptr, 1, 32, "U @ make_h_tc");
@@ -158,17 +153,19 @@ __device__ void make_h_tc(
 #endif
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
-	/*if(lane == 0) {
+	const auto alpha = cutf::type::cast<half>(2.0f / norm2_u_1);
+
+	if(lane == 0) {
 		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
-			h_frag_1.x[i] = - h_frag_1.x[i];
+			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i] * alpha;
+			h_frag_1.x[i] = - h_frag_1.x[i] * alpha;
 		}
 	} else {
 		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_0.x[i] = - h_frag_0.x[i];
-			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+			h_frag_0.x[i] = - h_frag_0.x[i] * alpha;
+			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i] * alpha;
 		}
-	}*/
+	}
 
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
