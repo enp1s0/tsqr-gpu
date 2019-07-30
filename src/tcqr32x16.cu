@@ -2,7 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
-#include <wmma_load_vector.hpp>
+#include <wmma_extension.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
 #include "utils.hpp"
@@ -103,13 +103,13 @@ __device__ void make_h_tc(
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
-#elif __CUDA_ARCH__ == 7500
+#elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
-#elif __CUDA_ARCH__ == 7500
+#elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
@@ -139,13 +139,13 @@ __device__ void make_h_tc(
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
-#elif __CUDA_ARCH__ == 7500
+#elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
 #if __CUDA_ARCH__ == 700
 	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
-#elif __CUDA_ARCH__ == 7500
+#elif __CUDA_ARCH__ == 750
 #endif
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
