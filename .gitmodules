@@ -3,7 +3,7 @@
 	url = https://gitlab.momo86.net/mutsuki/cutf
 [submodule "src/gemm_core"]
 	path = src/gemm_core
-	url = git@gitlab.momo86.net:mutsuki/gemm_core.git
+	url = https://gitlab.momo86.net/mutsuki/gemm_core.git
 [submodule "src/wmma-extension"]
 	path = src/wmma-extension
 	url = https://gitlab.momo86.net/mutsuki/wmma-extension
