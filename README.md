@@ -23,6 +23,7 @@ constexpr std::size_t N = 16;
 
 // allocate input matrix
 float *d_a;
+cudaMalloc((void**)&d_a, sizeof(float) * N * N);
 
 // allocate output matrices
 float *d_r, *d_q;
