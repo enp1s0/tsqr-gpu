@@ -15,6 +15,8 @@ You can find `libtsqr.a` in `lib` directory.
 ```cpp
 #include <tsqr.hpp>
 
+constexpr bool UseTC = true;
+
 // size of input matrix
 constexpr std::size_t M = 9211;
 constexpr std::size_t N = 16;
@@ -34,7 +36,7 @@ cudaMalloc((void**)&d_wr, sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC
 cudaMalloc((void**)&d_wq, sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC>::type) * mtk::tsqr::get_working_q_size(M, N));
 
 // TSQR
-mtk::tsqr::tsqr16<UseTC, T>(
+mtk::tsqr::tsqr16<UseTC, float>(
 	d_q, d_r,
 	d_a, M, N,
 	d_wq,
