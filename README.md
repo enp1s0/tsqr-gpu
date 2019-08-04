@@ -11,7 +11,7 @@ make -f Makefile.library
 
 You can find `libtsqr.a` in `lib` directory.
 
-## How to use
+## Sample
 ```cpp
 #include <tsqr.hpp>
 
@@ -35,16 +35,16 @@ cudaMalloc((void**)&d_wq, sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC
 
 // TSQR
 mtk::tsqr::tsqr16<UseTC, T>(
-					d_q, d_r,
-					d_a, M, N,
-					d_wq,
-					d_wr
-					);
+	d_q, d_r,
+	d_a, M, N,
+	d_wq,
+	d_wr
+	);
 ```
 
 ### Build
 ```
-nvcc -std=c++11 -arch=sm_70 hoge.cu /path/to/libtsqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
+nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtsqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
 ```
 
 
