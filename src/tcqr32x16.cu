@@ -2,6 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include <wmma_extension.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
 #include "utils.hpp"
@@ -61,7 +62,7 @@ __device__ void copy_32x16(
 
 template <class T, class U_T>
 __device__ void make_h(
-		T* const h_ptr, const unsigned m, 
+		T* const h_ptr, const unsigned m,
 		const U_T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
@@ -79,6 +80,61 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
+
+template <class T>
+__device__ void make_h_tc(
+		half* const h_ptr, const unsigned m,
+		T* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1, i_frag;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+
+	mtk::wmma::make_identity_matrix_sm70(i_frag);
+
+	const auto alpha = cutf::math::sqrt(2.0f / norm2_u_1);
+
+	if(lane == 0) {
+		u_ptr[unique_id] *= alpha;
+	}
+	__syncthreads();
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
+	__syncthreads();
+#elif __CUDA_ARCH__ == 750
+#endif
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+#if __CUDA_ARCH__ == 700
+	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
+	__syncthreads();
+#elif __CUDA_ARCH__ == 750
+#endif
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
+			h_frag_1.x[i] = - h_frag_1.x[i];
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
+			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+		}
+	}
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
 __device__ void update_qr_f32tc(
 		float* const q32_ptr, float* const r32_ptr,
 		const half* const q16_ptr, const half* const r16_ptr,
@@ -312,7 +368,7 @@ __device__ void qr32x16_f32tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
 				);
 		// compute h
-		make_h(
+		make_h_tc(
 				h16_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
@@ -440,7 +496,7 @@ __device__ void qr32x16_f16tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
 				);
 		// compute h
-		make_h(
+		make_h_tc(
 				h16_ptr, m,
 				u16_ptr, norm2_u_1,
 				unique_id
