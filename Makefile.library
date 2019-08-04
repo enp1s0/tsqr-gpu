@@ -11,7 +11,7 @@ TARGET=libtsqr
 SL_OBJS=$(OBJDIR)/tsqr.o $(OBJDIR)/tcqr32x16.o $(OBJDIR)/tsqr.dlink.o $(OBJDIR)/tcqr32x16.dlink.o
 
 $(LIBDIR)/$(TARGET).a: $(SL_OBJS)
-	[ -d $(DIBDIR) ] || mkdir $(LIBDIR)
+	[ -d $(LIBDIR) ] || mkdir $(LIBDIR)
 	$(NVCC) -o $@ $+ $(NVCCFLAGS) -lib -m64 
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cu $(HEADERS)
