@@ -9,6 +9,45 @@ cd tsqr-gpu
 make -f Makefile.library
 ```
 
+You can find `libtsqr.a` in `lib` directory.
+
+## How to use
+```cpp
+#include <tsqr.hpp>
+
+// size of input matrix
+constexpr std::size_t M = 9211;
+constexpr std::size_t N = 16;
+
+// allocate input matrix
+float *d_a;
+
+// allocate output matrices
+float *d_r, *d_q;
+cudaMalloc((void**)&d_r, sizeof(float) * N * N);
+cudaMalloc((void**)&d_q, sizeof(float) * M * N);
+
+// allocate working memory
+typename mtk::tsqr::get_working_q_type<T, UseTC>::type *d_wq;
+typename mtk::tsqr::get_working_r_type<T, UseTC>::type *d_wr;
+cudaMalloc((void**)&d_wr, sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC>::type) * mtk::tsqr::get_working_q_size(M, N));
+cudaMalloc((void**)&d_wq, sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC>::type) * mtk::tsqr::get_working_q_size(M, N));
+
+// TSQR
+mtk::tsqr::tsqr16<UseTC, T>(
+					d_q, d_r,
+					d_a, M, N,
+					d_wq,
+					d_wr
+					);
+```
+
+### Build
+```
+nvcc -std=c++11 -arch=sm_70 hoge.cu /path/to/libtsqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
+```
+
+
 ## Environment
 ### Software
 - C++ (C++11 or later)
