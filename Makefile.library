@@ -1,0 +1,26 @@
+CXX=g++
+CXXFLAGS=-std=c++14 -I./src/cutf -I./src/wmma-extension -O3
+OMPFLAGS=-fopenmp
+NVCC=nvcc
+NVCCFLAGS=$(CXXFLAGS) --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver -rdc=true
+SRCDIR=src
+OBJDIR=objs
+LIBDIR=lib
+HEADERS=$(shell find $(SRCDIR) -name '*.cuh' -o -name '*.hpp' -o -name '*.h')
+TARGET=libtsqr
+SL_OBJS=$(OBJDIR)/tsqr.o $(OBJDIR)/tcqr32x16.o $(OBJDIR)/tsqr.dlink.o $(OBJDIR)/tcqr32x16.dlink.o
+
+$(LIBDIR)/$(TARGET).a: $(SL_OBJS)
+	[ -d $(LIBDIR) ] || mkdir $(LIBDIR)
+	$(NVCC) -o $@ $+ $(NVCCFLAGS) -lib -m64 
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cu $(HEADERS)
+	[ -d $(OBJDIR) ] || mkdir $(OBJDIR)
+	$(NVCC) -o $@ -c $< $(NVCCFLAGS) -dc -m64
+
+$(OBJDIR)/%.dlink.o: $(OBJDIR)/%.o
+	$(NVCC) -dlink -o $@ $< $(NVCCFLAGS) -m64
+
+clean:
+	rm -rf $(SL_OBJS)
+	rm -rf lib/$(TARGET)
