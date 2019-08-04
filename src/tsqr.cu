@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <chrono>
 #include <mma.h>
 #include <cuda_fp16.h>
 #include <cutf/memory.hpp>
@@ -16,6 +17,7 @@
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
+//#define MEASURE_QR_TIME
 
 namespace mtk {
 namespace tsqr {
@@ -319,15 +321,15 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 }
 
 template <bool UseTC, class T>
-void mtk::tsqr::tsqr16(
+void tsqr16_geq32(
 		T* const q_ptr, T* const r_ptr, 
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
-		typename get_working_q_type<T, UseTC>::type* const working_q_ptr, typename get_working_r_type<T, UseTC>::type* const working_r_ptr) {
+		typename mtk::tsqr::get_working_q_type<T, UseTC>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptr) {
 
 	const std::size_t max_batch_size_per_block = 4;
-	const auto batch_size_log2 = get_batch_size_log2(m);
+	const auto batch_size_log2 = mtk::tsqr::get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
-	typename get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
+	typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
 
 	debug_func([&m, &n]() {std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
 	debug_func([&batch_size]() {std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
@@ -345,6 +347,11 @@ void mtk::tsqr::tsqr16(
 	}
 	h_sub_m_list.get()[batch_size] = m;
 	cutf::memory::copy(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1);
+
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t0 = std::chrono::system_clock::now();
+#endif
 
 	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
@@ -390,7 +397,7 @@ void mtk::tsqr::tsqr16(
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
 		}
@@ -413,12 +420,16 @@ void mtk::tsqr::tsqr16(
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
 #endif
 
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t1 = std::chrono::system_clock::now();
+#endif
 	debug_func([]() {std::printf("%s : Backword\n", __func__);});
 
 	// Backward
@@ -430,7 +441,7 @@ void mtk::tsqr::tsqr16(
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
 			const auto local_batch_size = 1lu << k;	
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
@@ -454,7 +465,7 @@ void mtk::tsqr::tsqr16(
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename get_working_q_type<T, UseTC>::type>(n * m);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(n * m);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
@@ -475,6 +486,32 @@ void mtk::tsqr::tsqr16(
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (result)");
 	}
 #endif
+#ifdef MEASURE_QR_TIME
+	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	const auto t2 = std::chrono::system_clock::now();
+
+	// analyze
+	const auto computing_q_time = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() / 1000000.0;
+	const auto computing_r_time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() / 1000000.0;
+	std::printf("computing_q_time,computing_r_time\n");
+	std::printf("%e,%e\n", computing_q_time, computing_r_time);
+#endif
+}
+
+template <bool UseTC, class T>
+void mtk::tsqr::tsqr16(
+		T* const q_ptr, T* const r_ptr,
+		const T* const a_ptr, const std::size_t m, const std::size_t n,
+		typename get_working_q_type<T, UseTC>::type* const working_q_ptr, typename get_working_r_type<T, UseTC>::type* const working_r_ptr) {
+	if(m > 32) {
+		tsqr16_geq32<UseTC>(q_ptr, r_ptr,
+				a_ptr, m, n,
+				working_q_ptr, working_r_ptr);
+	}else {
+		mtk::tcqr::qr32x16<UseTC>(q_ptr, r_ptr,
+				a_ptr, m, n
+				);
+	}
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)

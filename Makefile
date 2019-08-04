@@ -1,8 +1,8 @@
 CXX=g++
-CXXFLAGS=-std=c++14 -I./src/cutf -O3
+CXXFLAGS=-std=c++14 -I./src/cutf -I./src/wmma-extension -O3
 OMPFLAGS=-fopenmp
 NVCC=nvcc
-NVCCFLAGS=$(CXXFLAGS)  --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas --ptxas-options=-v -rdc=true
+NVCCFLAGS=$(CXXFLAGS)  --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver --ptxas-options=-v -rdc=true
 SRCDIR=src
 SRCS=$(shell find src -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
