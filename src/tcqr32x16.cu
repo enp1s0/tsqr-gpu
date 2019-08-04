@@ -95,7 +95,7 @@ __device__ void make_h_tc(
 	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
 	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
 
-	mtk::wmma::make_identity_matrix_sm70(i_frag);
+	mtk::wmma::make_identity_matrix(i_frag);
 
 	const auto alpha = cutf::math::sqrt(2.0f / norm2_u_1);
 
@@ -104,19 +104,11 @@ __device__ void make_h_tc(
 	}
 	__syncthreads();
 
-#if __CUDA_ARCH__ == 700
-	mtk::wmma::load_vector_sync_sm70(u_frag, u_ptr + lane * 16);
-	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr);
-	__syncthreads();
-#elif __CUDA_ARCH__ == 750
-#endif
+	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16);
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
-#if __CUDA_ARCH__ == 700
-	mtk::wmma::load_vector_sync_sm70(ut_frag, u_ptr + 16);
-	__syncthreads();
-#elif __CUDA_ARCH__ == 750
-#endif
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
 	if(lane == 0) {
