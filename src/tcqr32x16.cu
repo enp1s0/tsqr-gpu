@@ -82,6 +82,49 @@ __device__ void make_h(
 }
 
 template <class T>
+__device__ void make_h_tc32(
+		half* const h_ptr, const unsigned m,
+		T* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> h_frag_0, h_frag_1, i_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0_out, h_frag_1_out;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, 0.0f);
+	nvcuda::wmma::fill_fragment(h_frag_1, 0.0f);
+
+	mtk::wmma::make_identity_matrix(i_frag);
+
+	__syncthreads();
+
+	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16);
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	const auto alpha = 2.0f / norm2_u_1;
+	if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0_out.x[i] = cutf::type::cast<half>(i_frag.x[i] - h_frag_0.x[i] * alpha);
+			h_frag_1_out.x[i] = cutf::type::cast<half>(- h_frag_1.x[i] * alpha);
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0_out.x[i] = cutf::type::cast<half>(- h_frag_0.x[i] * alpha);
+			h_frag_1_out.x[i] = cutf::type::cast<half>(i_frag.x[i] - h_frag_1.x[i] * alpha);
+		}
+	}
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0_out, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1_out, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
+template <class T>
 __device__ void make_h_tc16(
 		half* const h_ptr, const unsigned m,
 		T* const u_ptr, const float norm2_u_1,
@@ -360,7 +403,7 @@ __device__ void qr32x16_f32tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
 				);
 		// compute h
-		make_h_tc16(
+		make_h_tc32(
 				h16_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
