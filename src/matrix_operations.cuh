@@ -20,14 +20,23 @@ __device__ inline void make_zero_matrix(
 template <class T, std::size_t FRAGMENT_DIM_M, std::size_t num_warps = 2>
 __device__ inline void make_identity_matrix(
 		T* const target_ptr,
-		const unsigned tid
+		const unsigned tid,
+		const T value
 		) {
 	constexpr unsigned warp_size = 32;
 	const auto unique_id = tid & (warp_size * num_warps - 1);
 	make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_M, num_warps>(target_ptr, unique_id);
 	if(unique_id < FRAGMENT_DIM_M)
-		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = cutf::type::cast<T>(1.0f);
+		target_ptr[unique_id * (1 + FRAGMENT_DIM_M)] = value;
 	__syncthreads();
+}
+
+template <class T, std::size_t FRAGMENT_DIM_M, std::size_t num_warps = 2>
+__device__ inline void make_identity_matrix(
+		T* const target_ptr,
+		const unsigned tid
+		) {
+	make_identity_matrix<T, FRAGMENT_DIM_M, num_warps>(target_ptr, tid, cutf::type::cast<T>(1.0f));
 }
 } // namespace matrix_operation
 } // namespace mtk
