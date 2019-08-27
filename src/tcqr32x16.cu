@@ -82,7 +82,7 @@ __device__ void make_h(
 }
 
 template <class T>
-__device__ void make_h_tc(
+__device__ void make_h_tc16(
 		half* const h_ptr, const unsigned m,
 		T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -360,7 +360,7 @@ __device__ void qr32x16_f32tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
 				);
 		// compute h
-		make_h_tc(
+		make_h_tc16(
 				h16_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
@@ -488,7 +488,7 @@ __device__ void qr32x16_f16tc_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
 				);
 		// compute h
-		make_h_tc(
+		make_h_tc16(
 				h16_ptr, m,
 				u16_ptr, norm2_u_1,
 				unique_id
