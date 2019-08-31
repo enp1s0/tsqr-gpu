@@ -101,11 +101,6 @@ __device__ void make_h_tc32(
 
 	const auto alpha = 2.0f / norm2_u_1;
 
-	//if(lane == 0) {
-	//	u_ptr[unique_id] *= alpha;
-	//}
-	//__syncthreads();
-
 	mtk::wmma::load_vector_sync(ut_frag, u_ptr, alpha);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
