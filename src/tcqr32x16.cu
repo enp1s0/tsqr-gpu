@@ -95,16 +95,16 @@ __device__ void make_h_tc32(
 	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
 	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
 
-	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16);
+	const auto alpha = 2.0f / norm2_u_1;
+	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
 
 	mtk::wmma::make_identity_matrix(i_frag);
 
-	const auto alpha = 2.0f / norm2_u_1;
 
-	mtk::wmma::load_vector_sync(ut_frag, u_ptr, alpha);
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
-	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16, alpha);
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
 	if(lane == 0) {
