@@ -4,7 +4,7 @@
 #include "test.hpp"
 
 constexpr std::size_t min_m = 1 << 10;
-constexpr std::size_t max_m = 1 << 24;
+constexpr std::size_t max_m = 1 << 27;
 constexpr std::size_t n = 16;
 
 int main() {
