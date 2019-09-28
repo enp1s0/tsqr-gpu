@@ -18,7 +18,8 @@ template <> std::string get_type_name<float>() {return "float";}
 template <> std::string get_type_name<half>() {return "half";}
 
 namespace {
-__global__ void cut_r(float* const dst, const float* const src, const std::size_t m, const std::size_t n) {
+template <class T>
+__global__ void cut_r(T* const dst, const T* const src, const std::size_t m, const std::size_t n) {
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 
 	const auto x = tid / n;
@@ -196,6 +197,7 @@ template void mtk::test::speed<true, half>(const std::size_t, const std::size_t,
 template void mtk::test::speed<false, float>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::speed<false, half>(const std::size_t, const std::size_t, const std::size_t);
 
+template <class T>
 void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 1 << 8;
 	constexpr std::size_t C = 16;
@@ -204,15 +206,15 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 
 	std::cout<<"m,n,type,tc,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
-		auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto d_tau = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto h_a = cutf::memory::get_host_unique_ptr<float>(m * n);
-		auto h_r = cutf::memory::get_host_unique_ptr<float>(n * n);
+		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+		auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
+		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-		std::vector<float> error_list;
-		std::vector<float> orthogonality_list;
+		std::vector<T> error_list;
+		std::vector<T> orthogonality_list;
 
 		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
@@ -227,15 +229,15 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 					));
 
-		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<float>(geqrf_working_memory_size);
-		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<float>(gqr_working_memory_size);
+		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
 		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
 
 		for(std::size_t c = 0; c < C; c++) {
-			float norm_a = 0.0f;
+			T norm_a = 0.0f;
 			for(std::size_t i = 0; i < m * n; i++) {
 				const auto tmp = dist(mt);
-				h_a.get()[i] = cutf::type::cast<float>(tmp);
+				h_a.get()[i] = cutf::type::cast<T>(tmp);
 				norm_a += tmp * tmp;
 			}
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
@@ -261,7 +263,7 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 
 			// verify
 			auto cublas = cutf::cublas::get_cublas_unique_ptr();
-			const auto alpha = 1.0f, beta = -1.0f;
+			const T alpha = 1.0f, beta = -1.0f;
 			cutf::cublas::gemm(
 					*cublas.get(),
 					CUBLAS_OP_N, CUBLAS_OP_N,
@@ -274,16 +276,16 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 					);
 
 			cutf::memory::copy(h_a.get(), d_a.get(), m * n);
-			float norm_diff = 0.0f;
+			T norm_diff = 0.0f;
 			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = cutf::type::cast<float>(h_a.get()[i]);
+				const auto tmp = cutf::type::cast<T>(h_a.get()[i]);
 				norm_diff += tmp * tmp;
 			}
 			error_list.push_back(std::sqrt(norm_diff/norm_a));
 			orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 		}
-		float error = 0.0f;
-		float orthogonality = 0.0f;
+		T error = 0.0f;
+		T orthogonality = 0.0f;
 		for(std::size_t c = 0; c < C; c++) {
 			error += error_list[c];
 			orthogonality += orthogonality_list[c];
@@ -291,8 +293,8 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 		error /= C;
 		orthogonality /= C;
 
-		float error_deviation = 0.0f;
-		float orthogonality_deviation = 0.0f;
+		T error_deviation = 0.0f;
+		T orthogonality_deviation = 0.0f;
 		for(std::size_t c = 0; c < C; c++) {
 			error_deviation += (error_list[c] - error) * (error_list[c] - error);
 			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
@@ -305,6 +307,10 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 	}
 }
 
+template void mtk::test::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test::cusolver_precision<double>(const std::size_t, const std::size_t, const std::size_t);
+
+template <class T>
 void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
@@ -317,11 +323,11 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 
 	std::cout<<"m,n,type,tc,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
-		auto d_a = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto d_tau = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto h_a = cutf::memory::get_host_unique_ptr<float>(m * n);
+		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+		auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
+		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 
 		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
@@ -336,8 +342,8 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 					));
 
-		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<float>(geqrf_working_memory_size);
-		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<float>(gqr_working_memory_size);
+		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
 		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
 
 		for(std::size_t i = 0; i < m * n; i++) {
@@ -384,6 +390,8 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		std::cout<<m<<","<<n<<",float,cusolver,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(float))<<std::endl;
+		std::cout<<m<<","<<n<<",T,cusolver,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
 	}
 }
+template void mtk::test::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);

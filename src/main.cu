@@ -30,7 +30,12 @@ int main() {
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::cusolver_precision(min_m, max_m, n);
+		mtk::test::cusolver_precision<float>(min_m, max_m, n);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test::cusolver_precision<double>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
@@ -57,7 +62,12 @@ int main() {
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::cusolver_speed(min_m, max_m, n);
+		mtk::test::cusolver_speed<float>(min_m, max_m, n);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test::cusolver_speed<double>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};

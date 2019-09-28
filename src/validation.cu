@@ -53,5 +53,6 @@ double mtk::validation::check_orthogonality16(
 	return std::sqrt(sum / n);
 }
 
+template double mtk::validation::check_orthogonality16<double>(const double* const, const std::size_t, const unsigned);
 template double mtk::validation::check_orthogonality16<float>(const float* const, const std::size_t, const unsigned);
 template double mtk::validation::check_orthogonality16<half>(const half* const, const std::size_t, const unsigned);
