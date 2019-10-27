@@ -604,6 +604,139 @@ __device__ void qr32x16_f32tc_refine_core(
 	}
 }
 
+__device__ void qr32x16_f32tc_refine_core(
+		float* const q32_ptr, float* const r32_ptr,
+		half* const q16_ptr, half* const r16_ptr,
+		float* const u32_ptr,
+		float* const h32_ptr, half* h16_ptr,
+		const unsigned m, const unsigned n,
+		const unsigned tid
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto unique_id = tid & 0x3f;
+	for(unsigned k = 0; k < n; k++) {
+		debug_func(
+				unique_id,
+				[&k]() {printf("/* -------- %u ---------\n", k);}
+				);
+		debug_func(0, []() {__syncthreads();});
+		debug_func(
+				unique_id,
+				[&r32_ptr, &m, &n]() {mtk::utils::print_matrix_32x16(r32_ptr, m, n, "R");}
+				);
+		debug_func(0, []() {__syncthreads();});
+		debug_func(
+				unique_id,
+				[&q32_ptr, &m]() {mtk::utils::print_matrix_32x16(q32_ptr, m, m, "Q");}
+				);
+		debug_func(0, []() {__syncthreads();});
+		// copy u
+		// TODO ; 0埋めとデータロードを異なるwarpでできないか検証
+#ifdef MEASURE_CLOCK
+		const auto t1 = clock64();
+#endif
+		if(unique_id < FRAGMENT_DIM_M) {
+			u32_ptr[unique_id] = 0.0f;
+			if(unique_id >= k && unique_id < m) {
+				u32_ptr[unique_id] = r32_ptr[FRAGMENT_DIM_M * k + unique_id];
+			}
+		}
+		__syncthreads();
+		debug_func(
+				unique_id,
+				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u");}
+				);
+		// compute |u|
+		// TODO : どうせ0埋めされているなら32個で和をとってしまってもいい気がするので検証
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t2 = clock64();
+#endif
+		const auto norm_u_0 = cutf::math::sqrt(get_norm2_32(u32_ptr, m, unique_id & 0x1f));
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t3 = clock64();
+#endif
+		debug_func(
+				unique_id,
+				[&norm_u_0]() {printf("norm_u_0 = %.5f\n", norm_u_0);}
+				);
+		// update u
+		if(unique_id == k) {
+			u32_ptr[unique_id] += cutf::math::sign(u32_ptr[unique_id]) * norm_u_0;
+		}
+		__syncthreads();
+		debug_func(
+				unique_id,
+				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
+				);
+		// recompute |u|
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t4 = clock64();
+#endif
+		const auto norm2_u_1 = get_norm2_32(u32_ptr, m, unique_id & 0x1f);
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t5 = clock64();
+#endif
+		debug_func(
+				unique_id,
+				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
+				);
+		// compute h
+		make_h_tc32_refine(
+				h32_ptr, m,
+				u32_ptr, norm2_u_1,
+				unique_id
+				);
+		debug_func(
+				unique_id,
+				[&h16_ptr, &m]() {mtk::utils::print_matrix_32x16(h16_ptr, m, m, "H");}
+				);
+#ifdef MEASURE_CLOCK
+		const auto t6 = clock64();
+#endif
+		// copy f32 to f16
+		copy_32x16(r16_ptr, r32_ptr, unique_id);
+		copy_32x16(q16_ptr, q32_ptr, unique_id);
+		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+#ifdef MEASURE_CLOCK
+		const auto t7 = clock64();
+#endif
+		debug_func(
+				unique_id,
+				[&r16_ptr, &m, &n]() {mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R (before update)");}
+				);
+		debug_func(
+				unique_id,
+				[&q16_ptr, &m]() {mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
+				);
+		__syncthreads();
+		// update q, r
+		update_qr_f32tc_refine(
+				q32_ptr, r32_ptr,
+				q16_ptr, r16_ptr,
+				h32_ptr, h16_ptr,
+				unique_id
+				);
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t8 = clock64();
+		if(tid == 0)
+			printf("%lu,%lu,%lu,%lu,%lu,%lu,%lu,0\n",
+					t2 - t1,
+					t3 - t2,
+					t4 - t3,
+					t5 - t4,
+					t6 - t5,
+					t7 - t6,
+					t8 - t7);
+#endif
+	}
+}
+
 __device__ void qr32x16_f32tc_core(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
