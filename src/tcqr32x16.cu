@@ -1601,7 +1601,7 @@ __global__ void qr32x16_kernel(
 }
 }
 
-template <bool UseTC, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T>
 void mtk::tcqr::qr32x16_batched(
 		Q_T* const q, R_T* const r,
 		const A_T* const a, const unsigned int m, const unsigned int n,
@@ -1619,10 +1619,10 @@ void mtk::tcqr::qr32x16_batched(
 			a_start_position
 			);
 }
-template void mtk::tcqr::qr32x16_batched<false, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
-template void mtk::tcqr::qr32x16_batched<false, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
 
-template <> void mtk::tcqr::qr32x16_batched<true, float, float, float>(
+template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
 		float* const q, float* const r,
 		const float* const a, const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
@@ -1640,7 +1640,25 @@ template <> void mtk::tcqr::qr32x16_batched<true, float, float, float>(
 			);
 }
 
-template <> void mtk::tcqr::qr32x16_batched<true, half, half, half>(
+template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float>(
+		float* const q, float* const r,
+		const float* const a, const unsigned int m, const unsigned int n,
+		const std::size_t batch_size,
+		const unsigned* a_start_position
+		) {
+	constexpr std::size_t max_batch_size_per_block = 2;
+	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
+	const auto block_size = max_batch_size_per_block * 2 * warp_size;
+
+	qr32x16_f32tc_refine_batched_kernel<<<grid_size, block_size>>>(
+			q, r,
+			a, m, n,
+			batch_size,
+			a_start_position
+			);
+}
+
+template <> void mtk::tcqr::qr32x16_batched<true, false, half, half, half>(
 		half* const q, half* const r,
 		const half* const a, const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
@@ -1657,7 +1675,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, half, half, half>(
 			a_start_position
 			);
 }
-template <> void mtk::tcqr::qr32x16_batched<true, half, float, float>(
+template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float>(
 		half* const q, float* const r,
 		const float* const a, const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
@@ -1675,7 +1693,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, half, float, float>(
 			);
 }
 
-template <bool UseTC, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T>
 void mtk::tcqr::qr32x16(
 		Q_T* const q, R_T* const r,
 		const A_T* const a, const unsigned int m, const unsigned int n
@@ -1686,23 +1704,32 @@ void mtk::tcqr::qr32x16(
 			);
 }
 
-template void mtk::tcqr::qr32x16<false, float, float, float>(float* const, float* const, const float* const, const unsigned int, const unsigned int);
-template void mtk::tcqr::qr32x16<false, half, half, half>(half* const, half* const, const half* const, const unsigned int, const unsigned int);
+template void mtk::tcqr::qr32x16<false, false, float, float, float>(float* const, float* const, const float* const, const unsigned int, const unsigned int);
+template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, half* const, const half* const, const unsigned int, const unsigned int);
 
-template<> void mtk::tcqr::qr32x16<true, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n) {
+template<> void mtk::tcqr::qr32x16<true, false, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n) {
 	qr32x16_f16tc_kernel<<<1, 2 * warp_size>>>(
 			q, r,
 			a, m, n
 			);
 }
-template<> void mtk::tcqr::qr32x16<true, half, float, float>(half* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
+
+template<> void mtk::tcqr::qr32x16<true, false, half, float, float>(half* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
 	qr32x16_f32tc_kernel<half, float><<<1, 2 * warp_size>>>(
 			q, r,
 			a, m, n
 			);
 }
-template<> void mtk::tcqr::qr32x16<true, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
+
+template<> void mtk::tcqr::qr32x16<true, false, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
 	qr32x16_f32tc_kernel<float, float><<<1, 2 * warp_size>>>(
+			q, r,
+			a, m, n
+			);
+}
+
+template<> void mtk::tcqr::qr32x16<true, true, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n) {
+	qr32x16_f32tc_refine_kernel<<<1, 2 * warp_size>>>(
 			q, r,
 			a, m, n
 			);
