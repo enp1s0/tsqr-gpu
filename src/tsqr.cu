@@ -39,7 +39,7 @@ void debug_func(Func func) {
 }
 
 // backward 1層目以外
-template <bool UseTC, class T>
+template <bool UseTC, bool Refine, class T>
 __global__ void tsqr_backward(
 		T* const ac_ptr,
 		const T* const b_ptr,
@@ -105,7 +105,7 @@ __global__ void tsqr_backward(
 			);
 }
 template <>
-__global__ void tsqr_backward<true, half>(
+__global__ void tsqr_backward<true, false, half>(
 		half* const ac_ptr,
 		const half* const b_ptr,
 		const unsigned n,
@@ -167,7 +167,7 @@ __global__ void tsqr_backward<true, half>(
 			);
 }
 
-template <bool UseTC, class OUTPUT_T, class INPUT_T>
+template <bool UseTC, bool Refine, class OUTPUT_T, class INPUT_T>
 __global__ void tsqr_backward_layer0(
 		OUTPUT_T* const q_ptr,
 		const INPUT_T* const a_ptr,
@@ -238,7 +238,7 @@ __global__ void tsqr_backward_layer0(
 }
 
 template <>
-__global__ void tsqr_backward_layer0<true, float, half>(
+__global__ void tsqr_backward_layer0<true, false, float, half>(
 		float* const q_ptr,
 		const half* const a_ptr,
 		const half* const b_ptr,
@@ -446,7 +446,7 @@ void tsqr16_geq32(
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
-		tsqr_backward<UseTC><<<grid_size, block_size>>>(
+		tsqr_backward<UseTC, Refine><<<grid_size, block_size>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
 				n,
@@ -470,7 +470,7 @@ void tsqr16_geq32(
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif
-	tsqr_backward_layer0<UseTC><<<grid_size, block_size>>>(
+	tsqr_backward_layer0<UseTC, Refine><<<grid_size, block_size>>>(
 			q_ptr,
 			working_q_ptr,
 			working_q_ptr + m * n,
