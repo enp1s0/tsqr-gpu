@@ -1250,7 +1250,8 @@ __global__ void qr32x16_f32tc_batched_kernel(
 	qr32x16_f32tc_core(
 			shared_q32_ptr, shared_r32_ptr,
 			shared_q16_ptr, shared_r16_ptr,
-			shared_u32_ptr, shared_h16_ptr,
+			shared_u32_ptr,
+			shared_h16_ptr,
 			sub_a_m, n,
 			tid
 			);
