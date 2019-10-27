@@ -569,6 +569,8 @@ __device__ void qr32x16_f32tc_refine_core(
 		copy_32x16(r16_ptr, r32_ptr, unique_id);
 		copy_32x16(q16_ptr, q32_ptr, unique_id);
 		copy_32x16(q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+		copy_32x16(h16_ptr, h32_ptr, unique_id);
+		copy_32x16(h16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, h32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 #ifdef MEASURE_CLOCK
 		const auto t7 = clock64();
 #endif
