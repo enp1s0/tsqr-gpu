@@ -283,8 +283,7 @@ __device__ void update_qr_f32tc(
 __device__ void update_qr_f32tc_refine(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
-		float* const h32_ptr,
-		half* const h16_ptr,
+		float* const h32_ptr, half* const h16_ptr,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
