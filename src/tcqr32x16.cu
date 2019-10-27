@@ -306,10 +306,10 @@ __device__ void update_qr_f32tc_refine(
 	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(h16_1_frag, h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// load h diff
-	mtk::matrix_operation::diff32x16_2w(h16_ptr + FRAGMENT_DIM_N * lane, h32_ptr + FRAGMENT_DIM_N * lane, h16_ptr + FRAGMENT_DIM_N * lane, unique_id);
-	mtk::matrix_operation::diff32x16_2w(h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
-			h32_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
-			h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
+	mtk::matrix_operation::diff32x16_2w(h16_ptr, h32_ptr, h16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(h16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
+			h32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
+			h16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N,
 			unique_id);
 	nvcuda::wmma::load_matrix_sync(h16_0_diff_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(h16_1_diff_frag, h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
