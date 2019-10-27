@@ -1130,10 +1130,9 @@ __device__ void qr32x16_core(
 	}
 }
 
-template <class Q_T, class R_T>
 __global__ void qr32x16_f32tc_refine_batched_kernel(
-		Q_T* const q32_ptr,
-		R_T* const r32_ptr,
+		float* const q32_ptr,
+		float* const r32_ptr,
 		const float* const a32_ptr,
 		const std::size_t m,
 		const unsigned n,
