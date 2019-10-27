@@ -320,16 +320,16 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 	return working_r_size_0 + working_r_size_1;
 }
 
-template <bool UseTC, class T>
+template <bool UseTC, bool Refine, class T>
 void tsqr16_geq32(
 		T* const q_ptr, T* const r_ptr, 
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
-		typename mtk::tsqr::get_working_q_type<T, UseTC>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptr) {
+		typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr) {
 
 	const std::size_t max_batch_size_per_block = 4;
 	const auto batch_size_log2 = mtk::tsqr::get_batch_size_log2(m);
 	const auto batch_size = 1lu << batch_size_log2;
-	typename mtk::tsqr::get_working_r_type<T, UseTC>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
+	typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type* const working_r_ptrs[2] = {working_r_ptr, working_r_ptr + n * n * batch_size};
 
 	debug_func([&m, &n]() {std::printf("%s : matrix size = %lu x %lu\n", __func__, m, n);});
 	debug_func([&batch_size]() {std::printf("%s : batch_size = %lu\n", __func__, batch_size);});
@@ -355,7 +355,7 @@ void tsqr16_geq32(
 
 	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
-	mtk::tcqr::qr32x16_batched<UseTC>(
+	mtk::tcqr::qr32x16_batched<UseTC, Refine>(
 			working_q_ptr,
 			working_r_ptrs[0],
 			a_ptr, m, n,
@@ -384,7 +384,7 @@ void tsqr16_geq32(
 		}
 #endif
 
-		mtk::tcqr::qr32x16_batched<UseTC>(
+		mtk::tcqr::qr32x16_batched<UseTC, Refine>(
 				working_q_ptr + working_q_sride,
 				working_r_ptrs[1 - working_r_index],
 				working_r_ptrs[working_r_index],
@@ -409,7 +409,7 @@ void tsqr16_geq32(
 	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
-	mtk::tcqr::qr32x16<UseTC>(
+	mtk::tcqr::qr32x16<UseTC, Refine>(
 			working_q_ptr + working_q_sride,
 			r_ptr,
 			working_r_ptrs[1 - (batch_size_log2 % 2)],
@@ -498,24 +498,24 @@ void tsqr16_geq32(
 #endif
 }
 
-template <bool UseTC, class T>
+template <bool UseTC, bool Refine, class T>
 void mtk::tsqr::tsqr16(
 		T* const q_ptr, T* const r_ptr,
 		const T* const a_ptr, const std::size_t m, const std::size_t n,
-		typename get_working_q_type<T, UseTC>::type* const working_q_ptr, typename get_working_r_type<T, UseTC>::type* const working_r_ptr) {
+		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr) {
 	if(m > 32) {
-		tsqr16_geq32<UseTC>(q_ptr, r_ptr,
+		tsqr16_geq32<UseTC, Refine>(q_ptr, r_ptr,
 				a_ptr, m, n,
 				working_q_ptr, working_r_ptr);
 	}else {
-		mtk::tcqr::qr32x16<UseTC>(q_ptr, r_ptr,
+		mtk::tcqr::qr32x16<UseTC, Refine>(q_ptr, r_ptr,
 				a_ptr, m, n
 				);
 	}
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
-template void mtk::tsqr::tsqr16<true, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true>::type* const);
-template void mtk::tsqr::tsqr16<false, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false>::type* const);
-template void mtk::tsqr::tsqr16<true, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false>::type* const);
-template void mtk::tsqr::tsqr16<false, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false>::type* const);
+template void mtk::tsqr::tsqr16<true, false, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const);
+template void mtk::tsqr::tsqr16<false, false, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const);
+template void mtk::tsqr::tsqr16<true, false, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const);
+template void mtk::tsqr::tsqr16<false, false, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const);
