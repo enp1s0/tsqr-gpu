@@ -3,9 +3,9 @@
 #include <cstddef>
 namespace mtk {
 namespace test {
-template <bool UseTC, class T>
+template <bool UseTC, bool Refine, class T>
 void precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n);
-template <bool UseTC, class T>
+template <bool UseTC, bool Refine, class T>
 void speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n);
 template <class T>
 void cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n);
