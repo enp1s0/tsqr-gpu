@@ -357,8 +357,8 @@ __device__ void update_qr_f32tc_refine(
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
 	// load r diff
 	mtk::matrix_operation::diff32x16_2w(r16_ptr, r32_ptr, r16_ptr, unique_id);
-	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(r16_1_diff_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, r16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(r16_1_diff_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// diff mma
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_diff_frag, r16_0_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_diff_frag, r32_frag);
