@@ -10,22 +10,22 @@ constexpr std::size_t n = 16;
 int main() {
 	std::cout<<"# precision test"<<std::endl;
 	try{
-		mtk::test::precision<true, float>(min_m, max_m, n);
+		mtk::test::precision<true, false, float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::precision<true, half>(min_m, max_m, n);
+		mtk::test::precision<true, false, half>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::precision<false, float>(min_m, max_m, n);
+		mtk::test::precision<false, false, float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::precision<false, half>(min_m, max_m, n);
+		mtk::test::precision<false, false, half>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
@@ -42,22 +42,22 @@ int main() {
 
 	std::cout<<"# speed test"<<std::endl;
 	try{
-		mtk::test::speed<true, float>(min_m, max_m, n);
+		mtk::test::speed<true, false, float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::speed<true, half>(min_m, max_m, n);
+		mtk::test::speed<true, false, half>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::speed<false, float>(min_m, max_m, n);
+		mtk::test::speed<false, false, float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
-		mtk::test::speed<false, half>(min_m, max_m, n);
+		mtk::test::speed<false, false, half>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
