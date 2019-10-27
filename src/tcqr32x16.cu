@@ -558,9 +558,10 @@ __device__ void qr32x16_f32tc_refine_core(
 				u32_ptr, norm2_u_1,
 				unique_id
 				);
+		__syncthreads();
 		debug_func(
 				unique_id,
-				[&h16_ptr, &m]() {mtk::utils::print_matrix_32x16(h16_ptr, m, m, "H");}
+				[&h32_ptr, &m]() {mtk::utils::print_matrix_32x16(h32_ptr, m, m, "H (refined)");}
 				);
 #ifdef MEASURE_CLOCK
 		const auto t6 = clock64();
