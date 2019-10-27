@@ -1141,7 +1141,7 @@ __global__ void qr32x16_f32tc_refine_batched_kernel(
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	constexpr std::size_t max_batch_size_per_block = 4;
+	constexpr std::size_t max_batch_size_per_block = 2;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / (warp_size * 2);
 	const auto shared_memory_id = matrix_id & (max_batch_size_per_block - 1);
