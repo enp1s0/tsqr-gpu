@@ -53,6 +53,7 @@ __device__ inline void diff32x16_2w(
 
 		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
 	}
+	__syncthreads();
 }
 } // namespace matrix_operation
 } // namespace mtk
