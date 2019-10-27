@@ -1135,6 +1135,7 @@ __global__ void qr32x16_f32tc_batched_kernel(
 			tid
 			);
 }
+
 __global__ void qr32x16_f16tc_batched_kernel(
 		half* const q16_ptr,
 		half* const r16_ptr,
