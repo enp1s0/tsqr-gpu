@@ -16,9 +16,9 @@ __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, 
 			if(val == 0.0f) {
 				printf(" %.5f ", 0.0);
 			}else if (val < 0.0){
-				printf(" %.5f ", val);
-			}else{
 				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
 			}
 		}
 		printf("\n");
@@ -33,9 +33,9 @@ __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, 
 			if(val == 0.0f) {
 				printf(" %.5f ", 0.0);
 			}else if (val < 0.0){
-				printf(" %.5f ", val);
-			}else{
 				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
 			}
 		}
 		printf("\n");
@@ -50,9 +50,9 @@ __device__ __host__ inline void print_matrix_16x16(const T* const ptr, std::size
 			if(val == 0.0f) {
 				printf(" %.5f ", 0.0);
 			}else if (val < 0.0){
-				printf(" %.5f ", val);
-			}else{
 				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
 			}
 		}
 		printf("\n");
@@ -67,9 +67,9 @@ __device__ __host__ inline void print_matrix_32x16(const T* const ptr, std::size
 			if(val == 0.0f) {
 				printf(" %.5f ", 0.0);
 			}else if (val < 0.0){
-				printf(" %.5f ", val);
-			}else{
 				printf("%.5f ", val);
+			}else{
+				printf(" %.5f ", val);
 			}
 		}
 		printf("\n");
@@ -83,9 +83,9 @@ __device__ __host__ inline void print_matrix_diag(const T* const ptr, std::size_
 		if(val == 0.0f) {
 			printf(" %.5f ", 0.0);
 		}else if (val < 0.0){
-			printf(" %.5f ", val);
-		}else{
 			printf("%.5f ", val);
+		}else{
+			printf(" %.5f ", val);
 		}
 	}
 	printf("\n");
@@ -98,9 +98,9 @@ __device__ __host__ inline void print_matrix_diag_16x16(const T* const ptr, std:
 		if(val == 0.0f) {
 			printf(" %.5f ", 0.0);
 		}else if (val < 0.0){
-			printf(" %.5f ", val);
-		}else{
 			printf("%.5f ", val);
+		}else{
+			printf(" %.5f ", val);
 		}
 	}
 	printf("\n");
