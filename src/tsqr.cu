@@ -38,6 +38,36 @@ void debug_func(Func func) {
 #endif
 }
 
+template <class DST_T, class SRC_T>
+__device__ void copy_32x16(
+		DST_T* const dst_ptr,
+		const SRC_T* const src_ptr,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr auto stride = warp_size;
+	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i += stride) {
+		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
+	}
+	__syncthreads();
+}
+
+template <class DST_T, class SRC_T>
+__device__ void copy_16x16(
+		DST_T* const dst_ptr,
+		const SRC_T* const src_ptr,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 16;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr auto stride = warp_size;
+	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i += stride) {
+		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
+	}
+	__syncthreads();
+}
+
 // backward 1層目以外
 template <bool UseTC, bool Refine, class T>
 __global__ void tsqr_backward(
