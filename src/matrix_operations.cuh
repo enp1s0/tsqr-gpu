@@ -55,6 +55,43 @@ __device__ inline void diff32x16_2w(
 	}
 	__syncthreads();
 }
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff32x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const unsigned tid
+		) {
+	const auto y = tid & 0x1f;
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x += 1) {
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+
+		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
+
+template <std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff16x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const unsigned tid
+		) {
+	constexpr auto load_size = FRAGMENT_DIM_M >> 1;
+	const auto unique_id = tid & 0x1f;
+	const auto x = unique_id >> 1;
+
+	const auto start_y = (unique_id & 0b1) * load_size;
+	for(std::size_t i = 0; i < load_size; i++) {
+		const auto y = start_y + i;
+
+		// copy
+		const auto shared_index = x * FRAGMENT_DIM_M + y;
+
+		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
 } // namespace matrix_operation
 } // namespace mtk
 #endif /* end of include guard */
