@@ -197,6 +197,87 @@ __global__ void tsqr_backward<true, false, half>(
 			);
 }
 
+template <>
+__global__ void tsqr_backward<true, true, float>(
+		float* const ac_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t k
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = (1lu << (k)) * 2 * n;
+
+	if(matrix_id >= (1lu << k)) return;
+
+	__shared__ half shared_ac_f16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_f32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_b_f16[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_b_f32[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_fp16_ptr = shared_ac_f16 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp32_ptr = shared_b_f32 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// ACのコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp32_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
+	copy_32x16(shared_ac_fp16_ptr, shared_ac_fp32_ptr, tid);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp32_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
+	copy_16x16(shared_b_fp16_ptr, shared_b_fp32_ptr, tid);
+
+	// TCによる行列積
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0_diff, frag_a1_diff;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b_diff;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
+
+	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
+	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, tid);
+	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, tid);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0_diff, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1_diff, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b_diff, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0_diff, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1_diff, frag_b, frag_c1);
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b_diff, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b_diff, frag_c1);
+
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_fp32_ptr, 2 * n, n,
+			tid
+			);
+}
+
 template <bool UseTC, bool Refine, class OUTPUT_T, class INPUT_T>
 __global__ void tsqr_backward_layer0(
 		OUTPUT_T* const q_ptr,
@@ -323,6 +404,91 @@ __global__ void tsqr_backward_layer0<true, false, float, half>(
 
 	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
 	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	mtk::matrix_copy::s2g32x16_1w(
+			q_ptr, q_start_pos, ac_m,
+			shared_ac_fp32_ptr, sub_m, n,
+			tid
+			);
+}
+
+template <>
+__global__ void tsqr_backward_layer0<true, true, float, float>(
+		float* const q_ptr,
+		const float* const a_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t batch_size,
+		const unsigned* const q_start_position
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = q_start_position[batch_size];
+	const auto q_start_pos = q_start_position[matrix_id];
+	const auto sub_m = q_start_position[matrix_id + 1] - q_start_pos;
+
+	if(matrix_id >= batch_size) return;
+
+	__shared__ half shared_ac_f16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_f32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_b_f16[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_b_f32[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_fp16_ptr = shared_ac_f16 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_fp32_ptr = shared_b_f32 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// A のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_fp32_ptr, sub_m, n,
+			a_ptr, q_start_pos, ac_m,
+			tid
+			);
+	copy_32x16(shared_ac_fp16_ptr, shared_ac_fp32_ptr, tid);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_fp32_ptr, n, n,
+			b_ptr, matrix_id * n, n * batch_size,
+			tid
+			);
+	copy_16x16(shared_b_fp16_ptr, shared_b_fp32_ptr, tid);
+
+	// TCによる行列積
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0_diff, frag_a1_diff;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b_diff;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
+
+	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
+	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, tid);
+	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, tid);
+
+	nvcuda::wmma::load_matrix_sync(frag_a0_diff, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_a1_diff, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(frag_b_diff, shared_b_fp16_ptr, FRAGMENT_DIM_N);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0_diff, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1_diff, frag_b, frag_c1);
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b_diff, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b_diff, frag_c1);
 
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
@@ -549,3 +715,4 @@ template void mtk::tsqr::tsqr16<true, false, float>(float* const, float* const, 
 template void mtk::tsqr::tsqr16<false, false, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const);
 template void mtk::tsqr::tsqr16<true, false, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const);
 template void mtk::tsqr::tsqr16<false, false, half>(half* const, half* const, const half* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const);
+template void mtk::tsqr::tsqr16<true, true, float>(float* const, float* const, const float* const, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true, true>::type* const);
