@@ -58,6 +58,7 @@ __device__ void copy_32x16(
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i += stride) {
 		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
 	}
+	__syncthreads();
 }
 
 template <class T, class U_T>
