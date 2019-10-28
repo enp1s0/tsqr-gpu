@@ -1518,7 +1518,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float>(
 		const std::size_t batch_size,
 		const unsigned* a_start_position
 		) {
-	constexpr std::size_t max_batch_size_per_block = 2;
+	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
