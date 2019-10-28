@@ -495,7 +495,6 @@ __device__ void qr32x16_f32tc_refine_core(
 		const unsigned tid
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n; k++) {
 		debug_func(
