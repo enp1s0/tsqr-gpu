@@ -137,6 +137,7 @@ template void mtk::test::precision<true, false, float>(const std::size_t, const 
 template void mtk::test::precision<true, false, half>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::precision<false, false, float>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::precision<false, false, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test::precision<true, true, float>(const std::size_t, const std::size_t, const std::size_t);
 
 template <bool UseTC, bool Refine, class T>
 void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
@@ -196,6 +197,7 @@ template void mtk::test::speed<true, false, float>(const std::size_t, const std:
 template void mtk::test::speed<true, false, half>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::speed<false, false, float>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::speed<false, false, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test::speed<true, true, float>(const std::size_t, const std::size_t, const std::size_t);
 
 template <class T>
 void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
