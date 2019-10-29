@@ -13,7 +13,9 @@ __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, 
 	for(int i = 0; i < m; i++) {
 		for(int j = 0; j < n; j++) {
 			const auto val = cutf::type::cast<float>(ptr[j * m + i]);
-			if(val < 0.0f) {
+			if(val == 0.0f) {
+				printf(" %.5f ", 0.0);
+			}else if (val < 0.0){
 				printf("%.5f ", val);
 			}else{
 				printf(" %.5f ", val);
@@ -28,7 +30,9 @@ __device__ __host__ inline void print_matrix(const T* const ptr, std::size_t m, 
 	for(int i = 0; i < m; i++) {
 		for(int j = 0; j < n; j++) {
 			const auto val = cutf::type::cast<float>(ptr[j * ldm + i]);
-			if(val < 0.0f) {
+			if(val == 0.0f) {
+				printf(" %.5f ", 0.0);
+			}else if (val < 0.0){
 				printf("%.5f ", val);
 			}else{
 				printf(" %.5f ", val);
@@ -43,7 +47,9 @@ __device__ __host__ inline void print_matrix_16x16(const T* const ptr, std::size
 	for(int i = 0; i < m; i++) {
 		for(int j = 0; j < n; j++) {
 			const auto val = cutf::type::cast<float>(ptr[j * 16 + i]);
-			if(val < 0.0f) {
+			if(val == 0.0f) {
+				printf(" %.5f ", 0.0);
+			}else if (val < 0.0){
 				printf("%.5f ", val);
 			}else{
 				printf(" %.5f ", val);
@@ -58,7 +64,9 @@ __device__ __host__ inline void print_matrix_32x16(const T* const ptr, std::size
 	for(int i = 0; i < m; i++) {
 		for(int j = 0; j < n; j++) {
 			const auto val = cutf::type::cast<float>(ptr[j * 32 + i]);
-			if(val < 0.0f) {
+			if(val == 0.0f) {
+				printf(" %.5f ", 0.0);
+			}else if (val < 0.0){
 				printf("%.5f ", val);
 			}else{
 				printf(" %.5f ", val);
@@ -72,7 +80,9 @@ __device__ __host__ inline void print_matrix_diag(const T* const ptr, std::size_
 	if(name != nullptr) printf("%s = \n", name);
 	for(int j = 0; j < n; j++) {
 		const auto val = cutf::type::cast<float>(ptr[j * (n + 1)]);
-		if(val < 0.0f) {
+		if(val == 0.0f) {
+			printf(" %.5f ", 0.0);
+		}else if (val < 0.0){
 			printf("%.5f ", val);
 		}else{
 			printf(" %.5f ", val);
@@ -85,7 +95,9 @@ __device__ __host__ inline void print_matrix_diag_16x16(const T* const ptr, std:
 	if(name != nullptr) printf("%s = \n", name);
 	for(int j = 0; j < n; j++) {
 		const auto val = cutf::type::cast<float>(ptr[j * (16 + 1)]);
-		if(val < 0.0f) {
+		if(val == 0.0f) {
+			printf(" %.5f ", 0.0);
+		}else if (val < 0.0){
 			printf("%.5f ", val);
 		}else{
 			printf(" %.5f ", val);

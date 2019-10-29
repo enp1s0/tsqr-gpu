@@ -38,6 +38,55 @@ __device__ inline void make_identity_matrix(
 		) {
 	make_identity_matrix<T, FRAGMENT_DIM_M, num_warps>(target_ptr, tid, cutf::type::cast<T>(1.0f));
 }
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff32x16_2w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const unsigned tid
+		) {
+	const auto unique_id = tid & 0x3f;
+	const auto y = unique_id & 0x1f;
+	const auto lane = unique_id >> 5;
+	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+
+		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff32x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const unsigned tid
+		) {
+	const auto y = tid & 0x1f;
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x += 1) {
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+
+		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
+
+template <std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff16x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const unsigned tid
+		) {
+	const auto unique_id = tid & 0x1f;
+	const unsigned warp_size = 32;
+
+	for(std::size_t i = 0; i < FRAGMENT_DIM_M * FRAGMENT_DIM_N; i += warp_size) {
+		const auto shared_index = i + unique_id;
+
+		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
 } // namespace matrix_operation
 } // namespace mtk
 #endif /* end of include guard */
