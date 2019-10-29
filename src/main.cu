@@ -30,6 +30,11 @@ int main() {
 		std::cerr<<e.what()<<std::endl;
 	};
 	try{
+		mtk::test::precision<true, true, float>(min_m, max_m, n);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
 		mtk::test::cusolver_precision<float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
@@ -58,6 +63,11 @@ int main() {
 	};
 	try{
 		mtk::test::speed<false, false, half>(min_m, max_m, n);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test::speed<true, true, float>(min_m, max_m, n);
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
