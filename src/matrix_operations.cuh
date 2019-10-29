@@ -77,16 +77,12 @@ __device__ inline void diff16x16_1w(
 		const float* const src_fp32, const half* const src_fp16,
 		const unsigned tid
 		) {
-	constexpr auto load_size = FRAGMENT_DIM_M >> 1;
 	const auto unique_id = tid & 0x1f;
-	const auto x = unique_id >> 1;
+	const unsigned warp_size = 32;
 
-	const auto start_y = (unique_id & 0b1) * load_size;
-	for(std::size_t i = 0; i < load_size; i++) {
-		const auto y = start_y + i;
-
+	for(std::size_t i = 0; i < FRAGMENT_DIM_M * FRAGMENT_DIM_N; i += warp_size) {
 		// copy
-		const auto shared_index = x * FRAGMENT_DIM_M + y;
+		const auto shared_index = i + unique_id;
 
 		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
 	}
