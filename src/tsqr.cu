@@ -47,8 +47,9 @@ __device__ void copy_32x16(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr auto stride = warp_size;
+	const auto y = unique_id & 0x1f;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i += stride) {
-		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
+		dst_ptr[i + y] = cutf::type::cast<DST_T>(src_ptr[i + y]);
 	}
 	__syncthreads();
 }
@@ -62,8 +63,9 @@ __device__ void copy_16x16(
 	constexpr std::size_t FRAGMENT_DIM_M = 16;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr auto stride = warp_size;
+	const auto y = unique_id & 0x1f;
 	for(unsigned i = 0; i < (FRAGMENT_DIM_M * FRAGMENT_DIM_N); i += stride) {
-		dst_ptr[i + unique_id] = cutf::type::cast<DST_T>(src_ptr[i + unique_id]);
+		dst_ptr[i + y] = cutf::type::cast<DST_T>(src_ptr[i + y]);
 	}
 	__syncthreads();
 }
