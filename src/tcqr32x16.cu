@@ -607,11 +607,6 @@ __device__ void qr32x16_f32tc_refine_core(
 				h32_ptr, h16_ptr,
 				unique_id
 				);
-		//update_qr(
-		//		q32_ptr, r32_ptr,
-		//		h32_ptr,
-		//		unique_id
-		//		);
 		__syncthreads();
 #ifdef MEASURE_CLOCK
 		const auto t7 = clock64();
