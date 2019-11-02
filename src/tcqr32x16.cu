@@ -305,13 +305,16 @@ __device__ void update_qr_f32tc_refine(
 
 	// load h
 	copy_32x16(h16_ptr, h32_ptr, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	__syncthreads();
 	mtk::matrix_operation::diff32x16_2w(h16_ptr, h32_ptr, h16_ptr, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(h16_0_diff_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	__syncthreads();
 
 	copy_32x16(h16_ptr, h32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(h16_1_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load h diff
@@ -325,24 +328,29 @@ __device__ void update_qr_f32tc_refine(
 	/*  Q 0 */
 	// load q
 	copy_32x16(q16_ptr, q32_ptr, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
-	// load q diff
+	// make q diff
+	__syncthreads();
 	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr, q16_ptr, unique_id);
-	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_diff_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	__syncthreads();
 	// diff mma
+	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_diff_frag, q16_0_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_diff_frag, q32_0_frag);
+	nvcuda::wmma::load_matrix_sync(q16_1_diff_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_diff_frag, q16_1_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_diff_frag, q32_0_frag);
 
 	/*  Q 1 */
 	// load q
+	__syncthreads();
 	copy_32x16(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
@@ -351,18 +359,21 @@ __device__ void update_qr_f32tc_refine(
 	__syncthreads();
 	// load q diff
 	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_diff_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// diff mma
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_diff_frag, q16_0_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_diff_frag, q32_1_frag);
+	nvcuda::wmma::load_matrix_sync(q16_1_diff_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_diff_frag, q16_1_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_diff_frag, q32_1_frag);
 	__syncthreads();
 
 	/*  R */
 	// load r
+	__syncthreads();
 	copy_32x16(r16_ptr, r32_ptr, unique_id);
+	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
@@ -373,10 +384,10 @@ __device__ void update_qr_f32tc_refine(
 	mtk::matrix_operation::diff32x16_2w(r16_ptr, r32_ptr, r16_ptr, unique_id);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, r16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(r16_1_diff_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// diff mma
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_diff_frag, r16_0_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_diff_frag, r32_frag);
+	nvcuda::wmma::load_matrix_sync(r16_1_diff_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_diff_frag, r16_1_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_diff_frag, r32_frag);
 
@@ -600,7 +611,7 @@ __device__ void qr32x16_f32tc_refine_core(
 #ifdef MEASURE_CLOCK
 		const auto t7 = clock64();
 		if(tid == 0)
-			printf("%lu,%lu,%lu,%lu,%lu,%lu,0\n",
+			printf("%lu,%lu,%lu,%lu,%lu,0,%lu,0\n",
 					t2 - t1,
 					t3 - t2,
 					t4 - t3,
