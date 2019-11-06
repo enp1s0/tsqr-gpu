@@ -304,6 +304,21 @@ __device__ void update_qr_f32tc_refine(
 	nvcuda::wmma::fill_fragment(q32_1_frag, 0.0f);
 
 	// load h
+#if __CUDA_ARCH__ > 710
+	copy_32x16(h16_ptr, h32_ptr, unique_id);
+	__syncthreads();
+	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
+	mtk::wmma::load_matrix_with_operation_sync(h16_0_diff_frag, h32_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+			[&h16_0_frag](const unsigned index, const float v){return cutf::type::cast<half>(v - cutf::type::cast<float>(h16_0_frag.x[index]));}
+			);
+
+	copy_32x16(h16_ptr, h32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	__syncthreads();
+	nvcuda::wmma::load_matrix_sync(h16_1_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
+	mtk::wmma::load_matrix_with_operation_sync(h16_1_diff_frag, h32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+			[&h16_1_frag](const unsigned index, const float v){return cutf::type::cast<half>(v - cutf::type::cast<float>(h16_1_frag.x[index]));}
+			);
+#else
 	copy_32x16(h16_ptr, h32_ptr, unique_id);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
@@ -324,6 +339,7 @@ __device__ void update_qr_f32tc_refine(
 			unique_id);
 	nvcuda::wmma::load_matrix_sync(h16_1_diff_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
 	__syncthreads();
+#endif
 
 	/*  Q 0 */
 	// load q
