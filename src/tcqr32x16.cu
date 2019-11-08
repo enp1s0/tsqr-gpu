@@ -337,7 +337,6 @@ __device__ void update_qr_f32tc_refine(
 	// make q diff
 	__syncthreads();
 	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr, q16_ptr, unique_id);
-	__syncthreads();
 	// diff mma
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_diff_frag, q16_0_frag, q32_0_frag);
@@ -360,7 +359,6 @@ __device__ void update_qr_f32tc_refine(
 	__syncthreads();
 	// load q diff
 	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
-	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	// diff mma
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_diff_frag, q16_0_frag, q32_1_frag);
