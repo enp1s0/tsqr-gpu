@@ -6,6 +6,13 @@
 ```
 git clone [this remote repository] --recursive
 cd tsqr-gpu
+make
+```
+
+## How to build shared library
+```
+git clone [this remote repository] --recursive
+cd tsqr-gpu
 make -f Makefile.library
 ```
 
