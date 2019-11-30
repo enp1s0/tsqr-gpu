@@ -2,7 +2,7 @@
 
 ![TSQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
 
-## How to build shared library
+## How to build test
 ```
 git clone [this remote repository] --recursive
 cd tsqr-gpu
