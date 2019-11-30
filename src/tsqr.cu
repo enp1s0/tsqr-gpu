@@ -520,8 +520,10 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 
 template <bool UseTC, bool Refine, class T>
 void tsqr16_geq32(
-		T* const q_ptr, T* const r_ptr, 
-		const T* const a_ptr, const std::size_t m, const std::size_t n,
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		const T* const a_ptr, const std::size_t lda,
+		const std::size_t m, const std::size_t n,
 		typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr) {
 
 	const std::size_t max_batch_size_per_block = 4;
