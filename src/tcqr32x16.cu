@@ -1516,8 +1516,8 @@ void mtk::tcqr::qr32x16_batched(
 			a_start_position
 			);
 }
-template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, float* const r, const float* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
-template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, half* const r, const half* const a, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, const std::size_t, float* const r, const std::size_t, const float* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, const std::size_t, half* const r, const std::size_t, const half* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
 
 template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
 		float* const q, const std::size_t ldq,
@@ -1612,7 +1612,7 @@ void mtk::tcqr::qr32x16(
 }
 
 template void mtk::tcqr::qr32x16<false, false, float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int);
-template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int);
+template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int);
 
 template<> void mtk::tcqr::qr32x16<true, false, half, half, half>(
 		half* const q, const std::size_t ldq,
