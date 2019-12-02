@@ -47,8 +47,10 @@ cudaMalloc((void**)&d_wq, sizeof(typename mtk::tsqr::get_working_r_type<compute_
 
 // TSQR
 mtk::tsqr::tsqr16<UseTC, Refine>(
-	d_q, d_r,
-	d_a, M, N,
+	d_q, M,
+	d_r, N,
+	d_a, M,
+	M, N,
 	d_wq,
 	d_wr
 	);
