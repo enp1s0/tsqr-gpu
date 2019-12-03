@@ -17,7 +17,7 @@ test: matrix_copy_16x16.test matrix_copy_32x16.test calc_batchsize.test matrix_c
 	$(NVCC) $(NVCCFLAGS) $< -o $@
 
 library_link.test: library_link.cu
-	$(NVCC) $(NVCCFLAGS) $< -o $@ -I../src ../lib/libtsqr.a
+	$(NVCC) $(NVCCFLAGS) $< -o $@ -I../src ../lib/libtsqr.a -lcublas
 
 clean:
 	rm -rf *.test
