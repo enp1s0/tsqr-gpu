@@ -76,8 +76,10 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 
 			mtk::tsqr::tsqr16<UseTC, Refine, T>(
-					d_q.get(), d_r.get(),
-					d_a.get(), m, n,
+					d_q.get(), m,
+					d_r.get(), n,
+					d_a.get(), m,
+					m, n,
 					d_working_q.get(),
 					d_working_r.get()
 					);
@@ -169,8 +171,10 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 
 		// for cache
 		mtk::tsqr::tsqr16<UseTC, Refine, T>(
-				d_q.get(), d_r.get(),
-				d_a.get(), m, n,
+				d_q.get(), m,
+				d_r.get(), n,
+				d_a.get(), m,
+				m, n,
 				d_working_q.get(),
 				d_working_r.get()
 				);
@@ -178,8 +182,10 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 				for(std::size_t c = 0; c < C; c++) {
 				mtk::tsqr::tsqr16<UseTC, Refine, T>(
-						d_q.get(), d_r.get(),
-						d_a.get(), m, n,
+						d_q.get(), m,
+						d_r.get(), n,
+						d_a.get(), m,
+						m, n,
 						d_working_q.get(),
 						d_working_r.get()
 						);
