@@ -557,7 +557,7 @@ void tsqr16_geq32(
 	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
 	mtk::tcqr::qr32x16_batched<UseTC, Refine>(
-			working_q_ptr, ldq,
+			working_q_ptr, m,
 			working_r_ptrs[0], n * batch_size,
 			a_ptr, lda, m, n,
 			batch_size, d_sub_m_list.get()
@@ -683,7 +683,7 @@ void tsqr16_geq32(
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
 		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(n * m);
-		cutf::memory::copy(h_tmp.get(), q_ptr, m * n);
+		cutf::memory::copy(h_tmp.get(), q_ptr, ldq * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (result)");
 	}
 #endif
@@ -707,7 +707,8 @@ void mtk::tsqr::tsqr16(
 		const std::size_t m, const std::size_t n,
 		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr) {
 	if(m > 32) {
-		tsqr16_geq32<UseTC, Refine>(q_ptr, ldq,
+		tsqr16_geq32<UseTC, Refine>(
+				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
 				m, n,
