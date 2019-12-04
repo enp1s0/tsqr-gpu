@@ -2,6 +2,7 @@
 #define __TSQR_HPP__
 #include <cstddef>
 #include <cuda_fp16.h>
+
 namespace mtk {
 namespace tsqr {
 // get batch size
