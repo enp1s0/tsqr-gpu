@@ -21,13 +21,14 @@ std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
 
 template <bool UseTC, bool Refine, class T>
 void tsqr16(
-		T* const q_ptr,
-		T* const r_ptr,
-		const T* const a_ptr,
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		const T* const a_ptr, const std::size_t lda,
 		const std::size_t m,
 		const std::size_t n,
 		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr,
-		typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr);
+		typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
+		cudaStream_t const cuda_stream = nullptr);
 } // namespace tsqr
 } // namespace mtk
 
