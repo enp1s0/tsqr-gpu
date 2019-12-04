@@ -1503,13 +1503,14 @@ void mtk::tcqr::qr32x16_batched(
 		const A_T* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
-		const unsigned* a_start_position
+		const unsigned* a_start_position,
+		cudaStream_t const cuda_stream
 		) {
 	constexpr std::size_t max_batch_size_per_block = 2;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_batched_kernel<Q_T, R_T, A_T><<<grid_size, block_size>>>(
+	qr32x16_batched_kernel<Q_T, R_T, A_T><<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1518,8 +1519,8 @@ void mtk::tcqr::qr32x16_batched(
 			a_start_position
 			);
 }
-template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, const std::size_t, float* const r, const std::size_t, const float* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
-template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, const std::size_t, half* const r, const std::size_t, const half* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position);
+template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, const std::size_t, float* const r, const std::size_t, const float* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
+template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, const std::size_t, half* const r, const std::size_t, const half* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
 
 template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
 		float* const q, const std::size_t ldq,
@@ -1527,13 +1528,14 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
 		const float* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
-		const unsigned* a_start_position
+		const unsigned* a_start_position,
+		cudaStream_t const cuda_stream
 		) {
 	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_f32tc_batched_kernel<float, float><<<grid_size, block_size>>>(
+	qr32x16_f32tc_batched_kernel<float, float><<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1549,13 +1551,14 @@ template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float>(
 		const float* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
-		const unsigned* a_start_position
+		const unsigned* a_start_position,
+		cudaStream_t const cuda_stream
 		) {
 	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_f32tc_refine_batched_kernel<<<grid_size, block_size>>>(
+	qr32x16_f32tc_refine_batched_kernel<<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1571,13 +1574,14 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, half, half, half>(
 		const half* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
-		const unsigned* a_start_position
+		const unsigned* a_start_position,
+		cudaStream_t const cuda_stream
 		) {
 	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_f16tc_batched_kernel<<<grid_size, block_size>>>(
+	qr32x16_f16tc_batched_kernel<<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1592,13 +1596,14 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float>(
 		const float* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		const std::size_t batch_size,
-		const unsigned* a_start_position
+		const unsigned* a_start_position,
+		cudaStream_t const cuda_stream
 		) {
 	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_f32tc_batched_kernel<half, float><<<grid_size, block_size>>>(
+	qr32x16_f32tc_batched_kernel<half, float><<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1613,9 +1618,10 @@ void mtk::tcqr::qr32x16(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
 		const A_T* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n
+		const unsigned int m, const unsigned int n,
+		cudaStream_t const cuda_stream
 		) {
-	qr32x16_kernel<Q_T, R_T, A_T><<<1, 2 * warp_size>>>(
+	qr32x16_kernel<Q_T, R_T, A_T><<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1623,15 +1629,16 @@ void mtk::tcqr::qr32x16(
 			);
 }
 
-template void mtk::tcqr::qr32x16<false, false, float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int);
-template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int);
+template void mtk::tcqr::qr32x16<false, false, float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
 
 template<> void mtk::tcqr::qr32x16<true, false, half, half, half>(
 		half* const q, const std::size_t ldq,
 		half* const r, const std::size_t ldr,
 		const half* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n) {
-	qr32x16_f16tc_kernel<<<1, 2 * warp_size>>>(
+		const unsigned int m, const unsigned int n,
+		cudaStream_t const cuda_stream) {
+	qr32x16_f16tc_kernel<<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1643,8 +1650,9 @@ template<> void mtk::tcqr::qr32x16<true, false, half, float, float>(
 		half* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a,  const std::size_t lda,
-		const unsigned int m, const unsigned int n) {
-	qr32x16_f32tc_kernel<half, float><<<1, 2 * warp_size>>>(
+		const unsigned int m, const unsigned int n,
+		cudaStream_t const cuda_stream) {
+	qr32x16_f32tc_kernel<half, float><<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1656,8 +1664,9 @@ template<> void mtk::tcqr::qr32x16<true, false, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n) {
-	qr32x16_f32tc_kernel<float, float><<<1, 2 * warp_size>>>(
+		const unsigned int m, const unsigned int n,
+		cudaStream_t const cuda_stream) {
+	qr32x16_f32tc_kernel<float, float><<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -1669,8 +1678,9 @@ template<> void mtk::tcqr::qr32x16<true, true, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n) {
-	qr32x16_f32tc_refine_kernel<<<1, 2 * warp_size>>>(
+		const unsigned int m, const unsigned int n,
+		cudaStream_t const cuda_stream) {
+	qr32x16_f32tc_refine_kernel<<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
