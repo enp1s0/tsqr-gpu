@@ -39,52 +39,42 @@ void mtk::qr::qr(
 
 		const auto current_block_n = std::min(tsqr_colmun_size, n - b * tsqr_colmun_size);
 		const auto previous_block_n = b * tsqr_colmun_size;
-		// compute R12
 		const auto one = cutf::type::cast<T>(1.0f);
 		const auto zero = cutf::type::cast<T>(0.0f);
 		const auto minus_one = cutf::type::cast<T>(-1.0f);
-		//QR factorization of A'
-		mtk::tsqr::tsqr16<UseTC, Refinement>(
-				q_ptr + previous_block_n * ldq, ldq,
-				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
-				a_ptr + previous_block_n * ldq, lda,
-				m, tsqr_colmun_size,
-				wq_ptr,
-				wr_ptr
-				);
 		if (b != 0) {
-			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
-						sub_cublas_handle,
-						CUBLAS_OP_T, CUBLAS_OP_N,
-						previous_block_n, current_block_n, m,
-						&one,
-						q_ptr, ldq,
-						a_ptr + lda * previous_block_n, lda,
-						&zero,
-						r_ptr + ldr * previous_block_n, ldr
-						));
-		
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						main_cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
 						previous_block_n, tsqr_colmun_size, m,
 						&one,
 						q_ptr, ldq,
-						q_ptr + ldq * previous_block_n, ldq,
+						a_ptr + lda * previous_block_n, lda,
 						&zero,
-						wm_ptr, previous_block_n
+						r_ptr + ldr * previous_block_n, ldr
 						));
+			// compute A'
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						main_cublas_handle,
 						CUBLAS_OP_N, CUBLAS_OP_N,
-						m, tsqr_colmun_size, previous_block_n,
+						m, current_block_n, previous_block_n,
 						&minus_one,
 						q_ptr, ldq,
-						wm_ptr, previous_block_n,
+						r_ptr + ldr * previous_block_n, ldr,
 						&one,
-						q_ptr + ldq * previous_block_n, ldq
+						a_ptr + lda * previous_block_n, lda
 						));
 		}
+		CUTF_HANDLE_ERROR(cudaStreamSynchronize(main_cuda_stream));
+		//QR factorization of A'
+		mtk::tsqr::tsqr16<UseTC, Refinement>(
+				q_ptr + previous_block_n * ldq, ldq,
+				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
+				a_ptr + previous_block_n * lda, lda,
+				m, tsqr_colmun_size,
+				wq_ptr,
+				wr_ptr
+				);
 	}
 }
 
