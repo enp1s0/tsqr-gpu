@@ -7,10 +7,6 @@
 namespace mtk {
 namespace qr {
 
-// get working memory type
-template <class T, bool UseTC, bool Refine>
-struct get_working_memory_type{using type = T;};
-
 template <class T, bool UseTC, bool Refine>
 struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type;};
 
@@ -18,7 +14,6 @@ template <class T, bool UseTC, bool Refine>
 struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type;};
 
 // get working memory size
-std::size_t get_working_memory_size(const std::size_t n);
 std::size_t get_working_q_size(const std::size_t m);
 std::size_t get_working_r_size(const std::size_t m);
 
@@ -30,7 +25,6 @@ void qr(
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
-		typename mtk::qr::get_working_memory_type<T, UseTC, Refinement>::type* const wm_ptr,
 		cublasHandle_t const main_cublas_handle, cublasHandle_t const sub_cublas_handle);
 } // namespace qr
 } // namespace mtk
