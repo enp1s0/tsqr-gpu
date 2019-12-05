@@ -26,7 +26,7 @@ template <bool UseTC, bool Refinement, class T>
 void qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
