@@ -19,16 +19,16 @@ void mtk::qr::qr(
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
-		cublasHandle_t const main_cublas_handle, cublasHandle_t const sub_cublas_handle) {
+		cublasHandle_t const cublas_handle) {
 
 	const auto column_block_size = (n + tsqr_colmun_size - 1) / tsqr_colmun_size;
 	
-	cudaStream_t main_cuda_stream;
-	CUTF_HANDLE_ERROR(cublasGetStream(main_cublas_handle, &main_cuda_stream));
+	cudaStream_t cuda_stream;
+	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
 
 	// QR factorization of each block
 	for (std::size_t b = 0; b < column_block_size; b++) {
-		CUTF_HANDLE_ERROR(cudaStreamSynchronize(main_cuda_stream));
+		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 
 		const auto current_block_n = std::min(tsqr_colmun_size, n - b * tsqr_colmun_size);
 		const auto previous_block_n = b * tsqr_colmun_size;
@@ -37,7 +37,7 @@ void mtk::qr::qr(
 		const auto minus_one = cutf::type::cast<T>(-1.0f);
 		if (b != 0) {
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
-						main_cublas_handle,
+						cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
 						previous_block_n, tsqr_colmun_size, m,
 						&one,
@@ -48,7 +48,7 @@ void mtk::qr::qr(
 						));
 			// compute A'
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
-						main_cublas_handle,
+						cublas_handle,
 						CUBLAS_OP_N, CUBLAS_OP_N,
 						m, current_block_n, previous_block_n,
 						&minus_one,
@@ -58,7 +58,7 @@ void mtk::qr::qr(
 						a_ptr + lda * previous_block_n, lda
 						));
 		}
-		CUTF_HANDLE_ERROR(cudaStreamSynchronize(main_cuda_stream));
+		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 		//QR factorization of A'
 		mtk::tsqr::tsqr16<UseTC, Refinement>(
 				q_ptr + previous_block_n * ldq, ldq,
@@ -67,9 +67,9 @@ void mtk::qr::qr(
 				m, tsqr_colmun_size,
 				wq_ptr,
 				wr_ptr,
-				main_cuda_stream
+				cuda_stream
 				);
-		CUTF_HANDLE_ERROR(cudaStreamSynchronize(main_cuda_stream));
+		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 	}
 }
 
