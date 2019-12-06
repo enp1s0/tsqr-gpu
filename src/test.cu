@@ -78,14 +78,15 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 
-			mtk::qr::qr<UseTC, Refine, T>(
+			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+			mtk::qr::qr<UseTC, Refine>(
 					d_q.get(), m,
 					d_r.get(), n,
 					d_a.get(), m,
 					m, n,
 					d_working_q.get(),
 					d_working_r.get(),
-					*cublas_handle.get(), *cublas_handle.get()
+					*cublas_handle.get()
 					);
 
 			cutf::memory::copy(h_r.get(), d_r.get(), n * n);
