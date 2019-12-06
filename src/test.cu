@@ -30,13 +30,21 @@ __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, con
 
 	dst[tid] = src[m * x + y];
 }
-} // namespace 
+
 template <class DST_T, class SRC_T>
 __global__ void convert_copy(DST_T* const dst, const SRC_T* const src, const std::size_t size){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if(tid >= size) return;
 	dst[tid] = cutf::type::cast<DST_T>(src[tid]);
 }
+
+template <class DST_T>
+__global__ void make_zero(DST_T* const dst, const std::size_t size){
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	if(tid >= size) return;
+	dst[tid] = cutf::type::cast<DST_T>(0);
+}
+} // namespace
 
 template <bool UseTC, bool Refine, class T>
 void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
@@ -77,6 +85,7 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			}
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
+			make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
 			mtk::qr::qr<UseTC, Refine>(
@@ -88,12 +97,11 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 					d_working_r.get(),
 					*cublas_handle.get()
 					);
-
-			cutf::memory::copy(h_r.get(), d_r.get(), n * n);
+			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
 
 			convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
 			convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
-			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r_test.get(), n, n);
+			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
 
 			// verify
 			const float alpha = 1.0f, beta = -1.0f;
