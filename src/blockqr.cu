@@ -26,6 +26,10 @@ void mtk::qr::qr(
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
 
+	if (UseTC && !Refinement) {
+		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
+	}
+
 	// QR factorization of each block
 	for (std::size_t b = 0; b < column_block_size; b++) {
 		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
