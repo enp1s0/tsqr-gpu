@@ -25,7 +25,7 @@ void qr(
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
-		cublasHandle_t const main_cublas_handle, cublasHandle_t const sub_cublas_handle);
+		cublasHandle_t const main_cublas_handle);
 } // namespace qr
 } // namespace mtk
 
