@@ -5,7 +5,7 @@
 
 constexpr std::size_t min_m = 1 << 10;
 constexpr std::size_t max_m = 1 << 27;
-constexpr std::size_t n = 16;
+constexpr std::size_t n = 64;
 
 int main() {
 	std::cout<<"# precision test"<<std::endl;
