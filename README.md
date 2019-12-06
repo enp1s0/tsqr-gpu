@@ -16,7 +16,7 @@ cd tsqr-gpu
 make -f Makefile.library
 ```
 
-You can find `libtsqr.a` in `lib` directory.
+You can find `libtcqr.a` in `lib` directory.
 
 ## Sample
 ### TSQR
@@ -102,7 +102,7 @@ mtk::qr::qr<UseTC, Refine>(
 
 ### Build
 ```
-nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtsqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
+nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtcqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
 ```
 
 
