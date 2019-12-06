@@ -191,7 +191,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 				m, n,
 				d_working_q.get(),
 				d_working_r.get(),
-				*cublas_handle.get(), *cublas_handle.get()
+				*cublas_handle.get()
 				);
 
 		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
@@ -203,7 +203,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 						m, n,
 						d_working_q.get(),
 						d_working_r.get(),
-						*cublas_handle.get(), *cublas_handle.get()
+						*cublas_handle.get()
 						);
 				}}) / C;
 
