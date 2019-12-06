@@ -11,6 +11,7 @@
 #include "tcqr.hpp"
 #include "tsqr.hpp"
 #include "utils.hpp"
+#include "blockqr.hpp"
 #include "validation.hpp"
 
 template <class T> std::string get_type_name();
@@ -44,6 +45,8 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
+	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
+
 	std::cout<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -52,10 +55,10 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
 		auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 		auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(
-				mtk::tsqr::get_working_q_size(m, n));
-		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type>(
-				mtk::tsqr::get_working_r_size(m, n));
+		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
+				mtk::qr::get_working_q_size(m));
+		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
+				mtk::qr::get_working_r_size(m));
 		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
 		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -75,13 +78,14 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 
-			mtk::tsqr::tsqr16<UseTC, Refine, T>(
+			mtk::qr::qr<UseTC, Refine, T>(
 					d_q.get(), m,
 					d_r.get(), n,
 					d_a.get(), m,
 					m, n,
 					d_working_q.get(),
-					d_working_r.get()
+					d_working_r.get(),
+					*cublas_handle.get(), *cublas_handle.get()
 					);
 
 			cutf::memory::copy(h_r.get(), d_r.get(), n * n);
@@ -91,10 +95,9 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r_test.get(), n, n);
 
 			// verify
-			auto cublas = cutf::cublas::get_cublas_unique_ptr();
 			const float alpha = 1.0f, beta = -1.0f;
 			cutf::cublas::gemm(
-					*cublas.get(),
+					*cublas_handle.get(),
 					CUBLAS_OP_N, CUBLAS_OP_N,
 					m, n, n,
 					&alpha,
@@ -151,15 +154,17 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
+	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
+
 	std::cout<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(
-				mtk::tsqr::get_working_q_size(m, n));
-		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type>(
-				mtk::tsqr::get_working_r_size(m, n));
+		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
+				mtk::qr::get_working_q_size(m));
+		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
+				mtk::qr::get_working_r_size(m));
 		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
@@ -170,24 +175,26 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 		// for cache
-		mtk::tsqr::tsqr16<UseTC, Refine, T>(
+		mtk::qr::qr<UseTC, Refine, T>(
 				d_q.get(), m,
 				d_r.get(), n,
 				d_a.get(), m,
 				m, n,
 				d_working_q.get(),
-				d_working_r.get()
+				d_working_r.get(),
+				*cublas_handle.get(), *cublas_handle.get()
 				);
 
 		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 				for(std::size_t c = 0; c < C; c++) {
-				mtk::tsqr::tsqr16<UseTC, Refine, T>(
+				mtk::qr::qr<UseTC, Refine, T>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
 						m, n,
 						d_working_q.get(),
-						d_working_r.get()
+						d_working_r.get(),
+						*cublas_handle.get(), *cublas_handle.get()
 						);
 				}}) / C;
 
