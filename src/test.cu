@@ -160,10 +160,6 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
-		return 2 * n * (m * m * n + m * m * m);
-	};
-
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
 	std::cout<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
@@ -211,7 +207,14 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		std::size_t complexity = 0;
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto pannel_block_size = (n + 16 - 1) / 16;
-		const auto tsqr_comprexity = [&get_qr_complexity, &batch_size](const std::size_t m, const std::size_t n) {return batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;};
+
+		auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
+			return 2 * n * (m * m * n + m * m * m);
+		};
+		const auto tsqr_comprexity = [&get_qr_complexity, &batch_size](const std::size_t m, const std::size_t n) {
+			return batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
+		};
+
 		for (std::size_t i = 0; i < pannel_block_size; i++) {
 			const auto local_n = std::min(16lu, n - i * 16lu);
 			complexity += tsqr_comprexity(m, local_n);
