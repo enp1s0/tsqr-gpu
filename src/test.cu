@@ -354,7 +354,7 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 		orthogonality_deviation /= C;
 
 
-		ost<<m<<","<<n<<",float,cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
 	ost.close();
 }
@@ -445,7 +445,7 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		ost<<m<<","<<n<<",T,cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
+		ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
 	}
 	ost.close();
 }
