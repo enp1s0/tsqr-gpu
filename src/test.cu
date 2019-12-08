@@ -168,10 +168,6 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	std::string filename = "speed-" + get_type_name<T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
 	std::ofstream ost(filename);
 
-	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
-		return 2 * n * (m * m * n + m * m * m);
-	};
-
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
 	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size\n";
