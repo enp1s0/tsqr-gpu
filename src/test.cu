@@ -10,7 +10,6 @@
 #include <vector>
 #include "test.hpp"
 #include "tcqr.hpp"
-#include "tsqr.hpp"
 #include "utils.hpp"
 #include "blockqr.hpp"
 #include "validation.hpp"
@@ -230,7 +229,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		}
 
 		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
-			(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type) + mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
+			(mtk::qr::get_working_q_size(m) * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + mtk::qr::get_working_r_size(m) * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
 	}
 	ost.close();
 }
