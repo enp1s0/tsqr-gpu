@@ -238,7 +238,7 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "precision-" + get_type_name<T>() + "-cublas.csv";
+	std::string filename = "precision-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
@@ -355,7 +355,7 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "speed-" + get_type_name<T>() + "-cublas.csv";
+	std::string filename = "speed-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
