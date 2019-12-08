@@ -174,10 +174,10 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
-				mtk::qr::get_working_q_size(m));
-		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
-				mtk::qr::get_working_r_size(m));
+		const auto working_q_size = mtk::qr::get_working_q_size(m);
+		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(working_q_size);
+		const auto working_r_size = mtk::qr::get_working_r_size(m);
+		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(working_r_size);
 		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
@@ -229,7 +229,7 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 		}
 
 		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
-			(mtk::qr::get_working_q_size(m) * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + mtk::qr::get_working_r_size(m) * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
+			(working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
 	}
 	ost.close();
 }
