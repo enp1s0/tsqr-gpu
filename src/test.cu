@@ -4,6 +4,7 @@
 #include <cutf/cublas.hpp>
 #include <cutf/cusolver.hpp>
 #include <iostream>
+#include <fstream>
 #include <random>
 #include <cmath>
 #include <vector>
@@ -54,9 +55,12 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
+	std::string filename = "precision-" + get_type_name<T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::ofstream ost(filename);
+
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	std::cout<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
+	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_a_test = cutf::memory::get_device_unique_ptr<float>(m * n);
@@ -144,8 +148,9 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 		error_deviation = std::sqrt(error_deviation / C);
 		orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
 
-		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
+	ost.close();
 }
 
 template void mtk::test::precision<true, false, float>(const std::size_t, const std::size_t, const std::size_t);
@@ -160,9 +165,16 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
+	std::string filename = "speed-" + get_type_name<T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::ofstream ost(filename);
+
+	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
+		return 2 * n * (m * m * n + m * m * m);
+	};
+
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	std::cout<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
+	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size\n";
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -221,9 +233,10 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 			complexity += 2 * 2 * 16 * 16 * i * m;
 		}
 
-		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
-			(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type) + mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type))<<std::endl;
+		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
+			(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type) + mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
 	}
+	ost.close();
 }
 
 template void mtk::test::speed<true, false, float>(const std::size_t, const std::size_t, const std::size_t);
@@ -239,7 +252,10 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::cout<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
+	std::string filename = "precision-" + get_type_name<T>() + "-cublas.csv";
+	std::ofstream ost(filename);
+
+	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -338,8 +354,9 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 		orthogonality_deviation /= C;
 
 
-		std::cout<<m<<","<<n<<",float,cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		ost<<m<<","<<n<<",float,cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
+	ost.close();
 }
 
 template void mtk::test::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
@@ -352,11 +369,14 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
+	std::string filename = "speed-" + get_type_name<T>() + "-cublas.csv";
+	std::ofstream ost(filename);
+
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
-	std::cout<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
+	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(std::size_t m = min_m; m <= max_m; m <<= 1) {
 		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -425,8 +445,9 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		std::cout<<m<<","<<n<<",T,cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
+		ost<<m<<","<<n<<",T,cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
 	}
+	ost.close();
 }
 template void mtk::test::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
 template void mtk::test::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);
