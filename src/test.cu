@@ -338,7 +338,7 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 		orthogonality_deviation /= C;
 
 
-		std::cout<<m<<","<<n<<",float,cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
 	}
 }
 
