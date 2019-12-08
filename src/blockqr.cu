@@ -38,8 +38,13 @@ void mtk::qr::qr(
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
 
+	cublasMath_t original_math_mode;
+	CUTF_HANDLE_ERROR(cublasGetMathMode(cublas_handle, &original_math_mode));
+
 	if (UseTC && !Refinement) {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
+	} else {
+		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
 	}
 
 #ifdef PROFILE_BREAKDOWN
@@ -132,6 +137,7 @@ void mtk::qr::qr(
 	std::printf("GEMM-1 : %e[s] (%e%%)\n", gemm_1_count / 1.0e6, static_cast<double>(gemm_1_count) / time_sum * 100);
 	std::printf("TSQR   : %e[s] (%e%%)\n", tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100);
 #endif
+	CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, original_math_mode));
 }
 
 template void mtk::qr::qr<false, false, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, cublasHandle_t const);
