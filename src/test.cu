@@ -425,7 +425,7 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-		std::cout<<m<<","<<n<<",T,cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
+		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
 	}
 }
 template void mtk::test::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
