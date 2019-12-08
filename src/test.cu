@@ -208,8 +208,15 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 						);
 				}}) / C;
 
+		std::size_t complexity = 0;
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
-		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
+		const auto pannel_block_size = (n + 16 - 1) / 16;
+		const auto tsqr_comprexity = [&get_qr_complexity, &batch_size](const std::size_t m, const std::size_t n) {return batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;};
+		for (std::size_t i = 0; i < pannel_block_size; i++) {
+			const auto local_n = std::min(16lu, n - i * 16lu);
+			complexity += tsqr_comprexity(m, local_n);
+			complexity += 2 * 2 * 16 * 16 * i * m;
+		}
 
 		std::cout<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
 			(mtk::tsqr::get_working_q_size(m, n) * sizeof(typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type) + mtk::tsqr::get_working_r_size(m, n) * sizeof(typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type))<<std::endl;
