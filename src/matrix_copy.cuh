@@ -101,8 +101,9 @@ __device__ inline void g2s32x16_2w(
 	const auto unique_id = tid & 0x3f;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
-		//const auto x = i + lane;
+#pragma unroll
+	for(std::size_t i = 0; i < FRAGMENT_DIM_N; i += 2) {
+		const auto x = i + lane;
 		DST_T val;
 		if(x < shared_n && y < shared_m) {
 			// copy
@@ -125,7 +126,9 @@ __device__ inline void s2g32x16_2w(
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
 	if(y >= shared_m) return;
-	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
+#pragma unroll
+	for(std::size_t i = 0; i < FRAGMENT_DIM_N; i += 2) {
+		const auto x = i + lane;
 		if(x >= shared_n) return;
 		const auto shared_index = FRAGMENT_DIM_M * x + y;
 		const auto global_index = global_ld * x + y + global_p_y;
@@ -146,7 +149,9 @@ __device__ inline void s2g32x32_16x32_t_2w(
 	const auto y = unique_id % FRAGMENT_DIM_M;
 	if(y >= shared_m) return;
 	const auto lane = unique_id / FRAGMENT_DIM_M;
-	for(unsigned x = lane; x < FRAGMENT_DIM_N; x += stride) {
+#pragma unroll
+	for(unsigned i = 0; i < FRAGMENT_DIM_N; i += stride) {
+		const unsigned x = i + lane;
 		if(x >= shared_n) continue;
 
 		const auto shared_index = FRAGMENT_DIM_N * x + y;
