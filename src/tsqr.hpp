@@ -20,7 +20,7 @@ struct get_working_r_type{using type = T;};
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
 
-template <bool UseTC, bool Refine, class T>
+template <bool UseTC, bool Refine, class T, class CORE_T>
 void tsqr16(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,

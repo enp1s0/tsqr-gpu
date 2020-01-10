@@ -518,7 +518,7 @@ std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t
 	return working_r_size_0 + working_r_size_1;
 }
 
-template <bool UseTC, bool Refine, class T>
+template <bool UseTC, bool Refine, class CORE_T, class T>
 void tsqr16_geq32(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
@@ -557,7 +557,7 @@ void tsqr16_geq32(
 
 	debug_func([&batch_size_log2]() {std::printf("%s : %lu bQR\n", __func__, batch_size_log2);});
 	debug_func([]() {std::printf("%s : a -> wr[0]\n", __func__);});
-	mtk::tcqr::qr32x16_batched<UseTC, Refine>(
+	mtk::tcqr::qr32x16_batched<UseTC, Refine, CORE_T>(
 			working_q_ptr, m,
 			working_r_ptrs[0], n * batch_size,
 			a_ptr, lda, m, n,
@@ -587,7 +587,7 @@ void tsqr16_geq32(
 		}
 #endif
 
-		mtk::tcqr::qr32x16_batched<UseTC, Refine>(
+		mtk::tcqr::qr32x16_batched<UseTC, Refine, CORE_T>(
 				working_q_ptr + working_q_sride, 2 * n * local_batch_size,
 				working_r_ptrs[1 - working_r_index], ldrs[1 - working_r_index],
 				working_r_ptrs[working_r_index], ldrs[working_r_index],
@@ -613,7 +613,7 @@ void tsqr16_geq32(
 	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
-	mtk::tcqr::qr32x16<UseTC, Refine>(
+	mtk::tcqr::qr32x16<UseTC, Refine, CORE_T>(
 			working_q_ptr + working_q_sride, 2 * n,
 			r_ptr, ldr,
 			working_r_ptrs[1 - (batch_size_log2 % 2)], ldrs[1 - (batch_size_log2 % 2)],
@@ -703,7 +703,7 @@ void tsqr16_geq32(
 #endif
 }
 
-template <bool UseTC, bool Refine, class T>
+template <bool UseTC, bool Refine, class T, class CORE_T>
 void mtk::tsqr::tsqr16(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
@@ -712,7 +712,7 @@ void mtk::tsqr::tsqr16(
 		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
 		cudaStream_t const cuda_stream) {
 	if(m > 32) {
-		tsqr16_geq32<UseTC, Refine>(
+		tsqr16_geq32<UseTC, Refine, CORE_T>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
@@ -720,7 +720,7 @@ void mtk::tsqr::tsqr16(
 				working_q_ptr, working_r_ptr,
 				cuda_stream);
 	}else {
-		mtk::tcqr::qr32x16<UseTC, Refine>(
+		mtk::tcqr::qr32x16<UseTC, Refine, CORE_T>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
@@ -731,8 +731,9 @@ void mtk::tsqr::tsqr16(
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
-template void mtk::tsqr::tsqr16<true, false, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<false, false, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<true, false, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<false, false, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<true, true, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true, true>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<false, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, true, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true, true>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, float, half>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, cudaStream_t const);
