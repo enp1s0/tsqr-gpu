@@ -5,7 +5,7 @@
 
 namespace mtk {
 namespace tcqr{
-template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T, class CORE_T = A_T>
+template <bool UseTC, bool Refine, class CORE_T, class Q_T, class R_T, class A_T>
 void qr32x16(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
@@ -13,7 +13,7 @@ void qr32x16(
 		const unsigned int m, const unsigned int n,
 		cudaStream_t const cuda_stream = nullptr);
 
-template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T, class CORE_T = A_T>
+template <bool UseTC, bool Refine, class CORE_T, class Q_T, class R_T, class A_T>
 void qr32x16_batched(
 		Q_T *const q, const std::size_t ldq,
 		R_T *const r, const std::size_t ldr,
