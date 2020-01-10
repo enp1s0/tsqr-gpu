@@ -131,6 +131,7 @@ void mtk::qr::qr(
 	std::printf("# BlockQR breakdown\n");
 	std::printf("Size   : %lu x %lu\n", m, n);
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
+	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
 	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
 	std::printf("Refine : %s\n", (Refinement ? "YES" : "NO"));
 	std::printf("GEMM-0 : %e[s] (%e%%)\n", gemm_0_count / 1.0e6, static_cast<double>(gemm_0_count) / time_sum * 100);
