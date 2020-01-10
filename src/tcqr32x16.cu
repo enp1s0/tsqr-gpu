@@ -1496,7 +1496,7 @@ __global__ void qr32x16_kernel(
 }
 }
 
-template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T, class CORE_T>
 void mtk::tcqr::qr32x16_batched(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
@@ -1519,10 +1519,10 @@ void mtk::tcqr::qr32x16_batched(
 			a_start_position
 			);
 }
-template void mtk::tcqr::qr32x16_batched<false, false, float, float, float>(float* const q, const std::size_t, float* const r, const std::size_t, const float* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
-template void mtk::tcqr::qr32x16_batched<false, false, half, half, half>(half* const q, const std::size_t, half* const r, const std::size_t, const half* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
+template void mtk::tcqr::qr32x16_batched<false, false, float, float, float, float>(float* const q, const std::size_t, float* const r, const std::size_t, const float* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
+template void mtk::tcqr::qr32x16_batched<false, false, half, half, half, half>(half* const q, const std::size_t, half* const r, const std::size_t, const half* const a, const std::size_t, const unsigned int m, const unsigned int n, const std::size_t batch_size, const unsigned* a_start_position, cudaStream_t const);
 
-template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
+template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
@@ -1545,7 +1545,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, float, float, float>(
 			);
 }
 
-template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float>(
+template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
@@ -1568,7 +1568,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float>(
 			);
 }
 
-template <> void mtk::tcqr::qr32x16_batched<true, false, half, half, half>(
+template <> void mtk::tcqr::qr32x16_batched<true, false, half, half, half, half>(
 		half* const q, const std::size_t ldq,
 		half* const r, const std::size_t ldr,
 		const half* const a, const std::size_t lda,
@@ -1590,7 +1590,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, half, half, half>(
 			a_start_position
 			);
 }
-template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float>(
+template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float, float>(
 		half* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
@@ -1613,7 +1613,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float>(
 			);
 }
 
-template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Refine, class Q_T, class R_T, class A_T, class CORE_T>
 void mtk::tcqr::qr32x16(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
@@ -1629,10 +1629,10 @@ void mtk::tcqr::qr32x16(
 			);
 }
 
-template void mtk::tcqr::qr32x16<false, false, float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
-template void mtk::tcqr::qr32x16<false, false, half, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<false, false, float, float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<false, false, half, half, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
 
-template<> void mtk::tcqr::qr32x16<true, false, half, half, half>(
+template<> void mtk::tcqr::qr32x16<true, false, half, half, half, half>(
 		half* const q, const std::size_t ldq,
 		half* const r, const std::size_t ldr,
 		const half* const a, const std::size_t lda,
@@ -1646,7 +1646,7 @@ template<> void mtk::tcqr::qr32x16<true, false, half, half, half>(
 			);
 }
 
-template<> void mtk::tcqr::qr32x16<true, false, half, float, float>(
+template<> void mtk::tcqr::qr32x16<true, false, half, float, float, float>(
 		half* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a,  const std::size_t lda,
@@ -1660,7 +1660,7 @@ template<> void mtk::tcqr::qr32x16<true, false, half, float, float>(
 			);
 }
 
-template<> void mtk::tcqr::qr32x16<true, false, float, float, float>(
+template<> void mtk::tcqr::qr32x16<true, false, float, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
@@ -1674,7 +1674,7 @@ template<> void mtk::tcqr::qr32x16<true, false, float, float, float>(
 			);
 }
 
-template<> void mtk::tcqr::qr32x16<true, true, float, float, float>(
+template<> void mtk::tcqr::qr32x16<true, true, float, float, float, float>(
 		float* const q, const std::size_t ldq,
 		float* const r, const std::size_t ldr,
 		const float* const a, const std::size_t lda,
