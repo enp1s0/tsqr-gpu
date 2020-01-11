@@ -15,6 +15,7 @@
 #include "validation.hpp"
 
 namespace {
+const std::string filename_prefix = "blockqr";
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
 template <> std::string get_type_name<float>() {return "float";}
@@ -54,7 +55,7 @@ void mtk::test_blockqr::precision(const std::size_t min_m, const std::size_t max
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "precision-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
 	std::ofstream ost(filename);
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
@@ -166,7 +167,7 @@ void mtk::test_blockqr::speed(const std::size_t min_m, const std::size_t max_m) 
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "speed-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
 	std::ofstream ost(filename);
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
@@ -251,7 +252,7 @@ void mtk::test_blockqr::cusolver_precision(const std::size_t min_m, const std::s
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "precision-" + get_type_name<T>() + "-cusolver.csv";
+	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
@@ -369,7 +370,7 @@ void mtk::test_blockqr::cusolver_speed(const std::size_t min_m, const std::size_
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "speed-" + get_type_name<T>() + "-cusolver.csv";
+	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
