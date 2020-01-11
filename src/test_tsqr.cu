@@ -14,12 +14,12 @@
 #include "blockqr.hpp"
 #include "validation.hpp"
 
+namespace {
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
 template <> std::string get_type_name<float>() {return "float";}
 template <> std::string get_type_name<half>() {return "half";}
 
-namespace {
 template <class T>
 __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, const std::size_t n) {
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
