@@ -91,4 +91,87 @@ int main() {
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
+	std::cout<<"# precision test"<<std::endl;
+	try{
+		mtk::test_blockqr::precision<true, false, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::precision<true, false, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::precision<true, false, float, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::precision<false, false, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::precision<false, false, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::precision<true, true, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::cusolver_precision<float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::cusolver_precision<double>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+
+	std::cout<<"# speed test"<<std::endl;
+	try{
+		mtk::test_blockqr::speed<true, false, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::speed<true, false, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::speed<true, false, float, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::speed<false, false, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::speed<false, false, half>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::speed<true, true, float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::cusolver_speed<float>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
+	try{
+		mtk::test_blockqr::cusolver_speed<double>(min_m, max_m);
+	}catch(std::runtime_error& e){
+		std::cerr<<e.what()<<std::endl;
+	};
 }
