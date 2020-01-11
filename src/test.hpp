@@ -2,8 +2,8 @@
 #define __TEST_HPP__
 #include <cstddef>
 #include <type_traits>
+namespace mtk {
 namespace test_tsqr {
-namespace test {
 template <bool UseTC, bool Refine, class T, class CORE_T = T>
 void precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n);
 template <bool UseTC, bool Refine, class T, class CORE_T = T>

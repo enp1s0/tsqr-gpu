@@ -48,7 +48,7 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 } // namespace
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
-void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
@@ -152,15 +152,15 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	ost.close();
 }
 
-template void mtk::test::precision<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
-void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
@@ -235,15 +235,15 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	ost.close();
 }
 
-template void mtk::test::speed<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
 
 template <class T>
-void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 1 << 8;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
@@ -356,11 +356,11 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 	ost.close();
 }
 
-template void mtk::test::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::cusolver_precision<double>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_precision<double>(const std::size_t, const std::size_t, const std::size_t);
 
 template <class T>
-void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
@@ -446,5 +446,5 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 	}
 	ost.close();
 }
-template void mtk::test::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);
