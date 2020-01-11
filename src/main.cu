@@ -176,6 +176,6 @@ void blockqr_test(const std::size_t min_m, const std::size_t max_m) {
 }
 
 int main() {
-	blockqr_test(1lu << 10, 1lu << 27);
-	tsqr_test(1lu << 5, 1lu << 20, 1lu << 5);
+	blockqr_test(1lu << 8, 1lu << 27);
+	tsqr_test(1lu << 5, 1lu << 27, 1lu << 10);
 }
