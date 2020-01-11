@@ -15,7 +15,7 @@
 #include "validation.hpp"
 
 namespace {
-const std::string filename_prefix = "blockqr";
+const std::string filename_prefix = "tsqr";
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
 template <> std::string get_type_name<float>() {return "float";}
