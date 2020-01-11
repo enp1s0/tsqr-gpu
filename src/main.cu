@@ -3,11 +3,7 @@
 #include <cuda_fp16.h>
 #include "test.hpp"
 
-constexpr std::size_t min_m = 1 << 10;
-constexpr std::size_t max_m = 1 << 27;
-constexpr std::size_t n = 64;
-
-int main() {
+void tsqr_test(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	std::cout<<"# precision test"<<std::endl;
 	try{
 		mtk::test_tsqr::precision<true, false, float>(min_m, max_m, n);
@@ -91,6 +87,9 @@ int main() {
 	}catch(std::runtime_error& e){
 		std::cerr<<e.what()<<std::endl;
 	};
+}
+
+void blockqr_test(const std::size_t min_m, const std::size_t max_m) {
 	std::cout<<"# precision test"<<std::endl;
 	try{
 		mtk::test_blockqr::precision<true, false, float>(min_m, max_m);
@@ -175,3 +174,7 @@ int main() {
 		std::cerr<<e.what()<<std::endl;
 	};
 }
+
+int main() {
+	blockqr_test(1lu << 10, 1lu << 27);
+	tsqr_test(1lu << 5, 1lu << 20, 1lu << 5);}
