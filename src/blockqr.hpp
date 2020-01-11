@@ -17,7 +17,7 @@ struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T,
 std::size_t get_working_q_size(const std::size_t m);
 std::size_t get_working_r_size(const std::size_t m);
 
-template <bool UseTC, bool Refinement, class T>
+template <bool UseTC, bool Refinement, class T, class CORE_T = T>
 void qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
