@@ -91,5 +91,10 @@ void qr_test(const std::vector<std::pair<std::size_t, std::size_t>>& test_matrix
 
 int main() {
 	std::vector<std::pair<std::size_t, std::size_t>> test_matrix_size_array;
+	for (std::size_t m = 10; m <= 15; m++) {
+		for (std::size_t n = 10; n <= 15; n++) {
+			test_matrix_size_array.push_back(std::make_pair(1lu << m, 1lu << n));
+		}
+	}
 	qr_test(test_matrix_size_array);
 }
