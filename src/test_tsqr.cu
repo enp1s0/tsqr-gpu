@@ -14,12 +14,13 @@
 #include "blockqr.hpp"
 #include "validation.hpp"
 
+namespace {
+const std::string filename_prefix = "tsqr";
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
 template <> std::string get_type_name<float>() {return "float";}
 template <> std::string get_type_name<half>() {return "half";}
 
-namespace {
 template <class T>
 __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, const std::size_t n) {
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -48,13 +49,13 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 } // namespace
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
-void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "precision-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
 	std::ofstream ost(filename);
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
@@ -152,20 +153,20 @@ void mtk::test::precision(const std::size_t min_m, const std::size_t max_m, cons
 	ost.close();
 }
 
-template void mtk::test::precision<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::precision<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::precision<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
-void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "speed-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
+	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
 	std::ofstream ost(filename);
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
@@ -235,21 +236,21 @@ void mtk::test::speed(const std::size_t min_m, const std::size_t max_m, const st
 	ost.close();
 }
 
-template void mtk::test::speed<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::speed<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<false, false, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<false, false, half, half>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, true, float, float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::speed<true, false, float, half>(const std::size_t, const std::size_t, const std::size_t);
 
 template <class T>
-void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::cusolver_precision(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 1 << 8;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "precision-" + get_type_name<T>() + "-cusolver.csv";
+	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
@@ -356,17 +357,17 @@ void mtk::test::cusolver_precision(const std::size_t min_m, const std::size_t ma
 	ost.close();
 }
 
-template void mtk::test::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::cusolver_precision<double>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_precision<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_precision<double>(const std::size_t, const std::size_t, const std::size_t);
 
 template <class T>
-void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
+void mtk::test_tsqr::cusolver_speed(const std::size_t min_m, const std::size_t max_m, const std::size_t n) {
 	constexpr std::size_t block_size = 256;
 	constexpr std::size_t C = 16;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = "speed-" + get_type_name<T>() + "-cusolver.csv";
+	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-cusolver.csv";
 	std::ofstream ost(filename);
 
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
@@ -446,5 +447,5 @@ void mtk::test::cusolver_speed(const std::size_t min_m, const std::size_t max_m,
 	}
 	ost.close();
 }
-template void mtk::test::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
-template void mtk::test::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_speed<float>(const std::size_t, const std::size_t, const std::size_t);
+template void mtk::test_tsqr::cusolver_speed<double>(const std::size_t, const std::size_t, const std::size_t);
