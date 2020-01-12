@@ -90,7 +90,6 @@ void mtk::validation::check_submatrix_orthogonality(
 			);
 	cutf::memory::copy(h_qqt.get(), d_qqt.get(), n * n);
 
-	// 部分行列の直交性
 	const auto submatrix_n = 16;
 	const auto submatrix_size = n / submatrix_n;
 	auto submatrix_orthogonality_matrix = cutf::memory::get_host_unique_ptr<double>(submatrix_size * submatrix_size);
