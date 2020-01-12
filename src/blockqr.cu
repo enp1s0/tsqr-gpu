@@ -130,14 +130,13 @@ void mtk::qr::qr(
 #ifdef PROFILE_BREAKDOWN
 	const auto time_sum = gemm_0_count + gemm_1_count + tsqr_count;
 #ifdef PROFILE_BREAKDOWN_CSV
-	std::printf("%lu,%lu,%s,%s,%d,%d,%e,%e,%e,%e,%e,%e\n",
+	std::printf("%lu,%lu,%s,%s,%d,%d,%e,%e,%e,%e\n",
 			m, n,
 			get_type_name<T>().c_str(),
 			get_type_name<CORE_T>().c_str(),
 			(UseTC ? 1 : 0),
 			(Refinement ? 1 : 0),
-			gemm_0_count / 1.0e6, static_cast<double>(gemm_0_count) / time_sum * 100,
-			gemm_1_count / 1.0e6, static_cast<double>(gemm_1_count) / time_sum * 100,
+			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
 			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
 			);
 #else
