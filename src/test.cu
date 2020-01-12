@@ -426,27 +426,25 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 					d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
 					d_info.get()
 					));
-
-		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
-				for(std::size_t c = 0; c < C; c++) {
-					CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
-								*cusolver.get(), m, n,
-								d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
-								geqrf_working_memory_size, d_info.get()
-								));
-					cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
-
-					CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
-								*cusolver.get(), m, n, n,
-								d_a.get(), m,
-								d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
-								d_info.get()
-								));
-
-					cutf::memory::copy(d_q.get(), d_a.get(), n * m);
-				}
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-				}) / C;
+		const auto start_clock = std::chrono::system_clock::now();
+		for(std::size_t c = 0; c < C; c++) {
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+						*cusolver.get(), m, n,
+						d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+						geqrf_working_memory_size, d_info.get()
+						));
+			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+						*cusolver.get(), m, n, n,
+						d_a.get(), m,
+						d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+						d_info.get()
+						));
+			cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+		}
+		CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+		const auto end_clock = std::chrono::system_clock::now();
+		const auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() * 1e-6 / C;
 
 		const auto batch_size = mtk::tsqr::get_batch_size(m);
 		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
