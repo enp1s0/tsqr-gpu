@@ -62,95 +62,100 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 
 	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
-		const std::size_t m = size_pair.first;
-		const std::size_t n = size_pair.second;
-		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_a_test = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
-		auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
-		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
-				mtk::qr::get_working_q_size(m));
-		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
-				mtk::qr::get_working_r_size(m));
-		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
-		auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
-		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
-		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
+		try {
+			const std::size_t m = size_pair.first;
+			const std::size_t n = size_pair.second;
+			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_a_test = cutf::memory::get_device_unique_ptr<float>(m * n);
+			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
+			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
+			auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
+					mtk::qr::get_working_q_size(m));
+			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
+					mtk::qr::get_working_r_size(m));
+			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+			auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
+			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
+			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-		std::vector<float> error_list;
-		std::vector<float> orthogonality_list;
+			std::vector<float> error_list;
+			std::vector<float> orthogonality_list;
 
-		for(std::size_t c = 0; c < C; c++) {
-			float norm_a = 0.0f;
-			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = dist(mt);
-				h_a.get()[i] = cutf::type::cast<T>(tmp);
-				h_a_test.get()[i] = tmp;
-				norm_a += tmp * tmp;
+			for(std::size_t c = 0; c < C; c++) {
+				float norm_a = 0.0f;
+				for(std::size_t i = 0; i < m * n; i++) {
+					const auto tmp = dist(mt);
+					h_a.get()[i] = cutf::type::cast<T>(tmp);
+					h_a_test.get()[i] = tmp;
+					norm_a += tmp * tmp;
+				}
+				cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+				cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
+				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
+
+				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				mtk::qr::qr<UseTC, Refine, T, CORE_T>(
+						d_q.get(), m,
+						d_r.get(), n,
+						d_a.get(), m,
+						m, n,
+						d_working_q.get(),
+						d_working_r.get(),
+						*cublas_handle.get()
+						);
+				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+
+				convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
+				convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
+				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+
+				// verify
+				const float alpha = 1.0f, beta = -1.0f;
+				cutf::cublas::gemm(
+						*cublas_handle.get(),
+						CUBLAS_OP_N, CUBLAS_OP_N,
+						m, n, n,
+						&alpha,
+						d_q_test.get(), m,
+						d_r_test.get(), n,
+						&beta,
+						d_a_test.get(), m
+						);
+
+				cutf::memory::copy(h_a_test.get(), d_a_test.get(), m * n);
+				float norm_diff = 0.0f;
+				for(std::size_t i = 0; i < m * n; i++) {
+					const auto tmp = h_a_test.get()[i];
+					norm_diff += tmp * tmp;
+				}
+				error_list.push_back(std::sqrt(norm_diff/norm_a));
+				orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 			}
-			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
-			cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
-			make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
-
-			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-			mtk::qr::qr<UseTC, Refine, T, CORE_T>(
-					d_q.get(), m,
-					d_r.get(), n,
-					d_a.get(), m,
-					m, n,
-					d_working_q.get(),
-					d_working_r.get(),
-					*cublas_handle.get()
-					);
-			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-
-			convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
-			convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
-			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-
-			// verify
-			const float alpha = 1.0f, beta = -1.0f;
-			cutf::cublas::gemm(
-					*cublas_handle.get(),
-					CUBLAS_OP_N, CUBLAS_OP_N,
-					m, n, n,
-					&alpha,
-					d_q_test.get(), m,
-					d_r_test.get(), n,
-					&beta,
-					d_a_test.get(), m
-					);
-
-			cutf::memory::copy(h_a_test.get(), d_a_test.get(), m * n);
-			float norm_diff = 0.0f;
-			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = h_a_test.get()[i];
-				norm_diff += tmp * tmp;
+			float error = 0.0f;
+			float orthogonality = 0.0f;
+			for(std::size_t c = 0; c < C; c++) {
+				error += error_list[c];
+				orthogonality += orthogonality_list[c];
 			}
-			error_list.push_back(std::sqrt(norm_diff/norm_a));
-			orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
-		}
-		float error = 0.0f;
-		float orthogonality = 0.0f;
-		for(std::size_t c = 0; c < C; c++) {
-			error += error_list[c];
-			orthogonality += orthogonality_list[c];
-		}
-		error /= C;
-		orthogonality /= C;
+			error /= C;
+			orthogonality /= C;
 
-		float error_deviation = 0.0f;
-		float orthogonality_deviation = 0.0f;
-		for(std::size_t c = 0; c < C; c++) {
-			error_deviation += (error_list[c] - error) * (error_list[c] - error);
-			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
-		}
-		error_deviation = std::sqrt(error_deviation / C);
-		orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
+			float error_deviation = 0.0f;
+			float orthogonality_deviation = 0.0f;
+			for(std::size_t c = 0; c < C; c++) {
+				error_deviation += (error_list[c] - error) * (error_list[c] - error);
+				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+			}
+			error_deviation = std::sqrt(error_deviation / C);
+			orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
 
-		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+			ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		} catch (std::runtime_error& e) {
+			std::cerr<<e.what()<<std::endl;
+			continue;
+		}
 	}
 	ost.close();
 }
@@ -175,67 +180,72 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 
 	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size\n";
 	for(const auto &size_pair : matrix_size_array) {
-		const std::size_t m = size_pair.first;
-		const std::size_t n = size_pair.second;
-		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		const auto working_q_size = mtk::qr::get_working_q_size(m);
-		auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(working_q_size);
-		const auto working_r_size = mtk::qr::get_working_r_size(m);
-		auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(working_r_size);
-		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
-		auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
-		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
-		for(std::size_t i = 0; i < m * n; i++) {
-			const auto tmp = dist(mt);
-			h_a.get()[i] = cutf::type::cast<T>(tmp);
+		try {
+			const std::size_t m = size_pair.first;
+			const std::size_t n = size_pair.second;
+			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+			const auto working_q_size = mtk::qr::get_working_q_size(m);
+			auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(working_q_size);
+			const auto working_r_size = mtk::qr::get_working_r_size(m);
+			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(working_r_size);
+			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
+			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
+			for(std::size_t i = 0; i < m * n; i++) {
+				const auto tmp = dist(mt);
+				h_a.get()[i] = cutf::type::cast<T>(tmp);
+			}
+			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+
+			// for cache
+			mtk::qr::qr<UseTC, Refine, T, CORE_T>(
+					d_q.get(), m,
+					d_r.get(), n,
+					d_a.get(), m,
+					m, n,
+					d_working_q.get(),
+					d_working_r.get(),
+					*cublas_handle.get()
+					);
+
+			const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
+					for(std::size_t c = 0; c < C; c++) {
+					mtk::qr::qr<UseTC, Refine, T>(
+							d_q.get(), m,
+							d_r.get(), n,
+							d_a.get(), m,
+							m, n,
+							d_working_q.get(),
+							d_working_r.get(),
+							*cublas_handle.get()
+							);
+					}}) / C;
+
+			std::size_t complexity = 0;
+			const auto batch_size = mtk::tsqr::get_batch_size(m);
+			const auto pannel_block_size = (n + 16 - 1) / 16;
+
+			auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
+				return 2 * n * (m * m * n + m * m * m);
+			};
+			const auto tsqr_comprexity = [&get_qr_complexity, &batch_size](const std::size_t m, const std::size_t n) {
+				return batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
+			};
+
+			for (std::size_t i = 0; i < pannel_block_size; i++) {
+				const auto local_n = std::min(16lu, n - i * 16lu);
+				complexity += tsqr_comprexity(m, local_n);
+				complexity += 2 * 2 * 16 * 16 * i * m;
+			}
+
+			ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
+				(working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
+		} catch (std::runtime_error& e) {
+			std::cerr<<e.what()<<std::endl;
+			continue;
 		}
-		cutf::memory::copy(d_a.get(), h_a.get(), m * n);
-
-		// for cache
-		mtk::qr::qr<UseTC, Refine, T, CORE_T>(
-				d_q.get(), m,
-				d_r.get(), n,
-				d_a.get(), m,
-				m, n,
-				d_working_q.get(),
-				d_working_r.get(),
-				*cublas_handle.get()
-				);
-
-		const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
-				for(std::size_t c = 0; c < C; c++) {
-				mtk::qr::qr<UseTC, Refine, T>(
-						d_q.get(), m,
-						d_r.get(), n,
-						d_a.get(), m,
-						m, n,
-						d_working_q.get(),
-						d_working_r.get(),
-						*cublas_handle.get()
-						);
-				}}) / C;
-
-		std::size_t complexity = 0;
-		const auto batch_size = mtk::tsqr::get_batch_size(m);
-		const auto pannel_block_size = (n + 16 - 1) / 16;
-
-		auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
-			return 2 * n * (m * m * n + m * m * m);
-		};
-		const auto tsqr_comprexity = [&get_qr_complexity, &batch_size](const std::size_t m, const std::size_t n) {
-			return batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
-		};
-
-		for (std::size_t i = 0; i < pannel_block_size; i++) {
-			const auto local_n = std::min(16lu, n - i * 16lu);
-			complexity += tsqr_comprexity(m, local_n);
-			complexity += 2 * 2 * 16 * 16 * i * m;
-		}
-
-		ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
-			(working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
 	}
 	ost.close();
 }
@@ -259,106 +269,111 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 
 	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
-		const std::size_t m = size_pair.first;
-		const std::size_t n = size_pair.second;
-		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
-		auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
+		try {
+			const std::size_t m = size_pair.first;
+			const std::size_t n = size_pair.second;
+			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+			auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
+			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-		std::vector<T> error_list;
-		std::vector<T> orthogonality_list;
+			std::vector<T> error_list;
+			std::vector<T> orthogonality_list;
 
-		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
+			auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
-		// working memory
-		int geqrf_working_memory_size, gqr_working_memory_size;
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
-					*cusolver.get(), m, n,
-					d_a.get(), m, &geqrf_working_memory_size
-					));
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
-					*cusolver.get(), m, n, n,
-					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
-					));
-
-		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
-		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
-		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
-
-		for(std::size_t c = 0; c < C; c++) {
-			T norm_a = 0.0f;
-			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = dist(mt);
-				h_a.get()[i] = cutf::type::cast<T>(tmp);
-				norm_a += tmp * tmp;
-			}
-			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
-
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+			// working memory
+			int geqrf_working_memory_size, gqr_working_memory_size;
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 						*cusolver.get(), m, n,
-						d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
-						geqrf_working_memory_size, d_info.get()
+						d_a.get(), m, &geqrf_working_memory_size
 						));
-			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
-
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 						*cusolver.get(), m, n, n,
-						d_a.get(), m,
-						d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
-						d_info.get()
+						d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 						));
 
-			cutf::memory::copy(d_q.get(), d_a.get(), n * m);
-			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
-			//cutf::memory::copy(h_r.get(), d_r.get(), n * n);
-			//mtk::utils::print_matrix(h_r.get(), n, n, "R");
+			auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
+			auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
+			auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
 
-			// verify
-			auto cublas = cutf::cublas::get_cublas_unique_ptr();
-			const T alpha = 1.0f, beta = -1.0f;
-			cutf::cublas::gemm(
-					*cublas.get(),
-					CUBLAS_OP_N, CUBLAS_OP_N,
-					m, n, n,
-					&alpha,
-					d_q.get(), m,
-					d_r.get(), n,
-					&beta,
-					d_a.get(), m
-					);
+			for(std::size_t c = 0; c < C; c++) {
+				T norm_a = 0.0f;
+				for(std::size_t i = 0; i < m * n; i++) {
+					const auto tmp = dist(mt);
+					h_a.get()[i] = cutf::type::cast<T>(tmp);
+					norm_a += tmp * tmp;
+				}
+				cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
-			cutf::memory::copy(h_a.get(), d_a.get(), m * n);
-			T norm_diff = 0.0f;
-			for(std::size_t i = 0; i < m * n; i++) {
-				const auto tmp = cutf::type::cast<T>(h_a.get()[i]);
-				norm_diff += tmp * tmp;
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+							*cusolver.get(), m, n,
+							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+							geqrf_working_memory_size, d_info.get()
+							));
+				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
+
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+							*cusolver.get(), m, n, n,
+							d_a.get(), m,
+							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+							d_info.get()
+							));
+
+				cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+				cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+				//cutf::memory::copy(h_r.get(), d_r.get(), n * n);
+				//mtk::utils::print_matrix(h_r.get(), n, n, "R");
+
+				// verify
+				auto cublas = cutf::cublas::get_cublas_unique_ptr();
+				const T alpha = 1.0f, beta = -1.0f;
+				cutf::cublas::gemm(
+						*cublas.get(),
+						CUBLAS_OP_N, CUBLAS_OP_N,
+						m, n, n,
+						&alpha,
+						d_q.get(), m,
+						d_r.get(), n,
+						&beta,
+						d_a.get(), m
+						);
+
+				cutf::memory::copy(h_a.get(), d_a.get(), m * n);
+				T norm_diff = 0.0f;
+				for(std::size_t i = 0; i < m * n; i++) {
+					const auto tmp = cutf::type::cast<T>(h_a.get()[i]);
+					norm_diff += tmp * tmp;
+				}
+				error_list.push_back(std::sqrt(norm_diff/norm_a));
+				orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 			}
-			error_list.push_back(std::sqrt(norm_diff/norm_a));
-			orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
-		}
-		T error = 0.0f;
-		T orthogonality = 0.0f;
-		for(std::size_t c = 0; c < C; c++) {
-			error += error_list[c];
-			orthogonality += orthogonality_list[c];
-		}
-		error /= C;
-		orthogonality /= C;
+			T error = 0.0f;
+			T orthogonality = 0.0f;
+			for(std::size_t c = 0; c < C; c++) {
+				error += error_list[c];
+				orthogonality += orthogonality_list[c];
+			}
+			error /= C;
+			orthogonality /= C;
 
-		T error_deviation = 0.0f;
-		T orthogonality_deviation = 0.0f;
-		for(std::size_t c = 0; c < C; c++) {
-			error_deviation += (error_list[c] - error) * (error_list[c] - error);
-			orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
-		}
-		error_deviation /= C;
-		orthogonality_deviation /= C;
+			T error_deviation = 0.0f;
+			T orthogonality_deviation = 0.0f;
+			for(std::size_t c = 0; c < C; c++) {
+				error_deviation += (error_list[c] - error) * (error_list[c] - error);
+				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+			}
+			error_deviation /= C;
+			orthogonality_deviation /= C;
 
 
-		ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+			ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+		} catch (std::runtime_error& e) {
+			std::cerr<<e.what()<<std::endl;
+			continue;
+		}
 	}
 	ost.close();
 }
@@ -382,74 +397,79 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 
 	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
-		const std::size_t m = size_pair.first;
-		const std::size_t n = size_pair.second;
-		auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
-		auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
-		auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
+		try {
+			const std::size_t m = size_pair.first;
+			const std::size_t n = size_pair.second;
+			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
+			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
+			auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
+			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 
-		auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
+			auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
-		// working memory
-		int geqrf_working_memory_size, gqr_working_memory_size;
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
-					*cusolver.get(), m, n,
-					d_a.get(), m, &geqrf_working_memory_size
-					));
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
-					*cusolver.get(), m, n, n,
-					d_a.get(), m, d_tau.get(), &gqr_working_memory_size
-					));
+			// working memory
+			int geqrf_working_memory_size, gqr_working_memory_size;
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+						*cusolver.get(), m, n,
+						d_a.get(), m, &geqrf_working_memory_size
+						));
+			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+						*cusolver.get(), m, n, n,
+						d_a.get(), m, d_tau.get(), &gqr_working_memory_size
+						));
 
-		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
-		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
-		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
+			auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<T>(geqrf_working_memory_size);
+			auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
+			auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
 
-		for(std::size_t i = 0; i < m * n; i++) {
-			const auto tmp = dist(mt);
-			h_a.get()[i] = tmp;
-		}
-		cutf::memory::copy(d_a.get(), h_a.get(), m * n);
+			for(std::size_t i = 0; i < m * n; i++) {
+				const auto tmp = dist(mt);
+				h_a.get()[i] = tmp;
+			}
+			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
-		// for cache
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
-					*cusolver.get(), m, n,
-					d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
-					geqrf_working_memory_size, d_info.get()
-					));
-
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
-					*cusolver.get(), m, n, n,
-					d_a.get(), m,
-					d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
-					d_info.get()
-					));
-		const auto start_clock = std::chrono::system_clock::now();
-		for(std::size_t c = 0; c < C; c++) {
+			// for cache
 			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
 						*cusolver.get(), m, n,
 						d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 						geqrf_working_memory_size, d_info.get()
 						));
-			cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
+
 			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
 						*cusolver.get(), m, n, n,
 						d_a.get(), m,
 						d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
 						d_info.get()
 						));
-			cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+			const auto start_clock = std::chrono::system_clock::now();
+			for(std::size_t c = 0; c < C; c++) {
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+							*cusolver.get(), m, n,
+							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+							geqrf_working_memory_size, d_info.get()
+							));
+				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+							*cusolver.get(), m, n, n,
+							d_a.get(), m,
+							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+							d_info.get()
+							));
+				cutf::memory::copy(d_q.get(), d_a.get(), n * m);
+			}
+			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+			const auto end_clock = std::chrono::system_clock::now();
+			const auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() * 1e-6 / C;
+
+			const auto batch_size = mtk::tsqr::get_batch_size(m);
+			const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
+
+			ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
+		} catch (std::runtime_error& e) {
+			std::cerr<<e.what()<<std::endl;
+			continue;
 		}
-		CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-		const auto end_clock = std::chrono::system_clock::now();
-		const auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() * 1e-6 / C;
-
-		const auto batch_size = mtk::tsqr::get_batch_size(m);
-		const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
-
-		ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
 	}
 	ost.close();
 }
