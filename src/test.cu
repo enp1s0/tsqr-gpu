@@ -212,7 +212,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 
 			const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 					for(std::size_t c = 0; c < C; c++) {
-					mtk::qr::qr<UseTC, Refine, T>(
+					mtk::qr::qr<UseTC, Refine, T, CORE_T>(
 							d_q.get(), m,
 							d_r.get(), n,
 							d_a.get(), m,
