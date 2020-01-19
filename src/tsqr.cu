@@ -622,6 +622,8 @@ void tsqr16_geq32(
 			cuda_stream
 			);
 
+	cudaStreamSynchronize(cuda_stream);
+
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
