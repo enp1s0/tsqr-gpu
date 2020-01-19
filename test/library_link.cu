@@ -1,7 +1,7 @@
 #include <cutf/memory.hpp>
 #include <cutf/type.hpp>
 #include <cutf/cublas.hpp>
-#include <tsqr.hpp>
+#include <blockqr.hpp>
 #include <iostream>
 #include <random>
 
@@ -47,17 +47,20 @@ int main(){
 
 	cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
-	const auto working_memory_q_size = mtk::tsqr::get_working_q_size(m, n);
-	auto d_wq = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_q_type<float, UseTC, Refinement>::type>(working_memory_q_size);
-	const auto working_memory_r_size = mtk::tsqr::get_working_r_size(m, n);
-	auto d_wr = cutf::memory::get_device_unique_ptr<typename mtk::tsqr::get_working_r_type<float, UseTC, Refinement>::type>(working_memory_r_size);
+	const auto working_memory_q_size = mtk::qr::get_working_q_size(m);
+	auto d_wq = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<float, UseTC, Refinement>::type>(working_memory_q_size);
+	const auto working_memory_r_size = mtk::qr::get_working_r_size(m);
+	auto d_wr = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<float, UseTC, Refinement>::type>(working_memory_r_size);
 
-	mtk::tsqr::tsqr16<UseTC, Refinement>(
+	auto cusolver_handle = cutf::cublas::get_cublas_unique_ptr();
+
+	mtk::qr::qr<UseTC, Refinement, float>(
 			d_q.get(), ldq,
 			d_r.get(), n,
 			d_a.get(), m,
 			m, n,
-			d_wq.get(), d_wr.get()
+			d_wq.get(), d_wr.get(),
+			*cusolver_handle.get()
 			);
 
 	cutf::memory::copy(h_r.get(), d_r.get(), n * n);
