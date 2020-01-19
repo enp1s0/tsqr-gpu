@@ -4,7 +4,6 @@
 #include <cutf/cublas.hpp>
 #include <cutf/cusolver.hpp>
 #include <iostream>
-#include <fstream>
 #include <random>
 #include <cmath>
 #include <vector>
@@ -15,7 +14,6 @@
 #include "validation.hpp"
 
 namespace {
-const std::string filename_prefix = "tsqr";
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
 template <> std::string get_type_name<float>() {return "float";}
@@ -46,6 +44,16 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 	if(tid >= size) return;
 	dst[tid] = cutf::type::cast<DST_T>(0);
 }
+
+void print_precision_head() {
+	std::cout << "m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout.flush();
+}
+
+void print_speed_head() {
+	std::cout << "m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size" << std::endl;
+	std::cout.flush();
+}
 } // namespace
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
@@ -55,12 +63,10 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
-	std::ofstream ost(filename);
+	print_precision_head();
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
 		try {
 			const std::size_t m = size_pair.first;
@@ -151,13 +157,21 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			error_deviation = std::sqrt(error_deviation / C);
 			orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
 
-			ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+			std::cout << m << ","
+				<< n << ","
+				<< get_type_name<T>() << ","
+				<< (UseTC ? "1" : "0") << ","
+				<< (Refine ? "1" : "0") << ","
+				<< error << ","
+				<< error_deviation << ","
+				<< orthogonality << ","
+				<< orthogonality_deviation << std::endl;
+			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
 			continue;
 		}
 	}
-	ost.close();
 }
 
 template void mtk::test_qr::precision<true, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&);
@@ -173,12 +187,10 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-core-" + get_type_name<CORE_T>() + (UseTC ? "-TC" : "") + (Refine ? "-R" : "") + ".csv";
-	std::ofstream ost(filename);
+	print_speed_head();
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size\n";
 	for(const auto &size_pair : matrix_size_array) {
 		try {
 			const std::size_t m = size_pair.first;
@@ -240,14 +252,20 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 				complexity += 2 * 2 * 16 * 16 * i * m;
 			}
 
-			ost<<m<<","<<n<<","<<get_type_name<T>()<<","<<(UseTC ? "1" : "0")<<","<<(Refine ? "1" : "0")<<","<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<
-				(working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type))<<"\n";
+			std::cout << m << ","
+				<< n << ","
+				<< get_type_name<T>() << ","
+				<< (UseTC ? "1" : "0") << ","
+				<< (Refine ? "1" : "0") << ","
+				<< elapsed_time << ","
+				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
+				<< (working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type)) << std::endl;
+			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
 			continue;
 		}
 	}
-	ost.close();
 }
 
 template void mtk::test_qr::speed<true, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&);
@@ -264,10 +282,8 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = filename_prefix + "-precision-" + get_type_name<T>() + "-cusolver.csv";
-	std::ofstream ost(filename);
+	print_precision_head();
 
-	ost<<"m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
 		try {
 			const std::size_t m = size_pair.first;
@@ -368,14 +384,21 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 			error_deviation /= C;
 			orthogonality_deviation /= C;
 
-
-			ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<error<<","<<error_deviation<<","<<orthogonality<<","<<orthogonality_deviation<<std::endl;
+			std::cout << m << ","
+				<< n << ","
+				<< get_type_name<T>() << ","
+				<< "cusolver" << ","
+				<< "0" << ","
+				<< error << ","
+				<< error_deviation << ","
+				<< orthogonality << ","
+				<< orthogonality_deviation << std::endl;
+			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
 			continue;
 		}
 	}
-	ost.close();
 }
 
 template void mtk::test_qr::cusolver_precision<float>(const std::vector<std::pair<std::size_t, std::size_t>>&);
@@ -388,14 +411,10 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	std::string filename = filename_prefix + "-speed-" + get_type_name<T>() + "-cusolver.csv";
-	std::ofstream ost(filename);
-
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
-	ost<<"m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size"<<std::endl;
 	for(const auto &size_pair : matrix_size_array) {
 		try {
 			const std::size_t m = size_pair.first;
@@ -465,13 +484,20 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 			const auto batch_size = mtk::tsqr::get_batch_size(m);
 			const auto complexity = batch_size * get_qr_complexity(m / batch_size, n) + (batch_size - 1) * get_qr_complexity(2 * n, n) + (batch_size - 1) * 4 * n * n * n + 4 * n * n * m;
 
-			ost<<m<<","<<n<<","<<get_type_name<T>()<<",cusolver,0,"<<elapsed_time<<","<<(complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0))<<","<<((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T))<<std::endl;
+			std::cout << m << ","
+				<< n << ","
+				<< get_type_name<T>() << ","
+				<< "cusolver" << ","
+				<< "0" << ","
+				<< elapsed_time << ","
+				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
+				<< ((geqrf_working_memory_size + gqr_working_memory_size) * sizeof(T)) << std::endl;
+			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
 			continue;
 		}
 	}
-	ost.close();
 }
 template void mtk::test_qr::cusolver_speed<float>(const std::vector<std::pair<std::size_t, std::size_t>>&);
 template void mtk::test_qr::cusolver_speed<double>(const std::vector<std::pair<std::size_t, std::size_t>>&);
