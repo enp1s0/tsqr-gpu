@@ -1,6 +1,6 @@
 #ifndef __BLOCKQR_HPP__
 #define __BLOCKQR_HPP__
-#include <cutf/cublas.hpp>
+#include <cublas_v2.h>
 #include <cstddef>
 #include "tsqr.hpp"
 
