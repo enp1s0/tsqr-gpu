@@ -1,3 +1,4 @@
+#include <cutf/cublas.hpp>
 #include <cutf/error.hpp>
 #include <cutf/type.hpp>
 #include "blockqr.hpp"
