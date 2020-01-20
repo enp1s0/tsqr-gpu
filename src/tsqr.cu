@@ -571,6 +571,7 @@ void tsqr16_geq32(
 		h_sub_m_list.get()[i] = 2 * n * i;
 	}
 	cutf::memory::copy_async(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1, cuda_stream);
+	cudaStreamSynchronize(cuda_stream);
 
 	// 再帰的QR分解のfor展開
 	for(std::size_t k = batch_size_log2 - 1; k > 0; k--) {
@@ -588,7 +589,6 @@ void tsqr16_geq32(
 		}
 #endif
 
-		cudaStreamSynchronize(cuda_stream);
 		mtk::tcqr::qr32x16_batched<UseTC, Refine, CORE_T>(
 				working_q_ptr + working_q_sride, 2 * n * local_batch_size,
 				working_r_ptrs[1 - working_r_index], ldrs[1 - working_r_index],
@@ -612,7 +612,6 @@ void tsqr16_geq32(
 	}
 
 	// 最終層はrの保存先が異なる
-	cudaStreamSynchronize(cuda_stream);
 	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
