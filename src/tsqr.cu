@@ -564,6 +564,7 @@ void tsqr16_geq32(
 			batch_size, d_sub_m_list.get(),
 			cuda_stream
 			);
+	cudaStreamSynchronize(cuda_stream);
 
 	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++) {
@@ -587,6 +588,7 @@ void tsqr16_geq32(
 		}
 #endif
 
+		cudaStreamSynchronize(cuda_stream);
 		mtk::tcqr::qr32x16_batched<UseTC, Refine, CORE_T>(
 				working_q_ptr + working_q_sride, 2 * n * local_batch_size,
 				working_r_ptrs[1 - working_r_index], ldrs[1 - working_r_index],
@@ -610,6 +612,7 @@ void tsqr16_geq32(
 	}
 
 	// 最終層はrの保存先が異なる
+	cudaStreamSynchronize(cuda_stream);
 	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
@@ -653,13 +656,14 @@ void tsqr16_geq32(
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
+		cudaStreamSynchronize(cuda_stream);
 		tsqr_backward<UseTC, Refine><<<grid_size, block_size, 0, cuda_stream>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
 				n,
 				k
 				);
-
+		cudaStreamSynchronize(cuda_stream);
 	}
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
@@ -677,6 +681,7 @@ void tsqr16_geq32(
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif
+	cudaStreamSynchronize(cuda_stream);
 	tsqr_backward_layer0<UseTC, Refine><<<grid_size, block_size, 0, cuda_stream>>>(
 			q_ptr, ldq,
 			working_q_ptr,
@@ -685,6 +690,7 @@ void tsqr16_geq32(
 			batch_size,
 			d_sub_m_list.get()
 			);
+	cudaStreamSynchronize(cuda_stream);
 	debug_func([]() {CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
