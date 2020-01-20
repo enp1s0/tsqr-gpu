@@ -564,12 +564,14 @@ void tsqr16_geq32(
 			batch_size, d_sub_m_list.get(),
 			cuda_stream
 			);
+	cudaStreamSynchronize(cuda_stream);
 
 	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++) {
 		h_sub_m_list.get()[i] = 2 * n * i;
 	}
 	cutf::memory::copy_async(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1, cuda_stream);
+	cudaStreamSynchronize(cuda_stream);
 
 	// 再帰的QR分解のfor展開
 	for(std::size_t k = batch_size_log2 - 1; k > 0; k--) {
@@ -601,7 +603,7 @@ void tsqr16_geq32(
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
 		}
@@ -622,10 +624,12 @@ void tsqr16_geq32(
 			cuda_stream
 			);
 
+	cudaStreamSynchronize(cuda_stream);
+
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(2 * n * n);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n);
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
@@ -646,18 +650,19 @@ void tsqr16_geq32(
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
 			const auto local_batch_size = 1lu << k;	
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(2 * n * n * local_batch_size);
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
 			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q (before backwarding)");
 		}
 #endif
+		cudaStreamSynchronize(cuda_stream);
 		tsqr_backward<UseTC, Refine><<<grid_size, block_size, 0, cuda_stream>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
 				n,
 				k
 				);
-
+		cudaStreamSynchronize(cuda_stream);
 	}
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list.get()[0] = 0;
@@ -670,11 +675,12 @@ void tsqr16_geq32(
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
-		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC>::type>(n * m);
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type>(n * m);
 		cutf::memory::copy(h_tmp.get(), working_q_ptr, m * n);
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif
+	cudaStreamSynchronize(cuda_stream);
 	tsqr_backward_layer0<UseTC, Refine><<<grid_size, block_size, 0, cuda_stream>>>(
 			q_ptr, ldq,
 			working_q_ptr,
@@ -683,6 +689,7 @@ void tsqr16_geq32(
 			batch_size,
 			d_sub_m_list.get()
 			);
+	cudaStreamSynchronize(cuda_stream);
 	debug_func([]() {CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{

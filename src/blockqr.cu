@@ -74,7 +74,7 @@ void mtk::qr::qr(
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
-						previous_block_n, tsqr_colmun_size, m,
+						previous_block_n, current_block_n, m,
 						&one,
 						q_ptr, ldq,
 						a_ptr + lda * previous_block_n, lda,
@@ -112,7 +112,7 @@ void mtk::qr::qr(
 				q_ptr + previous_block_n * ldq, ldq,
 				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 				a_ptr + previous_block_n * lda, lda,
-				m, tsqr_colmun_size,
+				m, current_block_n,
 				wq_ptr,
 				wr_ptr,
 				cuda_stream
