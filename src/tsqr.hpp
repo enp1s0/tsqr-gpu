@@ -29,6 +29,8 @@ void tsqr16(
 		const std::size_t n,
 		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr,
 		typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
+		unsigned* const d_working_l_ptr,
+		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream = nullptr);
 } // namespace tsqr
 } // namespace mtk
