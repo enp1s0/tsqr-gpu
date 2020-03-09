@@ -47,7 +47,7 @@ struct buffer {
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
 		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
-		cudaMallocHost(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
 		total_memory_size = wq_size + wr_size + l_size;
 	}
 	virtual void destroy() {
