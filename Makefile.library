@@ -9,10 +9,14 @@ LIBDIR=lib
 HEADERS=$(shell find $(SRCDIR) -name '*.cuh' -o -name '*.hpp' -o -name '*.h')
 TARGET=libtcqr
 SL_OBJS=$(OBJDIR)/tsqr.o $(OBJDIR)/tcqr32x16.o $(OBJDIR)/blockqr.o $(OBJDIR)/tsqr.dlink.o $(OBJDIR)/tcqr32x16.dlink.o $(OBJDIR)/blockqr.dlink.o
+INCLUDE_DIR=include
+COPY_HF=$(SRCDIR)/tsqr.hpp $(SRCDIR)/tcqr.hpp $(SRCDIR)/blockqr.hpp
 
 $(LIBDIR)/$(TARGET).a: $(SL_OBJS)
 	[ -d $(LIBDIR) ] || mkdir $(LIBDIR)
 	$(NVCC) -o $@ $+ $(NVCCFLAGS) -lib -m64 
+	[ -d $(INCLUDE_DIR) ] || mkdir -p $(INCLUDE_DIR)
+	cp $(COPY_HF) $(INCLUDE_DIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cu $(HEADERS)
 	[ -d $(OBJDIR) ] || mkdir $(OBJDIR)
@@ -22,5 +26,5 @@ $(OBJDIR)/%.dlink.o: $(OBJDIR)/%.o
 	$(NVCC) -dlink -o $@ $< $(NVCCFLAGS) -m64
 
 clean:
-	rm -rf $(SL_OBJS)
-	rm -rf lib/$(TARGET)
+	rm -rf $(OBJDIR)
+	rm -rf $(LIBDIR)
