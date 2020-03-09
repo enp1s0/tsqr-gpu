@@ -43,8 +43,11 @@ cudaMalloc((void**)&d_q, sizeof(compute_t) * M * N);
 // allocate working memory
 typename mtk::tsqr::get_working_q_type<compute_t, UseTC, Refine>::type *d_wq;
 typename mtk::tsqr::get_working_r_type<compute_t, UseTC, Refine>::type *d_wr;
+unsigned* d_l, *h_l;
 cudaMalloc((void**)&d_wr, sizeof(typename mtk::tsqr::get_working_q_type<compute_t, UseTC, Refine>::type) * mtk::tsqr::get_working_q_size(M, N));
 cudaMalloc((void**)&d_wq, sizeof(typename mtk::tsqr::get_working_r_type<compute_t, UseTC, Refine>::type) * mtk::tsqr::get_working_q_size(M, N));
+cudaMalloc((void**)&d_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
+cudaMallocHost((void**)&h_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
 
 // TSQR
 mtk::tsqr::tsqr16<UseTC, Refine>(
@@ -53,7 +56,9 @@ mtk::tsqr::tsqr16<UseTC, Refine>(
 	d_a, M,
 	M, N,
 	d_wq,
-	d_wr
+	d_wr,
+	d_l,
+	h_l
 	);
 ```
 
@@ -81,8 +86,11 @@ cudaMalloc((void**)&d_q, sizeof(compute_t) * M * N);
 // allocate working memory
 typename mtk::qr::get_working_q_type<compute_t, UseTC, Refine>::type *d_wq;
 typename mtk::qr::get_working_r_type<compute_t, UseTC, Refine>::type *d_wr;
+unsigned* d_l, *h_l;
 cudaMalloc((void**)&d_wr, sizeof(typename mtk::qr::get_working_q_type<compute_t, UseTC, Refine>::type) * mtk::qr::get_working_q_size(M));
 cudaMalloc((void**)&d_wq, sizeof(typename mtk::qr::get_working_r_type<compute_t, UseTC, Refine>::type) * mtk::qr::get_working_q_size(M));
+cudaMalloc((void**)&d_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
+cudaMallocHost((void**)&h_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
 
 // cuBLAS
 cublasHandle_t cublas_handle;
@@ -96,13 +104,15 @@ mtk::qr::qr<UseTC, Refine>(
 	M, N,
 	d_wq,
 	d_wr,
+	d_l,
+	h_l,
 	cublas_handle
 	);
 ```
 
 ### Build
 ```
-nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtcqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
+nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib` -lkvars
 ```
 
 
@@ -118,4 +128,3 @@ nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtcqr.a -I/path/to/[tsqr-g
 - cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
 - gemm_core : [https://gitlab.momo86.net/mutsuki/gemm_core](https://gitlab.momo86.net/mutsuki/gemm_core)
 - wmma-extension : [https://gitlab.momo86.net/mutsuki/wmma-extension](https://gitlab.momo86.net/mutsuki/wmma-extension)
-
