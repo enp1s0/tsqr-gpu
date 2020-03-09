@@ -19,6 +19,9 @@ struct get_working_r_type{using type = T;};
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
+inline std::size_t get_working_l_size(const std::size_t m) {
+	return get_batch_size(m) + 1lu;
+}
 
 template <bool UseTC, bool Refine, class T, class CORE_T>
 void tsqr16(
