@@ -47,6 +47,27 @@ void qr(
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
+
+template <bool UseTC, bool Refinement, class T, class CORE_T = T>
+inline void qr(
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		T* const a_ptr, const std::size_t lda,
+		const std::size_t m, const std::size_t n,
+		buffer<T, UseTC, Refinement>& bf,
+		cublasHandle_t const main_cublas_handle) {
+	qr<UseTC, Refinement, T, CORE_T>(
+			q_ptr, ldq,
+			r_ptr, ldr,
+			a_ptr, lda,
+			m, n,
+			bf.dwq,
+			bf.dwr,
+			bf.dl,
+			bf.hl,
+			main_cublas_handle
+			);
+}
 } // namespace qr
 } // namespace mtk
 
