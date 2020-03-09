@@ -541,9 +541,6 @@ void tsqr16_geq32(
 	debug_func([&working_r_ptrs]() {std::printf("%s : working_r_ptr[1] = %p\n", __func__, working_r_ptrs[1]);});
 	debug_func([&working_q_ptr]() {std::printf("%s : working_q_ptr    = %p\n", __func__, working_q_ptr);});
 
-	//const auto d_sub_m_list = cutf::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
-	//const auto h_sub_m_list = cutf::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
-
 	// 1層目はsub_mが特殊なので別途計算を行う
 	h_sub_m_list[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++) {
