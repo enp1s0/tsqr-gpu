@@ -21,14 +21,25 @@ std::size_t get_working_l_size(const std::size_t m);
 
 template <class T, bool UseTC, bool Refine>
 struct buffer : public mtk::tsqr::buffer<T, UseTC, Refine> {
+	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
+	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
+	unsigned* dl;
+	unsigned* hl;
+
 	buffer() : mtk::tsqr::buffer<T, UseTC, Refine>() {}
 	~buffer() {
 		destroy();
 	}
 
 	void allocate(const std::size_t m, const std::size_t n) {
-		const auto n16 = std::max(16lu, n);
-		mtk::tsqr::buffer<T, UseTC, Refine>::allocate(m, n16);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
+		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
+		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
+		mtk::tsqr::buffer<T, UseTC, Refine>::total_memory_size = wq_size + wr_size + l_size;
 	}
 
 	void destroy() {
