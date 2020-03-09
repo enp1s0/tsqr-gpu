@@ -2,6 +2,7 @@
 #define __BLOCKQR_HPP__
 #include <cublas_v2.h>
 #include <cstddef>
+#include <cstdlib>
 #include "tsqr.hpp"
 
 namespace mtk {
@@ -17,6 +18,23 @@ struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T,
 std::size_t get_working_q_size(const std::size_t m);
 std::size_t get_working_r_size(const std::size_t m);
 std::size_t get_working_l_size(const std::size_t m);
+
+template <class T, bool UseTC, bool Refine>
+struct buffer : public mtk::tsqr::buffer<T, UseTC, Refine> {
+	buffer() : mtk::tsqr::buffer<T, UseTC, Refine>() {}
+	~buffer() {
+		destroy();
+	}
+
+	void allocate(const std::size_t m, const std::size_t n) {
+		const auto n16 = std::max(16lu, n);
+		mtk::tsqr::buffer<T, UseTC, Refine>::allocate(m, n16);
+	}
+
+	void destroy() {
+		mtk::tsqr::buffer<T, UseTC, Refine>::destroy();
+	}
+};
 
 template <bool UseTC, bool Refinement, class T, class CORE_T = T>
 void qr(
