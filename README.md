@@ -86,8 +86,11 @@ cudaMalloc((void**)&d_q, sizeof(compute_t) * M * N);
 // allocate working memory
 typename mtk::qr::get_working_q_type<compute_t, UseTC, Refine>::type *d_wq;
 typename mtk::qr::get_working_r_type<compute_t, UseTC, Refine>::type *d_wr;
+unsigned* d_l, *h_l;
 cudaMalloc((void**)&d_wr, sizeof(typename mtk::qr::get_working_q_type<compute_t, UseTC, Refine>::type) * mtk::qr::get_working_q_size(M));
 cudaMalloc((void**)&d_wq, sizeof(typename mtk::qr::get_working_r_type<compute_t, UseTC, Refine>::type) * mtk::qr::get_working_q_size(M));
+cudaMalloc((void**)&d_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
+cudaMallocHost((void**)&h_l, sizeof(unsigned) * mtk::qr::get_working_l_size(m));
 
 // cuBLAS
 cublasHandle_t cublas_handle;
@@ -101,6 +104,8 @@ mtk::qr::qr<UseTC, Refine>(
 	M, N,
 	d_wq,
 	d_wr,
+	d_l,
+	h_l,
 	cublas_handle
 	);
 ```
