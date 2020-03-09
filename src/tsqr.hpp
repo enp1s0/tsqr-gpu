@@ -65,15 +65,26 @@ void tsqr16(
 		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream = nullptr);
 
+
 template <bool UseTC, bool Refine, class T, class CORE_T>
-void tsqr16(
+inline void tsqr16(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		const T* const a_ptr, const std::size_t lda,
-		const std::size_t m,
-		const std::size_t n,
-		buffer<T, UseTC, Refine>& bf,
-		cudaStream_t const cuda_stream = nullptr);
+		const std::size_t m, const std::size_t n,
+		mtk::tsqr::buffer<T, UseTC, Refine>& buffer,
+		cudaStream_t const cuda_stream) {
+	mtk::tsqr::tsqr16<UseTC, Refine, T, CORE_T>(
+			q_ptr, ldq,
+			r_ptr, ldr,
+			a_ptr, lda,
+			m, n,
+			buffer.dwq,
+			buffer.dwr,
+			buffer.dl,
+			buffer.hl,
+			cuda_stream);
+}
 } // namespace tsqr
 } // namespace mtk
 
