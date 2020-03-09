@@ -38,13 +38,13 @@ struct buffer {
 		destroy();
 	}
 
-	void allocate(const std::size_t m, const std::size_t n) {
+	virtual void allocate(const std::size_t m, const std::size_t n) {
 		cudaMalloc(reinterpret_cast<void**>(&dwq), sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n));
 		cudaMalloc(reinterpret_cast<void**>(&dwr), sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n));
 		cudaMalloc(reinterpret_cast<void**>(&dl), sizeof(unsigned) * get_working_l_size(m));
 		cudaMallocHost(reinterpret_cast<void**>(&dl), sizeof(unsigned) * get_working_l_size(m));
 	}
-	void destroy() {
+	virtual void destroy() {
 		cudaFree(dwq); dwq = nullptr;
 		cudaFree(dwr); dwr = nullptr;
 		cudaFree(dl); dl = nullptr;
