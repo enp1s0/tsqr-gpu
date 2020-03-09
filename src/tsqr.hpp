@@ -31,24 +31,33 @@ struct buffer {
 	unsigned* dl;
 	unsigned* hl;
 
+	std::size_t total_memory_size;
+
 	// constructor
-	buffer() : dwq(nullptr), dwr(nullptr), dl(nullptr), hl(nullptr) {}
+	buffer() : dwq(nullptr), dwr(nullptr), dl(nullptr), hl(nullptr), total_memory_size(0lu) {}
 	// destructor
 	~buffer() {
 		destroy();
 	}
 
 	virtual void allocate(const std::size_t m, const std::size_t n) {
-		cudaMalloc(reinterpret_cast<void**>(&dwq), sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n));
-		cudaMalloc(reinterpret_cast<void**>(&dwr), sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n));
-		cudaMalloc(reinterpret_cast<void**>(&dl), sizeof(unsigned) * get_working_l_size(m));
-		cudaMallocHost(reinterpret_cast<void**>(&dl), sizeof(unsigned) * get_working_l_size(m));
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
+		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&dl), l_size);
+		total_memory_size = wq_size + wr_size + l_size;
 	}
 	virtual void destroy() {
 		cudaFree(dwq); dwq = nullptr;
 		cudaFree(dwr); dwr = nullptr;
 		cudaFree(dl); dl = nullptr;
 		cudaFreeHost(hl); hl = nullptr;
+	}
+	virtual std::size_t get_device_memory_size() const {
+		return total_memory_size;
 	}
 };
 
