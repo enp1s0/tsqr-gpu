@@ -112,7 +112,7 @@ mtk::qr::qr<UseTC, Refine>(
 
 ### Build
 ```
-nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtcqr.a -I/path/to/[tsqr-gpu/src/tsqr.hpp]
+nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib` -lkvars
 ```
 
 
@@ -128,4 +128,3 @@ nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu /path/to/libtcqr.a -I/path/to/[tsqr-g
 - cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
 - gemm_core : [https://gitlab.momo86.net/mutsuki/gemm_core](https://gitlab.momo86.net/mutsuki/gemm_core)
 - wmma-extension : [https://gitlab.momo86.net/mutsuki/wmma-extension](https://gitlab.momo86.net/mutsuki/wmma-extension)
-
