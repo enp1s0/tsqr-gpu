@@ -40,7 +40,7 @@ struct buffer {
 		destroy();
 	}
 
-	virtual void allocate(const std::size_t m, const std::size_t n) {
+	void allocate(const std::size_t m, const std::size_t n) {
 		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
 		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
@@ -50,13 +50,13 @@ struct buffer {
 		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
 		total_memory_size = wq_size + wr_size + l_size;
 	}
-	virtual void destroy() {
+	void destroy() {
 		cudaFree(dwq); dwq = nullptr;
 		cudaFree(dwr); dwr = nullptr;
 		cudaFree(dl); dl = nullptr;
 		cudaFreeHost(hl); hl = nullptr;
 	}
-	virtual std::size_t get_device_memory_size() const {
+	std::size_t get_device_memory_size() const {
 		return total_memory_size;
 	}
 };
