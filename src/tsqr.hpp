@@ -64,6 +64,16 @@ void tsqr16(
 		unsigned* const d_working_l_ptr,
 		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream = nullptr);
+
+template <bool UseTC, bool Refine, class T, class CORE_T>
+void tsqr16(
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		const T* const a_ptr, const std::size_t lda,
+		const std::size_t m,
+		const std::size_t n,
+		buffer<T, UseTC, Refine>& bf,
+		cudaStream_t const cuda_stream = nullptr);
 } // namespace tsqr
 } // namespace mtk
 
