@@ -20,13 +20,17 @@ std::size_t get_working_r_size(const std::size_t m);
 std::size_t get_working_l_size(const std::size_t m);
 
 template <class T, bool UseTC, bool Refine>
-struct buffer : public mtk::tsqr::buffer<T, UseTC, Refine> {
+struct buffer {
 	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
 	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
 	unsigned* dl;
 	unsigned* hl;
 
-	buffer() : mtk::tsqr::buffer<T, UseTC, Refine>() {}
+	std::size_t total_memory_size;
+
+	// constructor
+	buffer() : dwq(nullptr), dwr(nullptr), dl(nullptr), hl(nullptr), total_memory_size(0lu) {}
+	// destructor
 	~buffer() {
 		destroy();
 	}
@@ -39,11 +43,17 @@ struct buffer : public mtk::tsqr::buffer<T, UseTC, Refine> {
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
 		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
 		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
-		mtk::tsqr::buffer<T, UseTC, Refine>::total_memory_size = wq_size + wr_size + l_size;
+		total_memory_size = wq_size + wr_size + l_size;
 	}
 
 	void destroy() {
-		mtk::tsqr::buffer<T, UseTC, Refine>::destroy();
+		cudaFree(dwq); dwq = nullptr;
+		cudaFree(dwr); dwr = nullptr;
+		cudaFree(dl); dl = nullptr;
+		cudaFreeHost(hl); hl = nullptr;
+	}
+	std::size_t get_device_memory_size() const {
+		return total_memory_size;
 	}
 };
 
