@@ -748,26 +748,16 @@ void mtk::tsqr::tsqr16(
 		const std::size_t m, const std::size_t n,
 		mtk::tsqr::buffer<T, UseTC, Refine>& buffer,
 		cudaStream_t const cuda_stream) {
-	if(m > 32) {
-		tsqr16_geq32<UseTC, Refine, CORE_T>(
-				q_ptr, ldq,
-				r_ptr, ldr,
-				a_ptr, lda,
-				m, n,
-				buffer.dwq,
-				buffer.dwr,
-				buffer.dl,
-				buffer.hl,
-				cuda_stream);
-	}else {
-		mtk::tcqr::qr32x16<UseTC, Refine, CORE_T>(
-				q_ptr, ldq,
-				r_ptr, ldr,
-				a_ptr, lda,
-				m, n,
-				cuda_stream
-				);
-	}
+	mtk::tsqr::tsqr16<UseTC, Refine, T, CORE_T>(
+			q_ptr, ldq,
+			r_ptr, ldr,
+			a_ptr, lda,
+			m, n,
+			buffer.dwq,
+			buffer.dwr,
+			buffer.dl,
+			buffer.hl,
+			cuda_stream);
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
