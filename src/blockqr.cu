@@ -24,6 +24,9 @@ std::size_t mtk::qr::get_working_q_size(const std::size_t m) {
 std::size_t mtk::qr::get_working_r_size(const std::size_t m) {
 	return mtk::tsqr::get_working_r_size(m, tsqr_colmun_size);
 }
+std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
+	return mtk::tsqr::get_batch_size(m) + 1;
+}
 
 template <bool UseTC, bool Refinement, class T, class CORE_T>
 void mtk::qr::qr(
@@ -33,6 +36,8 @@ void mtk::qr::qr(
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		unsigned* const d_wl_ptr,
+		unsigned* const h_wl_ptr,
 		cublasHandle_t const cublas_handle) {
 
 	const auto column_block_size = (n + tsqr_colmun_size - 1) / tsqr_colmun_size;
@@ -115,6 +120,8 @@ void mtk::qr::qr(
 				m, current_block_n,
 				wq_ptr,
 				wr_ptr,
+				d_wl_ptr,
+				h_wl_ptr,
 				cuda_stream
 				);
 		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
@@ -155,9 +162,9 @@ void mtk::qr::qr(
 	CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, original_math_mode));
 }
 
-template void mtk::qr::qr<false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, cublasHandle_t const);
-template void mtk::qr::qr<true , false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, cublasHandle_t const);
-template void mtk::qr::qr<true , true , float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , true >::type* const, typename mtk::qr::get_working_r_type<float, true , true >::type* const, cublasHandle_t const);
-template void mtk::qr::qr<false, false, half , half>(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , false, false>::type* const, typename mtk::qr::get_working_r_type<half , false, false>::type* const, cublasHandle_t const);
-template void mtk::qr::qr<true , false, half , half>(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , true , false>::type* const, typename mtk::qr::get_working_r_type<half , true , false>::type* const, cublasHandle_t const);
-template void mtk::qr::qr<true , false, float, half>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, cublasHandle_t const);
+template void mtk::qr::qr<false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
+template void mtk::qr::qr<true , false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
+template void mtk::qr::qr<true , true , float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , true >::type* const, typename mtk::qr::get_working_r_type<float, true , true >::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
+template void mtk::qr::qr<false, false, half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , false, false>::type* const, typename mtk::qr::get_working_r_type<half , false, false>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
+template void mtk::qr::qr<true , false, half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , true , false>::type* const, typename mtk::qr::get_working_r_type<half , true , false>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
+template void mtk::qr::qr<true , false, float, half >(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);

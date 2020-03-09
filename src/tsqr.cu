@@ -525,6 +525,8 @@ void tsqr16_geq32(
 		const T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
+		unsigned* const d_sub_m_list,
+		unsigned* const h_sub_m_list,
 		cudaStream_t const cuda_stream) {
 
 	const std::size_t max_batch_size_per_block = 4;
@@ -539,16 +541,13 @@ void tsqr16_geq32(
 	debug_func([&working_r_ptrs]() {std::printf("%s : working_r_ptr[1] = %p\n", __func__, working_r_ptrs[1]);});
 	debug_func([&working_q_ptr]() {std::printf("%s : working_q_ptr    = %p\n", __func__, working_q_ptr);});
 
-	const auto d_sub_m_list = cutf::memory::get_device_unique_ptr<unsigned>(batch_size + 1);
-	const auto h_sub_m_list = cutf::memory::get_host_unique_ptr<unsigned>(batch_size + 1);
-
 	// 1層目はsub_mが特殊なので別途計算を行う
-	h_sub_m_list.get()[0] = 0;
+	h_sub_m_list[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++) {
-		h_sub_m_list.get()[i] = m * i / batch_size;
+		h_sub_m_list[i] = m * i / batch_size;
 	}
-	h_sub_m_list.get()[batch_size] = m;
-	cutf::memory::copy_async(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1, cuda_stream);
+	h_sub_m_list[batch_size] = m;
+	cutf::memory::copy_async(d_sub_m_list, h_sub_m_list, batch_size + 1, cuda_stream);
 
 #ifdef MEASURE_QR_TIME
 	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
@@ -561,16 +560,16 @@ void tsqr16_geq32(
 			working_q_ptr, m,
 			working_r_ptrs[0], n * batch_size,
 			a_ptr, lda, m, n,
-			batch_size, d_sub_m_list.get(),
+			batch_size, d_sub_m_list,
 			cuda_stream
 			);
 	cudaStreamSynchronize(cuda_stream);
 
 	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++) {
-		h_sub_m_list.get()[i] = 2 * n * i;
+		h_sub_m_list[i] = 2 * n * i;
 	}
-	cutf::memory::copy_async(d_sub_m_list.get(), h_sub_m_list.get(), batch_size / 2 + 1, cuda_stream);
+	cutf::memory::copy_async(d_sub_m_list, h_sub_m_list, batch_size / 2 + 1, cuda_stream);
 	cudaStreamSynchronize(cuda_stream);
 
 	// 再帰的QR分解のfor展開
@@ -595,7 +594,7 @@ void tsqr16_geq32(
 				working_r_ptrs[working_r_index], ldrs[working_r_index],
 				2 * n * local_batch_size,
 				n, 
-				local_batch_size, d_sub_m_list.get(),
+				local_batch_size, d_sub_m_list,
 				cuda_stream
 				);
 
@@ -665,12 +664,12 @@ void tsqr16_geq32(
 		cudaStreamSynchronize(cuda_stream);
 	}
 	// 1層目はsub_mが特殊なので別途計算を行う
-	h_sub_m_list.get()[0] = 0;
+	h_sub_m_list[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++) {
-		h_sub_m_list.get()[i] = m * i / batch_size;
+		h_sub_m_list[i] = m * i / batch_size;
 	}
-	h_sub_m_list.get()[batch_size] = m;
-	cutf::memory::copy_async(d_sub_m_list.get(), h_sub_m_list.get(), batch_size + 1, cuda_stream);
+	h_sub_m_list[batch_size] = m;
+	cutf::memory::copy_async(d_sub_m_list, h_sub_m_list, batch_size + 1, cuda_stream);
 	const auto grid_size = (batch_size + max_batch_size_per_block - 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * warp_size;
 #ifdef DEBUG_Q_MATRIX_PRINT
@@ -687,7 +686,7 @@ void tsqr16_geq32(
 			working_q_ptr + m * n,
 			n,
 			batch_size,
-			d_sub_m_list.get()
+			d_sub_m_list
 			);
 	cudaStreamSynchronize(cuda_stream);
 	debug_func([]() {CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
@@ -717,6 +716,8 @@ void mtk::tsqr::tsqr16(
 		const T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr, typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
+		unsigned* const d_working_l_ptr,
+		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream) {
 	if(m > 32) {
 		tsqr16_geq32<UseTC, Refine, CORE_T>(
@@ -725,6 +726,8 @@ void mtk::tsqr::tsqr16(
 				a_ptr, lda,
 				m, n,
 				working_q_ptr, working_r_ptr,
+				d_working_l_ptr,
+				h_working_l_ptr,
 				cuda_stream);
 	}else {
 		mtk::tcqr::qr32x16<UseTC, Refine, CORE_T>(
@@ -738,9 +741,9 @@ void mtk::tsqr::tsqr16(
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
-template void mtk::tsqr::tsqr16<true, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<true, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<false, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<true, true, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true, true>::type* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<true, false, float, half>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, false, false>::type* const, typename mtk::tsqr::get_working_r_type<float, false, false>::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<false, false, half, half>(half* const, const std::size_t, half* const, const std::size_t, const half* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<half, false, false>::type* const, typename mtk::tsqr::get_working_r_type<half, false, false>::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, true, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, true>::type* const, typename mtk::tsqr::get_working_r_type<float, true, true>::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+template void mtk::tsqr::tsqr16<true, false, float, half>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<float, true, false>::type* const, typename mtk::tsqr::get_working_r_type<float, true, false>::type* const, unsigned* const, unsigned* const, cudaStream_t const);

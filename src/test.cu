@@ -80,6 +80,9 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 					mtk::qr::get_working_q_size(m));
 			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
 					mtk::qr::get_working_r_size(m));
+			auto h_working_l = cutf::memory::get_host_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
+			auto d_working_l = cutf::memory::get_device_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
+
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
 			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -108,6 +111,8 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 						m, n,
 						d_working_q.get(),
 						d_working_r.get(),
+						d_working_l.get(),
+						h_working_l.get(),
 						*cublas_handle.get()
 						);
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
@@ -200,6 +205,8 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 			auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(working_q_size);
 			const auto working_r_size = mtk::qr::get_working_r_size(m);
 			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(working_r_size);
+			auto h_working_l = cutf::memory::get_host_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
+			auto d_working_l = cutf::memory::get_device_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
@@ -217,6 +224,8 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 					m, n,
 					d_working_q.get(),
 					d_working_r.get(),
+					d_working_l.get(),
+					h_working_l.get(),
 					*cublas_handle.get()
 					);
 
@@ -229,6 +238,8 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 							m, n,
 							d_working_q.get(),
 							d_working_r.get(),
+							d_working_l.get(),
+							h_working_l.get(),
 							*cublas_handle.get()
 							);
 					}}) / C;
