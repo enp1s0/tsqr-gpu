@@ -76,12 +76,9 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
-			auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(
-					mtk::qr::get_working_q_size(m));
-			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(
-					mtk::qr::get_working_r_size(m));
-			auto h_working_l = cutf::memory::get_host_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
-			auto d_working_l = cutf::memory::get_device_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
+
+			mtk::qr::buffer<T, UseTC, Refine> buffer;
+			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_a_test = cutf::memory::get_host_unique_ptr<float>(m * n);
@@ -109,10 +106,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 						d_r.get(), n,
 						d_a.get(), m,
 						m, n,
-						d_working_q.get(),
-						d_working_r.get(),
-						d_working_l.get(),
-						h_working_l.get(),
+						buffer,
 						*cublas_handle.get()
 						);
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
@@ -201,12 +195,10 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
-			const auto working_q_size = mtk::qr::get_working_q_size(m);
-			auto d_working_q = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type>(working_q_size);
-			const auto working_r_size = mtk::qr::get_working_r_size(m);
-			auto d_working_r = cutf::memory::get_device_unique_ptr<typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type>(working_r_size);
-			auto h_working_l = cutf::memory::get_host_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
-			auto d_working_l = cutf::memory::get_device_unique_ptr<unsigned>(mtk::qr::get_working_l_size(m));
+
+			mtk::qr::buffer<T, UseTC, Refine> buffer;
+			buffer.allocate(m, n);
+
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
@@ -222,10 +214,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 					d_r.get(), n,
 					d_a.get(), m,
 					m, n,
-					d_working_q.get(),
-					d_working_r.get(),
-					d_working_l.get(),
-					h_working_l.get(),
+					buffer,
 					*cublas_handle.get()
 					);
 
@@ -236,10 +225,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 							d_r.get(), n,
 							d_a.get(), m,
 							m, n,
-							d_working_q.get(),
-							d_working_r.get(),
-							d_working_l.get(),
-							h_working_l.get(),
+							buffer,
 							*cublas_handle.get()
 							);
 					}}) / C;
@@ -268,7 +254,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 				<< (Refine ? "1" : "0") << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
-				<< (working_q_size * sizeof(typename mtk::qr::get_working_q_type<T, UseTC, Refine>::type) + working_r_size * sizeof(typename mtk::qr::get_working_r_type<T, UseTC, Refine>::type)) << std::endl;
+				<< buffer.get_device_memory_size() << std::endl;
 			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;

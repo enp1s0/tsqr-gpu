@@ -2,6 +2,7 @@
 #define __BLOCKQR_HPP__
 #include <cublas_v2.h>
 #include <cstddef>
+#include <cstdlib>
 #include "tsqr.hpp"
 
 namespace mtk {
@@ -18,6 +19,44 @@ std::size_t get_working_q_size(const std::size_t m);
 std::size_t get_working_r_size(const std::size_t m);
 std::size_t get_working_l_size(const std::size_t m);
 
+template <class T, bool UseTC, bool Refine>
+struct buffer {
+	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
+	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
+	unsigned* dl;
+	unsigned* hl;
+
+	std::size_t total_memory_size;
+
+	// constructor
+	buffer() : dwq(nullptr), dwr(nullptr), dl(nullptr), hl(nullptr), total_memory_size(0lu) {}
+	// destructor
+	~buffer() {
+		destroy();
+	}
+
+	void allocate(const std::size_t m, const std::size_t n) {
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
+		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
+		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
+		total_memory_size = wq_size + wr_size + l_size;
+	}
+
+	void destroy() {
+		cudaFree(dwq); dwq = nullptr;
+		cudaFree(dwr); dwr = nullptr;
+		cudaFree(dl); dl = nullptr;
+		cudaFreeHost(hl); hl = nullptr;
+	}
+	std::size_t get_device_memory_size() const {
+		return total_memory_size;
+	}
+};
+
 template <bool UseTC, bool Refinement, class T, class CORE_T = T>
 void qr(
 		T* const q_ptr, const std::size_t ldq,
@@ -29,6 +68,27 @@ void qr(
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
+
+template <bool UseTC, bool Refinement, class T, class CORE_T = T>
+inline void qr(
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		T* const a_ptr, const std::size_t lda,
+		const std::size_t m, const std::size_t n,
+		buffer<T, UseTC, Refinement>& bf,
+		cublasHandle_t const main_cublas_handle) {
+	qr<UseTC, Refinement, T, CORE_T>(
+			q_ptr, ldq,
+			r_ptr, ldr,
+			a_ptr, lda,
+			m, n,
+			bf.dwq,
+			bf.dwr,
+			bf.dl,
+			bf.hl,
+			main_cublas_handle
+			);
+}
 } // namespace qr
 } // namespace mtk
 

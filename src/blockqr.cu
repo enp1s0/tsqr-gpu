@@ -25,7 +25,7 @@ std::size_t mtk::qr::get_working_r_size(const std::size_t m) {
 	return mtk::tsqr::get_working_r_size(m, tsqr_colmun_size);
 }
 std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
-	return mtk::tsqr::get_batch_size(m) + 1;
+	return mtk::tsqr::get_working_l_size(m);
 }
 
 template <bool UseTC, bool Refinement, class T, class CORE_T>
