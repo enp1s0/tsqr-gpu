@@ -62,7 +62,7 @@ struct buffer {
 };
 
 template <bool UseTC, bool Refinement, class T, class CORE_T = T>
-void qr(
+state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
@@ -74,14 +74,14 @@ void qr(
 		cublasHandle_t const main_cublas_handle);
 
 template <bool UseTC, bool Refinement, class T, class CORE_T = T>
-inline void qr(
+inline state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		buffer<T, UseTC, Refinement>& bf,
 		cublasHandle_t const main_cublas_handle) {
-	qr<UseTC, Refinement, T, CORE_T>(
+	return qr<UseTC, Refinement, T, CORE_T>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,
