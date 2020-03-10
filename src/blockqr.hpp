@@ -8,6 +8,10 @@
 namespace mtk {
 namespace qr {
 
+using state_t = int;
+const state_t success_factorization = 0;
+const state_t error_invalid_matrix_size = 1;
+
 template <class T, bool UseTC, bool Refine>
 struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type;};
 
