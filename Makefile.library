@@ -9,7 +9,7 @@ LIBDIR=lib
 HEADERS=$(shell find $(SRCDIR) -name '*.cuh' -o -name '*.hpp' -o -name '*.h')
 TARGET=libtcqr
 SL_OBJS=$(OBJDIR)/tsqr.o $(OBJDIR)/tcqr32x16.o $(OBJDIR)/blockqr.o $(OBJDIR)/tsqr.dlink.o $(OBJDIR)/tcqr32x16.dlink.o $(OBJDIR)/blockqr.dlink.o
-INCLUDE_DIR=include
+INCLUDE_DIR=include/tsqr/
 COPY_HF=$(SRCDIR)/tsqr.hpp $(SRCDIR)/tcqr.hpp $(SRCDIR)/blockqr.hpp
 
 $(LIBDIR)/$(TARGET).a: $(SL_OBJS)
