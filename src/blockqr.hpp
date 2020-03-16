@@ -25,10 +25,11 @@ std::size_t get_working_q_size(const std::size_t m);
 std::size_t get_working_r_size(const std::size_t m);
 std::size_t get_working_l_size(const std::size_t m);
 
-template <class T, bool UseTC, bool Refine>
+template <class T, bool UseTC, bool Refine, bool Reorthogonalize>
 struct buffer {
 	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
 	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
+	T* dw_reorth_r;
 	unsigned* dl;
 	unsigned* hl;
 
@@ -45,11 +46,13 @@ struct buffer {
 		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
 		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		const auto reorth_r_size = sizeof(T) * tsqr_colmun_size * tsqr_colmun_size * 3;
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
 		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
-		total_memory_size = wq_size + wr_size + l_size;
+		total_memory_size = wq_size + wr_size + l_size + reorth_r_size;
 	}
 
 	void destroy() {
@@ -63,7 +66,7 @@ struct buffer {
 	}
 };
 
-template <bool UseTC, bool Refinement, class T, class CORE_T = T>
+template <bool UseTC, bool Refinement, class T, bool Reorthogonalize, class CORE_T = T>
 state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
@@ -71,17 +74,18 @@ state_t qr(
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		T* const reorth_r_ptr,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
 
-template <bool UseTC, bool Refinement, class T, class CORE_T = T>
+template <bool UseTC, bool Refinement, class T, bool Reorthogonalize, class CORE_T = T>
 inline state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		buffer<T, UseTC, Refinement>& bf,
+		buffer<T, UseTC, Refinement, Reorthogonalize>& bf,
 		cublasHandle_t const main_cublas_handle) {
 	return qr<UseTC, Refinement, T, CORE_T>(
 			q_ptr, ldq,
@@ -90,6 +94,7 @@ inline state_t qr(
 			m, n,
 			bf.dwq,
 			bf.dwr,
+			bf.dw_reorth_r,
 			bf.dl,
 			bf.hl,
 			main_cublas_handle
