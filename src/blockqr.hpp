@@ -49,15 +49,21 @@ struct buffer {
 		const auto reorth_r_size = sizeof(T) * tsqr_colmun_size * tsqr_colmun_size * 3;
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
-		cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
 		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
-		total_memory_size = wq_size + wr_size + l_size + reorth_r_size;
+		total_memory_size = wq_size + wr_size + l_size;
+		if (Reorthogonalize) {
+			cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
+			total_memory_size += reorth_r_size;
+		}
 	}
 
 	void destroy() {
 		cudaFree(dwq); dwq = nullptr;
 		cudaFree(dwr); dwr = nullptr;
+		if (Reorthogonalize) {
+			cudaFree(dw_reorth_r); dw_reorth_r = nullptr;
+		}
 		cudaFree(dl); dl = nullptr;
 		cudaFreeHost(hl); hl = nullptr;
 	}
