@@ -8,6 +8,8 @@
 namespace mtk {
 namespace qr {
 
+constexpr std::size_t tsqr_colmun_size = 16;
+
 using state_t = int;
 const state_t success_factorization = 0;
 const state_t error_invalid_matrix_size = 1;
