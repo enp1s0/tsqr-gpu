@@ -85,7 +85,7 @@ state_t qr(
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
 
-template <bool UseTC, bool Reorthogonalize, bool Refinement, class T, class CORE_T = T>
+template <bool UseTC, bool Refinement, bool Reorthogonalize, class T, class CORE_T = T>
 inline state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
