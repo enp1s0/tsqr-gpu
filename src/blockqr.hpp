@@ -93,7 +93,7 @@ inline state_t qr(
 		const std::size_t m, const std::size_t n,
 		buffer<T, UseTC, Refinement, Reorthogonalize>& bf,
 		cublasHandle_t const main_cublas_handle) {
-	return qr<UseTC, Refinement, T, CORE_T>(
+	return qr<UseTC, Refinement, Reorthogonalize, T, CORE_T>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,
