@@ -27,24 +27,19 @@ std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
 	return mtk::tsqr::get_working_l_size(m);
 }
 
-template <bool UseTC, bool Refinement, bool Reorthoganalize, class T, class CORE_T>
-mtk::qr::state_t mtk::qr::qr(
+namespace {
+template <bool UseTC, bool Refinement, class T, class CORE_T>
+mtk::qr::state_t block_qr_core(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
 		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
-		T* const reorth_r,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const cublas_handle) {
-
-	if (n > m || m == 0 || n == 0) {
-		return mtk::qr::error_invalid_matrix_size;
-	}
-
-	const auto column_block_size = (n + tsqr_colmun_size - 1) / tsqr_colmun_size;
+	const auto column_block_size = (n + mtk::qr::tsqr_colmun_size - 1) / mtk::qr::tsqr_colmun_size;
 	
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
@@ -68,8 +63,8 @@ mtk::qr::state_t mtk::qr::qr(
 	for (std::size_t b = 0; b < column_block_size; b++) {
 		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 
-		const auto current_block_n = std::min(tsqr_colmun_size, n - b * tsqr_colmun_size);
-		const auto previous_block_n = b * tsqr_colmun_size;
+		const auto current_block_n = std::min(mtk::qr::tsqr_colmun_size, n - b * mtk::qr::tsqr_colmun_size);
+		const auto previous_block_n = b * mtk::qr::tsqr_colmun_size;
 		const auto one = cutf::type::cast<T>(1.0f);
 		const auto zero = cutf::type::cast<T>(0.0f);
 		const auto minus_one = cutf::type::cast<T>(-1.0f);
@@ -166,6 +161,40 @@ mtk::qr::state_t mtk::qr::qr(
 	CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, original_math_mode));
 
 	return mtk::qr::success_factorization;
+}
+
+} // namespace
+
+template <bool UseTC, bool Refinement, bool Reorthoganalize, class T, class CORE_T>
+mtk::qr::state_t mtk::qr::qr(
+		T* const q_ptr, const std::size_t ldq,
+		T* const r_ptr, const std::size_t ldr,
+		T* const a_ptr, const std::size_t lda,
+		const std::size_t m, const std::size_t n,
+		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		T* const reorth_r,
+		unsigned* const d_wl_ptr,
+		unsigned* const h_wl_ptr,
+		cublasHandle_t const cublas_handle) {
+
+	if (n > m || m == 0 || n == 0) {
+		return mtk::qr::error_invalid_matrix_size;
+	}
+
+	if (Reorthoganalize) {
+		return mtk::qr::success_factorization;
+	} else {
+		return block_qr_core<UseTC, Refinement, T, CORE_T>(
+				q_ptr, ldq,
+				r_ptr, ldr,
+				a_ptr, lda,
+				m, n,
+				wq_ptr, wr_ptr,
+				d_wl_ptr, h_wl_ptr,
+				cublas_handle
+				);
+	}
 }
 
 template mtk::qr::state_t mtk::qr::qr<false, false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
