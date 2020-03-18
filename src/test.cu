@@ -178,6 +178,12 @@ template void mtk::test_qr::precision<false, false, false, float, float>(const s
 template void mtk::test_qr::precision<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 template void mtk::test_qr::precision<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 template void mtk::test_qr::precision<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 
 template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
 void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
@@ -269,6 +275,12 @@ template void mtk::test_qr::speed<false, false, false, float, float>(const std::
 template void mtk::test_qr::speed<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 template void mtk::test_qr::speed<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 template void mtk::test_qr::speed<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 
 template <class T>
 void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
