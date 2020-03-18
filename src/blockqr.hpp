@@ -54,7 +54,7 @@ struct buffer {
 
 		// Allocate additional working memory for reorthogonalization
 		if (Reorthogonalize) {
-			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size * 2);
+			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 3 + m * tsqr_colmun_size);
 			cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 			total_memory_size += reorth_r_size;
 		}
