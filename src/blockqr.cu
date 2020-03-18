@@ -334,7 +334,16 @@ mtk::qr::state_t mtk::qr::qr(
 	}
 
 	if (Reorthoganalize) {
-		return mtk::qr::success_factorization;
+		return block_qr_reorthogonalization_core<UseTC, Refinement, T, CORE_T>(
+				q_ptr, ldq,
+				r_ptr, ldr,
+				a_ptr, lda,
+				m, n,
+				wq_ptr, wr_ptr,
+				reorth_r,
+				d_wl_ptr, h_wl_ptr,
+				cublas_handle
+				);
 	} else {
 		return block_qr_core<UseTC, Refinement, T, CORE_T>(
 				q_ptr, ldq,
