@@ -46,13 +46,15 @@ struct buffer {
 		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
 		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
-		const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size * 2);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
 		cudaMalloc(reinterpret_cast<void**>(&dl), l_size);
 		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
 		total_memory_size = wq_size + wr_size + l_size;
+
+		// Allocate additional working memory for reorthogonalization
 		if (Reorthogonalize) {
+			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size * 2);
 			cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 			total_memory_size += reorth_r_size;
 		}
