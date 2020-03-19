@@ -177,10 +177,9 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 		cublasHandle_t const cublas_handle) {
 	const auto column_block_size = (n + mtk::qr::tsqr_colmun_size - 1) / mtk::qr::tsqr_colmun_size;
 
-	T* const a2_ptr = w_reorth;
-	T* const r2_ptr = a2_ptr + m * mtk::qr::tsqr_colmun_size;
-	T* const r12_2_ptr = r2_ptr + mtk::qr::tsqr_colmun_size * mtk::qr::tsqr_colmun_size;
-	T* const r3_ptr = r12_2_ptr + mtk::qr::tsqr_colmun_size * mtk::qr::tsqr_colmun_size;
+	T* const r2_ptr = w_reorth;
+	T* const s2_ptr = r2_ptr + mtk::qr::tsqr_colmun_size * mtk::qr::tsqr_colmun_size;
+	T* const w_ptr = r2_ptr + m * mtk::qr::tsqr_colmun_size;
 
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
@@ -193,12 +192,6 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 	} else {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
 	}
-
-#ifdef PROFILE_BREAKDOWN
-	std::size_t gemm_0_count = 0lu;
-	std::size_t gemm_1_count = 0lu;
-	std::size_t tsqr_count = 0lu;
-#endif
 
 	// QR factorization of each block
 	for (std::size_t b = 0; b < column_block_size; b++) {
@@ -221,7 +214,6 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						&zero,
 						r_ptr + ldr * previous_block_n, ldr
 						));
-			// compute A'
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_N, CUBLAS_OP_N,
@@ -230,12 +222,12 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						q_ptr, ldq,
 						r_ptr + ldr * previous_block_n, ldr,
 						&one,
-						a2_ptr, lda
+						a_ptr + lda * previous_block_n, lda
 						));
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
-					r2_ptr, current_block_n,
-					a2_ptr, lda,
+					r2_ptr, mtk::qr::tsqr_colmun_size,
+					a_ptr + previous_block_n * lda, lda,
 					m, current_block_n,
 					wq_ptr,
 					wr_ptr,
@@ -246,27 +238,27 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
-						current_block_n, current_block_n, m,
+						previous_block_n, current_block_n, m,
 						&one,
+						q_ptr, ldq,
 						q_ptr + previous_block_n * ldq, ldq,
-						a2_ptr, lda,
 						&zero,
-						r12_2_ptr, current_block_n
+						s2_ptr, m
 						));
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_N, CUBLAS_OP_N,
 						m, current_block_n, previous_block_n,
 						&minus_one,
-						q_ptr + previous_block_n * ldq, ldq,
-						r12_2_ptr, current_block_n,
+						q_ptr, ldq,
+						s2_ptr, m,
 						&one,
-						a2_ptr, lda
+						q_ptr + previous_block_n * ldq, ldq
 						));
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
-					r3_ptr, current_block_n,
-					a2_ptr, lda,
+					w_ptr, mtk::qr::tsqr_colmun_size,
+					q_ptr + previous_block_n * ldq, ldq,
 					m, current_block_n,
 					wq_ptr,
 					wr_ptr,
@@ -279,8 +271,8 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						CUBLAS_OP_N, CUBLAS_OP_N,
 						previous_block_n, current_block_n, current_block_n,
 						&one,
-						r12_2_ptr, current_block_n,
-						r2_ptr, current_block_n,
+						s2_ptr, mtk::qr::tsqr_colmun_size,
+						r2_ptr, mtk::qr::tsqr_colmun_size,
 						&one,
 						r_ptr + ldr * previous_block_n, ldr
 						));
@@ -289,10 +281,10 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						CUBLAS_OP_N, CUBLAS_OP_N,
 						current_block_n, current_block_n, current_block_n,
 						&one,
-						r3_ptr, current_block_n,
-						r2_ptr, current_block_n,
+						w_ptr, mtk::qr::tsqr_colmun_size,
+						r2_ptr, mtk::qr::tsqr_colmun_size,
 						&zero,
-						r_ptr + previous_block_n * ldr + previous_block_n, ldr
+						r_ptr + ldr * previous_block_n + previous_block_n, ldr
 						));
 		} else {
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
