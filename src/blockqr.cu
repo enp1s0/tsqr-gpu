@@ -183,6 +183,11 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 	T* const s2_ptr = r2_ptr + mtk::qr::tsqr_colmun_size * mtk::qr::tsqr_colmun_size;
 	T* const w_ptr = s2_ptr + m * mtk::qr::tsqr_colmun_size;
 
+#ifdef PROFILE_BREAKDOWN
+	std::size_t gemm_count = 0lu;
+	std::size_t tsqr_count = 0lu;
+#endif
+
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
 
@@ -206,6 +211,10 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 		const auto minus_one = cutf::type::cast<T>(-1.0f);
 
 		if (b != 0) {
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_0 = std::chrono::system_clock::now();
+#endif
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
@@ -226,6 +235,12 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						&one,
 						a_ptr + lda * previous_block_n, lda
 						));
+
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_1 = std::chrono::system_clock::now();
+			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
+#endif
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r2_ptr, mtk::qr::tsqr_colmun_size,
@@ -237,6 +252,11 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 					h_wl_ptr,
 					cuda_stream
 					);
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_2 = std::chrono::system_clock::now();
+			tsqr_count += std::chrono::duration_cast<std::chrono::microseconds>(t_2 - t_1).count();
+#endif
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_T, CUBLAS_OP_N,
@@ -257,6 +277,11 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						&one,
 						q_ptr + previous_block_n * ldq, ldq
 						));
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_3 = std::chrono::system_clock::now();
+			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
+#endif
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					w_ptr, mtk::qr::tsqr_colmun_size,
@@ -268,6 +293,11 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 					h_wl_ptr,
 					cuda_stream
 					);
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_4 = std::chrono::system_clock::now();
+			tsqr_count += std::chrono::duration_cast<std::chrono::microseconds>(t_4 - t_3).count();
+#endif
 			CUTF_HANDLE_ERROR(cutf::cublas::gemm(
 						cublas_handle,
 						CUBLAS_OP_N, CUBLAS_OP_N,
@@ -288,7 +318,16 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						&zero,
 						r_ptr + ldr * previous_block_n + previous_block_n, ldr
 						));
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_5 = std::chrono::system_clock::now();
+			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_5 - t_4).count();
+#endif
 		} else {
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_0 = std::chrono::system_clock::now();
+#endif
 			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r_ptr + previous_block_n * ldr + previous_block_n, ldr,
@@ -300,9 +339,41 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 					h_wl_ptr,
 					cuda_stream
 					);
+#ifdef PROFILE_BREAKDOWN
+			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
+			const auto t_1 = std::chrono::system_clock::now();
+			tsqr_count += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
+#endif
 		}
 		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 	}
+
+#ifdef PROFILE_BREAKDOWN
+	const auto time_sum = gemm_count + tsqr_count;
+#ifdef PROFILE_BREAKDOWN_CSV
+	std::printf("%lu,%lu,%s,%s,%d,%d,%d,%e,%e,%e,%e\n",
+			m, n,
+			get_type_name<T>().c_str(),
+			get_type_name<CORE_T>().c_str(),
+			(UseTC ? 1 : 0),
+			(Refinement ? 1 : 0),
+			0,
+			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
+			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
+			);
+#else
+	std::printf("# BlockQR breakdown\n");
+	std::printf("Size   : %lu x %lu\n", m, n);
+	std::printf("Type   : %s\n", get_type_name<T>().c_str());
+	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
+	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
+	std::printf("Refine : %s\n", (Refinement ? "YES" : "NO"));
+	std::printf("Reorth : %s\n", "YES");
+	std::printf("GEMM   : %e[s] (%e%%)\n", gemm_count / 1.0e6, static_cast<double>(gemm_count) / time_sum * 100);
+	std::printf("TSQR   : %e[s] (%e%%)\n", tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100);
+#endif
+#endif
+
 	CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, original_math_mode));
 
 	return mtk::qr::success_factorization;
