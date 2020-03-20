@@ -137,12 +137,13 @@ mtk::qr::state_t block_qr_core(
 #ifdef PROFILE_BREAKDOWN
 	const auto time_sum = gemm_0_count + gemm_1_count + tsqr_count;
 #ifdef PROFILE_BREAKDOWN_CSV
-	std::printf("%lu,%lu,%s,%s,%d,%d,%e,%e,%e,%e\n",
+	std::printf("%lu,%lu,%s,%s,%d,%d,%d,%e,%e,%e,%e\n",
 			m, n,
 			get_type_name<T>().c_str(),
 			get_type_name<CORE_T>().c_str(),
 			(UseTC ? 1 : 0),
 			(Refinement ? 1 : 0),
+			0,
 			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
 			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
 			);
@@ -153,6 +154,7 @@ mtk::qr::state_t block_qr_core(
 	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
 	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
 	std::printf("Refine : %s\n", (Refinement ? "YES" : "NO"));
+	std::printf("Reorth : %s\n", "NO");
 	std::printf("GEMM-0 : %e[s] (%e%%)\n", gemm_0_count / 1.0e6, static_cast<double>(gemm_0_count) / time_sum * 100);
 	std::printf("GEMM-1 : %e[s] (%e%%)\n", gemm_1_count / 1.0e6, static_cast<double>(gemm_1_count) / time_sum * 100);
 	std::printf("TSQR   : %e[s] (%e%%)\n", tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100);
