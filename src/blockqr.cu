@@ -179,7 +179,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 
 	T* const r2_ptr = w_reorth;
 	T* const s2_ptr = r2_ptr + mtk::qr::tsqr_colmun_size * mtk::qr::tsqr_colmun_size;
-	T* const w_ptr = r2_ptr + m * mtk::qr::tsqr_colmun_size;
+	T* const w_ptr = s2_ptr + m * mtk::qr::tsqr_colmun_size;
 
 	cudaStream_t cuda_stream;
 	CUTF_HANDLE_ERROR(cublasGetStream(cublas_handle, &cuda_stream));
