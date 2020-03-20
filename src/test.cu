@@ -46,17 +46,17 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_precision_head() {
-	std::cout << "m,n,type,tc,refinement,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout << "m,n,type,tc,refinement,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
 	std::cout.flush();
 }
 
 void print_speed_head() {
-	std::cout << "m,n,type,tc,refinement,elapsed_time,tflops,working_memory_size" << std::endl;
+	std::cout << "m,n,type,tc,refinement,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
 	std::cout.flush();
 }
 } // namespace
 
-template <bool UseTC, bool Refine, class T, class CORE_T>
+template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
 void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
@@ -77,7 +77,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine> buffer;
+			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -101,7 +101,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-				mtk::qr::qr<UseTC, Refine, T, CORE_T>(
+				mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
@@ -160,6 +160,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 				<< get_type_name<T>() << ","
 				<< (UseTC ? "1" : "0") << ","
 				<< (Refine ? "1" : "0") << ","
+				<< (Reorthogonalize ? "1" : "0") << ","
 				<< error << ","
 				<< error_deviation << ","
 				<< orthogonality << ","
@@ -172,14 +173,20 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 	}
 }
 
-template void mtk::test_qr::precision<true, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true, false, half, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, half, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true, true, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true, false, float, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 
-template <bool UseTC, bool Refine, class T, class CORE_T>
+template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
 void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
@@ -196,7 +203,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine> buffer;
+			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -209,7 +216,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 			// for cache
-			mtk::qr::qr<UseTC, Refine, T, CORE_T>(
+			mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
 					d_q.get(), m,
 					d_r.get(), n,
 					d_a.get(), m,
@@ -220,7 +227,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 
 			const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 					for(std::size_t c = 0; c < C; c++) {
-					mtk::qr::qr<UseTC, Refine, T, CORE_T>(
+					mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
 							d_q.get(), m,
 							d_r.get(), n,
 							d_a.get(), m,
@@ -252,6 +259,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 				<< get_type_name<T>() << ","
 				<< (UseTC ? "1" : "0") << ","
 				<< (Refine ? "1" : "0") << ","
+				<< (Reorthogonalize ? "1" : "0") << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
 				<< buffer.get_device_memory_size() << std::endl;
@@ -263,12 +271,18 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 	}
 }
 
-template void mtk::test_qr::speed<true, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true, false, half, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, half, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true, true, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true, false, float, half>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
 
 template <class T>
 void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
@@ -383,6 +397,7 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
 				<< "0" << ","
+				<< "0" << ","
 				<< error << ","
 				<< error_deviation << ","
 				<< orthogonality << ","
@@ -481,6 +496,7 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 				<< n << ","
 				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
+				<< "0" << ","
 				<< "0" << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
