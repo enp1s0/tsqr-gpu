@@ -26,6 +26,7 @@ You can find `libtcqr.a` in `lib` directory.
 using comute_t = float;
 constexpr bool UseTC = true;
 constexpr bool Refine = true;
+constexpr bool Reorthogonalization = true;
 
 // size of input matrix
 constexpr std::size_t M = 9211;
@@ -45,7 +46,7 @@ mtk::tsqr::buffer buffer;
 buffer.allocate(M, N);
 
 // TSQR
-mtk::tsqr::tsqr16<UseTC, Refine>(
+mtk::tsqr::tsqr16<UseTC, Refine, Reorthogonalization>(
 	d_q, M,
 	d_r, N,
 	d_a, M,
@@ -61,6 +62,7 @@ mtk::tsqr::tsqr16<UseTC, Refine>(
 using comute_t = float;
 constexpr bool UseTC = true;
 constexpr bool Refine = true;
+constexpr bool Reorthogonalization = true;
 
 // size of input matrix
 constexpr std::size_t M = 9211;
@@ -84,7 +86,7 @@ cublasHandle_t cublas_handle;
 cublasCreateHandle(cublas_handle);
 
 // BlockQR
-mtk::qr::qr<UseTC, Refine>(
+mtk::qr::qr<UseTC, Refine, Reorthogonalization>(
 	d_q, M,
 	d_r, N,
 	d_a, M,
