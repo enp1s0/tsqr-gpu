@@ -271,7 +271,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 						CUBLAS_OP_N, CUBLAS_OP_N,
 						previous_block_n, current_block_n, current_block_n,
 						&one,
-						s2_ptr, mtk::qr::tsqr_colmun_size,
+						s2_ptr, m,
 						r2_ptr, mtk::qr::tsqr_colmun_size,
 						&one,
 						r_ptr + ldr * previous_block_n, ldr
