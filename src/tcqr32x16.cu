@@ -560,6 +560,53 @@ __device__ void update_qr_f16tc_with_u(
 	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
+template <class T>
+__device__ void update_qr_with_u(
+		T* const q_ptr, T* const r_ptr,
+		T* const u_ptr, const float norm_u2,
+		T* const tmp_vec_ptr,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+
+	if (lane == 0)
+		tmp_vec_ptr[unique_id] = cutf::type::cast<T>(0.0f);
+
+	/* Q */
+	mtk::gevm_core16x16<T, 1>(
+			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
+			u_ptr,
+			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			unique_id & 0x1f
+			);
+	mtk::gevm_core16x16<T, 1>(
+			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
+			u_ptr + FRAGMENT_DIM_N,
+			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			unique_id & 0x1f
+			);
+	mtk::ger_core16x16<T, 1>(
+			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			FRAGMENT_DIM_M,
+			u_ptr,
+			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
+			unique_id & 0x1f
+			);
+
+	if (lane == 0)
+		tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+
+	mtk::ger_core16x16<T, 1>(
+			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			FRAGMENT_DIM_M,
+			u_ptr + FRAGMENT_DIM_N,
+			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
+			unique_id & 0x1f
+			);
+}
+
 __device__ void qr32x16_f32tc_refine_core(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
