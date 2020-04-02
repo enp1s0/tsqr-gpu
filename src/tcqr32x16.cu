@@ -572,8 +572,9 @@ __device__ void update_qr_with_u(
 	const auto lane = unique_id >> 5;
 
 	/* Q */
-	if (lane == 0)
+	if (unique_id < FRAGMENT_DIM_M)
 		tmp_vec_ptr[unique_id] = cutf::type::cast<T>(0.0f);
+	__syncthreads();
 	mtk::gevm_core16x16<T, 1>(
 			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
 			u_ptr,
@@ -587,8 +588,10 @@ __device__ void update_qr_with_u(
 			unique_id & 0x1f
 			);
 
-	if (lane == 0)
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M)
 		tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	__syncthreads();
 
 	mtk::ger_core16x16<T, 1>(
 			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
@@ -604,28 +607,32 @@ __device__ void update_qr_with_u(
 			);
 
 	/* R */
-	if (lane == 0)
+	if (unique_id < FRAGMENT_DIM_N)
 		tmp_vec_ptr[unique_id] = cutf::type::cast<T>(0.0f);
-	mtk::gevm_core16x16<T, 1>(
-			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
-			u_ptr,
-			r_ptr, FRAGMENT_DIM_M,
-			unique_id & 0x1f
-			);
-	mtk::gevm_core16x16<T, 1>(
-			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
-			u_ptr + FRAGMENT_DIM_N,
-			q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			unique_id & 0x1f
-			);
+	__syncthreads();
+	if (lane == 0) {
+		mtk::gevm_core16x16<T, 1>(
+				tmp_vec_ptr,
+				u_ptr,
+				r_ptr, FRAGMENT_DIM_M,
+				unique_id
+				);
+		mtk::gevm_core16x16<T, 1>(
+				tmp_vec_ptr,
+				u_ptr + FRAGMENT_DIM_N,
+				r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+				unique_id
+				);
+	}
 
-	if (lane == 0)
+	if (unique_id < FRAGMENT_DIM_N)
 		tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	__syncthreads();
 
 	mtk::ger_core16x16<T, 1>(
 			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			u_ptr + lane * FRAGMENT_DIM_N,
-			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
+			tmp_vec_ptr,
 			unique_id & 0x1f
 			);
 }
