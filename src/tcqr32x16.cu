@@ -592,14 +592,12 @@ __device__ void update_qr_with_u(
 
 	mtk::ger_core16x16<T, 1>(
 			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			FRAGMENT_DIM_M,
 			u_ptr,
 			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
 			unique_id & 0x1f
 			);
 	mtk::ger_core16x16<T, 1>(
 			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			FRAGMENT_DIM_M,
 			u_ptr + FRAGMENT_DIM_N,
 			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
 			unique_id & 0x1f
@@ -626,8 +624,7 @@ __device__ void update_qr_with_u(
 
 	mtk::ger_core16x16<T, 1>(
 			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			FRAGMENT_DIM_M,
-			u_ptr * lane * FRAGMENT_DIM_N,
+			u_ptr + lane * FRAGMENT_DIM_N,
 			tmp_vec_ptr + lane * FRAGMENT_DIM_N,
 			unique_id & 0x1f
 			);
