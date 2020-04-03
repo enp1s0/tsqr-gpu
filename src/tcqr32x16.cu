@@ -499,7 +499,7 @@ __device__ void update_qr(
 // #else // IMPLICIT_H //TODO
 
 // update q and r not making H explicitly
-__device__ void update_qr_f16tc_with_u(
+__device__ void update_qr_f32tc_with_u(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
 		float* const u_ptr, const float norm_u2,
