@@ -13,6 +13,7 @@
 //#define DEBUG
 //#define MEASURE_CLOCK
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
+#define IMPLICIT_H
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -61,6 +62,7 @@ __device__ void copy_32x16(
 	__syncthreads();
 }
 
+#ifdef IMPLICIT_H
 template <class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m,
@@ -494,6 +496,7 @@ __device__ void update_qr(
 			unique_id & 0x1f);
 	__syncthreads();
 }
+#else // IMPLICIT_H
 
 // update q and r not making H explicitly
 template <class T>
@@ -653,6 +656,8 @@ __device__ void update_qr_with_u(
 			unique_id & 0x1f
 			);
 }
+
+#endif // IMPLICIT_H
 
 __device__ void qr32x16_f32tc_refine_core(
 		float* const q32_ptr, float* const r32_ptr,
