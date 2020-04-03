@@ -943,6 +943,25 @@ __device__ void qr32x16_f32tc_refine_core(
 #ifdef MEASURE_CLOCK
 		const auto t5 = clock64();
 #endif
+#ifdef IMPLICIT_H
+		update_qr_f32tc_refine_with_u(
+				q32_ptr, r32_ptr,
+				q16_ptr, r16_ptr,
+				u32_ptr, norm2_u_1,
+				unique_id
+				);
+		__syncthreads();
+#ifdef MEASURE_CLOCK
+		const auto t6 = clock64();
+		if(tid == 0)
+			printf("%lu,%lu,%lu,%lu,%lu,0\n",
+					t2 - t1,
+					t3 - t2,
+					t4 - t3,
+					t5 - t4,
+					t6 - t5);
+#endif
+#else // IMPLICIT_H
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
@@ -989,6 +1008,7 @@ __device__ void qr32x16_f32tc_refine_core(
 					t6 - t5,
 					t7 - t6);
 #endif
+#endif //IMPLICIT_H
 	}
 }
 
