@@ -496,10 +496,9 @@ __device__ void update_qr(
 			unique_id & 0x1f);
 	__syncthreads();
 }
-#else // IMPLICIT_H
+// #else // IMPLICIT_H //TODO
 
 // update q and r not making H explicitly
-template <class T>
 __device__ void update_qr_f16tc_with_u(
 		half* const q_ptr, half* const r_ptr,
 		half* const u_ptr, const float norm_u2,
