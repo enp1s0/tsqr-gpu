@@ -948,7 +948,7 @@ __device__ void qr32x16_f32tc_core(
 		__syncthreads();
 
 #ifdef MEASURE_CLOCK
-		const auto t8 = clock64();
+		const auto t6 = clock64();
 		if(tid == 0)
 			printf("%lu,%lu,%lu,%lu,%lu\n",
 					t2 - t1,
@@ -999,7 +999,6 @@ __device__ void qr32x16_f32tc_core(
 				unique_id
 				);
 		__syncthreads();
-#endif
 #ifdef MEASURE_CLOCK
 		const auto t8 = clock64();
 		if(tid == 0)
@@ -1011,6 +1010,7 @@ __device__ void qr32x16_f32tc_core(
 					t6 - t5,
 					t7 - t6,
 					t8 - t7);
+#endif
 #endif
 	}
 }
