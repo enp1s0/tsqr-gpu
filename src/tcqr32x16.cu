@@ -992,6 +992,14 @@ __device__ void qr32x16_f16tc_core(
 #ifdef MEASURE_CLOCK
 		const auto t5 = clock64();
 #endif
+#ifdef IMPLICIT_H
+		update_qr_f16tc_with_u(
+				q16_ptr, r16_ptr,
+				u16_ptr, norm2_u_1,
+				unique_id
+				);
+		__syncthreads();
+#else //IMPLICIT_H
 		debug_func(
 				unique_id,
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", cutf::type::cast<float>(norm2_u_1));}
@@ -1036,6 +1044,7 @@ __device__ void qr32x16_f16tc_core(
 					t6 - t5,
 					t7 - t6);
 #endif
+#endif //IMPLICIT_H
 	}
 }
 
