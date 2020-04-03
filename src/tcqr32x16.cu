@@ -606,7 +606,6 @@ __device__ void update_qr_with_u(
 			tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
 	}
 	__syncthreads();
-	__syncthreads();
 
 	mtk::ger_core16x16<T, 1>(
 			q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
