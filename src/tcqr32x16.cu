@@ -1165,7 +1165,7 @@ __device__ void qr32x16_f32tc_core(
 					t7 - t6,
 					t8 - t7);
 #endif
-#endif
+#endif // IMPLICIT_H
 	}
 }
 
