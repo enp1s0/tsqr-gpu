@@ -571,6 +571,12 @@ __device__ void update_qr_with_u(
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 
+	if (std::is_same<half, T>::value) {
+		if (unique_id < FRAGMENT_DIM_M)
+			u_ptr[unique_id] /= cutf::math::sqrt(norm_u2);
+		__syncthreads();
+	}
+
 	/* Q */
 	if (unique_id < FRAGMENT_DIM_M)
 		tmp_vec_ptr[unique_id] = cutf::type::cast<T>(0.0f);
@@ -589,8 +595,14 @@ __device__ void update_qr_with_u(
 			);
 
 	__syncthreads();
-	if (unique_id < FRAGMENT_DIM_M)
-		tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	if (std::is_same<half, T>::value) {
+		if (unique_id < FRAGMENT_DIM_M)
+			tmp_vec_ptr[unique_id] *= -2.0f;
+	} else {
+		if (unique_id < FRAGMENT_DIM_M)
+			tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	}
+	__syncthreads();
 	__syncthreads();
 
 	mtk::ger_core16x16<T, 1>(
@@ -625,8 +637,13 @@ __device__ void update_qr_with_u(
 				);
 	}
 
-	if (unique_id < FRAGMENT_DIM_N)
-		tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	if (std::is_same<half, T>::value) {
+		if (unique_id < FRAGMENT_DIM_N)
+			tmp_vec_ptr[unique_id] *= -2.0f;
+	} else {
+		if (unique_id < FRAGMENT_DIM_N)
+			tmp_vec_ptr[unique_id] *= -2.0f / norm_u2;
+	}
 	__syncthreads();
 
 	mtk::ger_core16x16<T, 1>(
