@@ -521,6 +521,12 @@ __device__ void update_qr_f16tc_with_u(
 
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, FRAGMENT_DIM_N, FRAGMENT_DIM_N, FRAGMENT_DIM_N, half> mma_result_frag;
 
+	const auto r_norm_u = 1.0f / cutf::math::sqrt(norm_u2);
+	if (unique_id < FRAGMENT_DIM_M) {
+		u_ptr[unique_id] *= r_norm_u;
+	}
+	__syncthreads();
+
 	mtk::wmma::load_vector_sync(u_0_frag, u_ptr);
 	mtk::wmma::load_vector_sync(u_1_frag, u_ptr + FRAGMENT_DIM_N);
 	mtk::wmma::load_vector_sync(ut_0_frag, u_ptr);
@@ -534,7 +540,7 @@ __device__ void update_qr_f16tc_with_u(
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, q_0_frag, tmp_vec_acc_frag);
 	nvcuda::wmma::load_matrix_sync(q_1_frag, q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, q_1_frag, tmp_vec_acc_frag);
-	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, cutf::type::cast<half>(-2.0f / norm_u2), nvcuda::wmma::mem_row_major);
+	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, cutf::type::cast<half>(-2.0f), nvcuda::wmma::mem_row_major);
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, tmp_vec_ptr);
 
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, q_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
@@ -551,7 +557,7 @@ __device__ void update_qr_f16tc_with_u(
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, r_0_frag, tmp_vec_acc_frag);
 	nvcuda::wmma::load_matrix_sync(r_1_frag, r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_1_frag, tmp_vec_acc_frag);
-	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, cutf::type::cast<half>(-2.0f / norm_u2), nvcuda::wmma::mem_row_major);
+	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, cutf::type::cast<half>(-2.0f), nvcuda::wmma::mem_row_major);
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, tmp_vec_ptr);
 
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
