@@ -62,7 +62,7 @@ __device__ void copy_32x16(
 	__syncthreads();
 }
 
-#ifdef IMPLICIT_H
+#ifndef IMPLICIT_H
 template <class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m,
@@ -496,7 +496,7 @@ __device__ void update_qr(
 			unique_id & 0x1f);
 	__syncthreads();
 }
-// #else // IMPLICIT_H //TODO
+#else // IMPLICIT_H
 
 // update q and r not making H explicitly
 __device__ void update_qr_f32tc_refine_with_u(
