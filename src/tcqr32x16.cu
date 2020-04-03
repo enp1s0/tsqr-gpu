@@ -1043,7 +1043,9 @@ __device__ void qr32x16_core(
 		const unsigned tid
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
+#ifndef IMPLICIT_H
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
+#endif
 	const auto unique_id = tid & 0x3f;
 	for(unsigned k = 0; k < n; k++) {
 		debug_func(
@@ -1113,6 +1115,28 @@ __device__ void qr32x16_core(
 #ifdef MEASURE_CLOCK
 		const auto t5 = clock64();
 #endif
+#ifdef IMPLICIT_H
+		update_qr_with_u(
+				q_ptr0, r_ptr0,
+				u_ptr, norm2_u_1,
+				q_ptr1,
+				unique_id
+				);
+		__syncthreads();
+		//copy_32x16(r_ptr1, r_ptr0, unique_id);
+		//copy_32x16(q_ptr1, q_ptr0, unique_id);
+		//copy_32x16(q_ptr1 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q_ptr0 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+#ifdef MEASURE_CLOCK
+		const auto t6 = clock64();
+		if(tid == 0)
+			printf("%lu,%lu,%lu,%lu,%lu\n",
+					t2 - t1,
+					t3 - t2,
+					t4 - t3,
+					t5 - t4,
+					t6 - t5);
+#endif
+#else // IMPLICIT_H
 		// compute h
 		make_h(
 				h_ptr, m,
@@ -1173,6 +1197,7 @@ __device__ void qr32x16_core(
 					t8 - t7,
 					t9 - t8);
 #endif
+#endif // IMPLICIT_H
 	}
 }
 
@@ -1695,12 +1720,12 @@ __global__ void qr32x16_batched_kernel(
 	// store result
 	mtk::matrix_copy::s2g32x32_16x32_t_2w(
 			q_ptr, sub_a_position, ldq,
-			shared_q1_ptr, n, sub_a_m,
+			shared_q0_ptr, n, sub_a_m,
 			tid
 			);
 	mtk::matrix_copy::s2g32x16_2w(
 			r_ptr, n * matrix_id, ldr,
-			shared_r1_ptr, n, n,
+			shared_r0_ptr, n, n,
 			tid
 			);
 }
@@ -1746,12 +1771,12 @@ __global__ void qr32x16_kernel(
 	// store result
 	mtk::matrix_copy::s2g32x32_16x32_t_2w(
 			q_ptr, 0, ldq,
-			shared_q1, n, m,
+			shared_q0, n, m,
 			tid
 			);
 	mtk::matrix_copy::s2g32x16_2w(
 			r_ptr, 0, ldr,
-			shared_r1, n, n,
+			shared_r0, n, n,
 			tid
 			);
 }
