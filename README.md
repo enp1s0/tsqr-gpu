@@ -98,7 +98,7 @@ mtk::qr::qr<UseTC, Refine, Reorthogonalization>(
 
 ### Build
 ```
-nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib` -lkvars
+nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib` -ltcqr
 ```
 
 
