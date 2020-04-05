@@ -13,6 +13,7 @@
 //#define DEBUG
 //#define MEASURE_CLOCK
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
+// clock : make_u,norm1,update_u,norm2,update_qr_with_u
 #define IMPLICIT_H
 
 namespace {
@@ -958,7 +959,7 @@ __device__ void qr32x16_f32tc_refine_core(
 #ifdef MEASURE_CLOCK
 		const auto t6 = clock64();
 		if(tid == 0)
-			printf("%lu,%lu,%lu,%lu,%lu,0\n",
+			printf("%lu,%lu,%lu,%lu,%lu\n",
 					t2 - t1,
 					t3 - t2,
 					t4 - t3,
