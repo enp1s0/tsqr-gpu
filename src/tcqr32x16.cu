@@ -12,9 +12,9 @@
 
 //#define DEBUG
 //#define MEASURE_CLOCK
+//#define IMPLICIT_H
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
-#define IMPLICIT_H
 
 namespace {
 constexpr unsigned warp_size = 32;
