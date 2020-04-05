@@ -615,7 +615,7 @@ __device__ void update_qr_f32tc_refine_with_u(
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, u_ptr);
 	__syncthreads();
 	if (unique_id < FRAGMENT_DIM_M) {
-		tmp_vec_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
+		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
 	}
 	__syncthreads();
 	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, tmp_vec_ptr);
