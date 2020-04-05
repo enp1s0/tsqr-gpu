@@ -1401,9 +1401,6 @@ __device__ void qr32x16_core(
 				unique_id
 				);
 		__syncthreads();
-		//copy_32x16(r_ptr1, r_ptr0, unique_id);
-		//copy_32x16(q_ptr1, q_ptr0, unique_id);
-		//copy_32x16(q_ptr1 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q_ptr0 + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 #ifdef MEASURE_CLOCK
 		const auto t6 = clock64();
 		if(tid == 0)
