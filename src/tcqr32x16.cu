@@ -563,20 +563,8 @@ __device__ void update_qr_f32tc_refine_with_u(
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_1_frag, q_1_frag, tmp_vec_acc_frag);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, q_diff_1_frag, tmp_vec_acc_frag);
 
-	__syncthreads();
 	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, -2.0f / norm_u2, nvcuda::wmma::mem_row_major);
-	__syncthreads();
-		debug_func(
-				unique_id,
-				[&]() {mtk::utils::print_matrix_32x16(tmp_vec_ptr, 1, 16, "U");}
-				);
-	__syncthreads();
-		debug_func(
-				unique_id - 32,
-				[&]() {mtk::utils::print_matrix_32x16(tmp_vec_ptr, 1, 16, "U");}
-				);
 
-	__syncthreads();
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, tmp_vec_ptr);
 	__syncthreads();
 	if (unique_id < FRAGMENT_DIM_M) {
