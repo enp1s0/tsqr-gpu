@@ -46,12 +46,12 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_precision_head() {
-	std::cout << "m,n,type,tc,refinement,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
 	std::cout.flush();
 }
 
 void print_speed_head() {
-	std::cout << "m,n,type,tc,refinement,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
+	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
 	std::cout.flush();
 }
 } // namespace
@@ -158,6 +158,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			std::cout << m << ","
 				<< n << ","
 				<< get_type_name<T>() << ","
+				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
 				<< (Refine ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
@@ -257,6 +258,7 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 			std::cout << m << ","
 				<< n << ","
 				<< get_type_name<T>() << ","
+				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
 				<< (Refine ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
@@ -395,6 +397,7 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 			std::cout << m << ","
 				<< n << ","
 				<< get_type_name<T>() << ","
+				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
 				<< "0" << ","
 				<< "0" << ","
@@ -494,6 +497,7 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 
 			std::cout << m << ","
 				<< n << ","
+				<< get_type_name<T>() << ","
 				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
 				<< "0" << ","
