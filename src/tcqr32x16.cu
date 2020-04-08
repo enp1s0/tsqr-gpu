@@ -133,8 +133,8 @@ __device__ void make_h_tc32_refine(
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag, u_diff_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag_0, ut_frag_1, ut_diff_frag_0, ut_diff_frag_1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag_0, ut_frag_1;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> h_frag_0, h_frag_1, i_frag;
 
 	//nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
@@ -144,34 +144,26 @@ __device__ void make_h_tc32_refine(
 	
 	mtk::wmma::make_identity_matrix(i_frag);
 
+	half* const u16_ptr = reinterpret_cast<half*>(u_ptr);
+	half* const du16_ptr = reinterpret_cast<half*>(u_ptr + FRAGMENT_DIM_M / 2);
+
 	const auto alpha = cutf::math::sqrt(2.0f / norm2_u_1);
 	if (lane == 0) {
-		u_ptr[unique_id] *= alpha;
+		const float uf = u_ptr[unique_id] * alpha;
+		const half uh = cutf::type::cast<half>(uf);
+		u16_ptr[unique_id] = uh;
+		const half duh = cutf::type::cast<half>(uf - cutf::type::cast<float>(uh));
+		du16_ptr[unique_id] = duh;
 	}
 	__syncthreads();
 
 	// load original u
-	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16);
-	mtk::wmma::load_vector_sync(ut_frag_0, u_ptr);
-	mtk::wmma::load_vector_sync(ut_frag_1, u_ptr + 16);
-
-	// compute diff
-	if (lane == 0) {
-		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
-	}
-	__syncthreads();
-
-	// load diff u
-	mtk::wmma::load_vector_sync(u_diff_frag, u_ptr + lane * 16);
-	mtk::wmma::load_vector_sync(ut_diff_frag_0, u_ptr);
-	mtk::wmma::load_vector_sync(ut_diff_frag_1, u_ptr + 16);
+	mtk::wmma::make_direct_product_fragment(u_frag, u16_ptr + lane * 16, du16_ptr + lane * 16);
+	mtk::wmma::make_direct_product_fragment(ut_frag_0, u16_ptr, du16_ptr);
+	mtk::wmma::make_direct_product_fragment(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
 
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag_1, h_frag_1);
-	nvcuda::wmma::mma_sync(h_frag_0, u_diff_frag, ut_frag_0, h_frag_0);
-	nvcuda::wmma::mma_sync(h_frag_1, u_diff_frag, ut_frag_1, h_frag_1);
-	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_diff_frag_0, h_frag_0);
-	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_diff_frag_1, h_frag_1);
 
 	if(lane == 0) {
 		for(unsigned i = 0; i < i_frag.num_elements; i++) {
