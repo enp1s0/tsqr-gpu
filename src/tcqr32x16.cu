@@ -296,10 +296,6 @@ __device__ void update_qr_f32tc_refine(
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> r32_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> q32_0_frag, q32_1_frag;
 
-	nvcuda::wmma::fill_fragment(r32_frag, 0.0f);
-	nvcuda::wmma::fill_fragment(q32_0_frag, 0.0f);
-	nvcuda::wmma::fill_fragment(q32_1_frag, 0.0f);
-
 	// load h
 	__syncthreads();
 	mtk::wmma::foreach(
@@ -323,6 +319,7 @@ __device__ void update_qr_f32tc_refine(
 	/*  Q 0 */
 	// load q
 	copy_32x16(q16_ptr, q32_ptr, unique_id);
+	mtk::wmma::fill_zero(q32_0_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
@@ -346,6 +343,7 @@ __device__ void update_qr_f32tc_refine(
 	/*  Q 1 */
 	// load q
 	copy_32x16(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	mtk::wmma::fill_zero(q32_1_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
@@ -369,6 +367,7 @@ __device__ void update_qr_f32tc_refine(
 	// load r
 	__syncthreads();
 	copy_32x16(r16_ptr, r32_ptr, unique_id);
+	mtk::wmma::fill_zero(r32_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
