@@ -318,14 +318,9 @@ __device__ void update_qr_f32tc_refine(
 				h16_1_frag.x[frag_index] = v1_f16;
 				h16_1_diff_frag.x[frag_index] = cutf::type::cast<half>(v1_f32 - cutf::type::cast<float>(v1_f16));
 			});
-	__syncthreads();
 
 
 	/*  Q 0 */
-
-
-	__syncthreads();
-
 	// load q
 	copy_32x16(q16_ptr, q32_ptr, unique_id);
 	__syncthreads();
