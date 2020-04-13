@@ -159,15 +159,9 @@ __device__ void make_h_tc32_refine(
 	__syncthreads();
 
 	// load original u
-#ifdef THREE_TERMS_CORRECTION
 	mtk::wmma::make_direct_product_fragment_c3(u_frag, u16_ptr + lane * 16, du16_ptr + lane * 16);
 	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u16_ptr, du16_ptr);
 	mtk::wmma::make_direct_product_fragment_c3(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
-#else
-	mtk::wmma::make_direct_product_fragment(u_frag, u16_ptr + lane * 16, du16_ptr + lane * 16);
-	mtk::wmma::make_direct_product_fragment(ut_frag_0, u16_ptr, du16_ptr);
-	mtk::wmma::make_direct_product_fragment(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
-#endif
 
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag_1, h_frag_1);
