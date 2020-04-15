@@ -31,10 +31,10 @@ void get_rand_matrix_with_cond_number(
 	s_array.get()[0] = std::sqrt(cond_number);
 	s_array.get()[rank - 1] = 1.0f;
 	std::mt19937 mt(seed);
-	std::uniform_real_distribution<T> dist(1.0f / std::sqrt(cond_number), 1.0f);
-	//for (unsigned i = 0; i < rank; i++) {
-	//	s_array.get()[i] = 1 / s_array.get()[i];
-	//}
+	std::uniform_real_distribution<T> dist(1.0f, std::sqrt(cond_number));
+	for (unsigned i = 0; i < rank; i++) {
+		s_array.get()[i] = 1 / s_array.get()[i];
+	}
 	T* tmp_mat;
 	T* d_tmp_mat_0;
 	T* d_tmp_mat_1;
