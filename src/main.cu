@@ -67,9 +67,11 @@ int main() {
 	}
 
 	{
+		constexpr std::size_t m = 1lu << 15;
+		constexpr std::size_t n = 1lu << 7;
 		std::vector<std::tuple<std::size_t, std::size_t, float>> test_matrix_config_list;
-		for (std::size_t m = 2; m <= 15; m++) {
-			test_matrix_config_list.push_back(std::make_tuple(1lu << 15, 1lu << 7, 1lu << m));
+		for (std::size_t c = 2; c <= 15; c++) {
+			test_matrix_config_list.push_back(std::make_tuple(m, n, 1lu << c));
 		}
 		qr_test_cond(test_matrix_config_list);
 	}
