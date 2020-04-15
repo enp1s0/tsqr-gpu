@@ -70,6 +70,9 @@ void get_rand_matrix_with_cond_number(
 	for (unsigned i = 0; i < m * n; i++) {
 		mat[i] = tmp_mat[i];// / abs_max * max_abs_v;
 	}
+	cudaFree(d_tmp_mat_0);
+	cudaFree(d_tmp_mat_1);
+	cudaFreeHost(tmp_mat);
 }
 
 template <class T> std::string get_type_name();
