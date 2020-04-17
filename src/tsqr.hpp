@@ -1,6 +1,7 @@
 #ifndef __TSQR_HPP__
 #define __TSQR_HPP__
 #include <cstddef>
+#include <exception>
 #include <cuda_fp16.h>
 
 namespace mtk {

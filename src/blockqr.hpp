@@ -3,6 +3,7 @@
 #include <cublas_v2.h>
 #include <cstddef>
 #include <cstdlib>
+#include <exception>
 #include "tsqr.hpp"
 
 namespace mtk {
