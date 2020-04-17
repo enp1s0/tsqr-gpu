@@ -2,7 +2,7 @@ CXX=g++
 COMMONFLAGS=-std=c++14 -I./src/cutf -I./src/wmma-extension
 CXXFLAGS=-O3 -Wall -fopenmp
 NVCC=nvcc
-NVCCFLAGS=$(COMMONFLAGS) --compiler-bindir=$(CXX) -Xcompiler="$(CXXFLAGS)" -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver -rdc=true
+NVCCFLAGS=$(COMMONFLAGS) --compiler-bindir=$(CXX) -Xcompiler="$(CXXFLAGS)" -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver -lcurand -rdc=true
 SRCDIR=src
 SRCS=$(shell find src -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
