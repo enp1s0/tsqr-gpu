@@ -1,6 +1,7 @@
 #ifndef __TSQR_HPP__
 #define __TSQR_HPP__
 #include <cstddef>
+#include <exception>
 #include <cuda_fp16.h>
 
 namespace mtk {
@@ -41,6 +42,9 @@ struct buffer {
 	}
 
 	void allocate(const std::size_t m, const std::size_t n) {
+		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
+			throw std::runtime_error("The buffer has been already allocated");
+		}
 		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
 		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
@@ -54,6 +58,25 @@ struct buffer {
 		cudaFree(dwq); dwq = nullptr;
 		cudaFree(dwr); dwr = nullptr;
 		cudaFree(dl); dl = nullptr;
+		cudaFreeHost(hl); hl = nullptr;
+	}
+	void allocate_host(const std::size_t m, const std::size_t n) {
+		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
+			throw std::runtime_error("The buffer has been already allocated");
+		}
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
+		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMallocHost(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
+		total_memory_size = wq_size + wr_size + l_size;
+	}
+	void destroy_host() {
+		cudaFreeHost(dwq); dwq = nullptr;
+		cudaFreeHost(dwr); dwr = nullptr;
+		cudaFreeHost(dl); dl = nullptr;
 		cudaFreeHost(hl); hl = nullptr;
 	}
 	std::size_t get_device_memory_size() const {

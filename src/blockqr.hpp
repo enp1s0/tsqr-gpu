@@ -3,6 +3,7 @@
 #include <cublas_v2.h>
 #include <cstddef>
 #include <cstdlib>
+#include <exception>
 #include "tsqr.hpp"
 
 namespace mtk {
@@ -43,6 +44,9 @@ struct buffer {
 	}
 
 	void allocate(const std::size_t m, const std::size_t n) {
+		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
+			throw std::runtime_error("The buffer has been already allocated");
+		}
 		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
 		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
@@ -67,6 +71,37 @@ struct buffer {
 			cudaFree(dw_reorth_r); dw_reorth_r = nullptr;
 		}
 		cudaFree(dl); dl = nullptr;
+		cudaFreeHost(hl); hl = nullptr;
+	}
+
+	void allocate_host(const std::size_t m, const std::size_t n) {
+		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
+			throw std::runtime_error("The buffer has been already allocated");
+		}
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
+		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
+		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
+		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
+		cudaMallocHost(reinterpret_cast<void**>(&dl), l_size);
+		cudaMallocHost(reinterpret_cast<void**>(&hl), l_size);
+		total_memory_size = wq_size + wr_size + l_size;
+
+		// Allocate additional working memory for reorthogonalization
+		if (Reorthogonalize) {
+			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size);
+			cudaMallocHost(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
+			total_memory_size += reorth_r_size;
+		}
+	}
+
+	void destroy_host() {
+		cudaFreeHost(dwq); dwq = nullptr;
+		cudaFreeHost(dwr); dwr = nullptr;
+		if (Reorthogonalize) {
+			cudaFreeHost(dw_reorth_r); dw_reorth_r = nullptr;
+		}
+		cudaFreeHost(dl); dl = nullptr;
 		cudaFreeHost(hl); hl = nullptr;
 	}
 	std::size_t get_device_memory_size() const {
