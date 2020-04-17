@@ -40,7 +40,7 @@ void qr_test(const std::vector<std::pair<std::size_t, std::size_t>>& test_matrix
 
 
 void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_matrix_config_list) {
-	std::cout << "# speed test" << std::endl;
+	std::cout << "# condition number test" << std::endl;
 	mtk::test_qr::precision_cond<true , true , false, float>(test_matrix_config_list      , test_count);
 	mtk::test_qr::precision_cond<true , false, false, float>(test_matrix_config_list      , test_count);
 	mtk::test_qr::precision_cond<false, false, false, float>(test_matrix_config_list      , test_count);
