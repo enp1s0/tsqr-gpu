@@ -619,7 +619,7 @@ __device__ void update_qr_f32tc_refine_with_u(
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_diff_1_frag, tmp_vec_acc_frag);
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_1_frag, tmp_vec_acc_frag);
 
-		mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, -2.0f / norm_u2, nvcuda::wmma::mem_row_major);
+		mtk::wmma::store_vector_sync(u_ptr, tmp_vec_acc_frag, -2.0f / norm_u2, nvcuda::wmma::mem_row_major);
 	}
 	__syncthreads();
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, u_ptr);
