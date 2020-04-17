@@ -640,6 +640,7 @@ __device__ void update_qr_f32tc_refine_with_u(
 		nvcuda::wmma::mma_sync(mma_result_frag, u_diff_1_frag, tmp_vec_mb_frag, mma_result_frag);
 		nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_diff_frag, mma_result_frag);
 	}
+	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
