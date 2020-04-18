@@ -17,11 +17,11 @@ template <> std::string get_type_name<half>() {return "half";}
 #endif
 
 
-std::size_t mtk::qr::get_working_q_size(const std::size_t m) {
-	return mtk::tsqr::get_working_q_size(m, tsqr_colmun_size);
+std::size_t mtk::qr::get_working_q_size(const std::size_t m, const std::size_t n) {
+	return mtk::tsqr::get_working_q_size(m, std::min(tsqr_colmun_size, n));
 }
-std::size_t mtk::qr::get_working_r_size(const std::size_t m) {
-	return mtk::tsqr::get_working_r_size(m, tsqr_colmun_size);
+std::size_t mtk::qr::get_working_r_size(const std::size_t m, const std::size_t n) {
+	return mtk::tsqr::get_working_r_size(m, std::min(tsqr_colmun_size, n));
 }
 std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
 	return mtk::tsqr::get_working_l_size(m);
