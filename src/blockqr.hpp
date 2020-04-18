@@ -22,8 +22,8 @@ template <class T, bool UseTC, bool Refine>
 struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type;};
 
 // get working memory size
-std::size_t get_working_q_size(const std::size_t m);
-std::size_t get_working_r_size(const std::size_t m);
+std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
+std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_l_size(const std::size_t m);
 
 template <class T, bool UseTC, bool Refine, bool Reorthogonalize>
@@ -47,8 +47,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
@@ -78,8 +78,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
