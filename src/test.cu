@@ -46,7 +46,7 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_precision_head() {
-	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,residual,residual_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
 	std::cout.flush();
 }
 
@@ -146,14 +146,14 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			residual /= C;
 			orthogonality /= C;
 
-			float residual_deviation = 0.0f;
-			float orthogonality_deviation = 0.0f;
+			float residual_variance = 0.0f;
+			float orthogonality_variance = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				residual_deviation += (residual_list[c] - residual) * (residual_list[c] - residual);
-				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+				residual_variance += (residual_list[c] - residual) * (residual_list[c] - residual);
+				orthogonality_variance += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
-			residual_deviation = std::sqrt(residual_deviation / C);
-			orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
+			residual_variance = std::sqrt(residual_variance / C);
+			orthogonality_variance = std::sqrt(orthogonality_variance / C);
 
 			std::cout << m << ","
 				<< n << ","
@@ -163,9 +163,9 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 				<< (Refine ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< residual << ","
-				<< residual_deviation << ","
+				<< residual_variance << ","
 				<< orthogonality << ","
-				<< orthogonality_deviation << std::endl;
+				<< orthogonality_variance << std::endl;
 			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
@@ -385,14 +385,14 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 			residual /= C;
 			orthogonality /= C;
 
-			T residual_deviation = 0.0f;
-			T orthogonality_deviation = 0.0f;
+			T residual_variance = 0.0f;
+			T orthogonality_variance = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				residual_deviation += (residual_list[c] - residual) * (residual_list[c] - residual);
-				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
+				residual_variance += (residual_list[c] - residual) * (residual_list[c] - residual);
+				orthogonality_variance += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
-			residual_deviation /= C;
-			orthogonality_deviation /= C;
+			residual_variance /= C;
+			orthogonality_variance /= C;
 
 			std::cout << m << ","
 				<< n << ","
@@ -402,9 +402,9 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 				<< "0" << ","
 				<< "0" << ","
 				<< residual << ","
-				<< residual_deviation << ","
+				<< residual_variance << ","
 				<< orthogonality << ","
-				<< orthogonality_deviation << std::endl;
+				<< orthogonality_variance << std::endl;
 			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;
