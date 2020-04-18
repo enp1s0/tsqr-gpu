@@ -152,8 +152,8 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 				residual_variance += (residual_list[c] - residual) * (residual_list[c] - residual);
 				orthogonality_variance += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
-			residual_variance = std::sqrt(residual_variance / C);
-			orthogonality_variance = std::sqrt(orthogonality_variance / C);
+			residual_variance = residual_variance / C;
+			orthogonality_variance = orthogonality_variance / C;
 
 			std::cout << m << ","
 				<< n << ","
