@@ -46,7 +46,7 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_precision_head() {
-	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout << "m,n,type,core_type,tc,refinement,reorthogonalization,residual,residual_deviation,orthogonality,orthogonality_deviation" << std::endl;
 	std::cout.flush();
 }
 
@@ -85,7 +85,7 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-			std::vector<float> error_list;
+			std::vector<float> residual_list;
 			std::vector<float> orthogonality_list;
 
 			for(std::size_t c = 0; c < C; c++) {
@@ -134,25 +134,25 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 					const auto tmp = h_a_test.get()[i];
 					norm_diff += tmp * tmp;
 				}
-				error_list.push_back(std::sqrt(norm_diff/norm_a));
+				residual_list.push_back(std::sqrt(norm_diff/norm_a));
 				orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 			}
-			float error = 0.0f;
+			float residual = 0.0f;
 			float orthogonality = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				error += error_list[c];
+				residual += residual_list[c];
 				orthogonality += orthogonality_list[c];
 			}
-			error /= C;
+			residual /= C;
 			orthogonality /= C;
 
-			float error_deviation = 0.0f;
+			float residual_deviation = 0.0f;
 			float orthogonality_deviation = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				error_deviation += (error_list[c] - error) * (error_list[c] - error);
+				residual_deviation += (residual_list[c] - residual) * (residual_list[c] - residual);
 				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
-			error_deviation = std::sqrt(error_deviation / C);
+			residual_deviation = std::sqrt(residual_deviation / C);
 			orthogonality_deviation = std::sqrt(orthogonality_deviation / C);
 
 			std::cout << m << ","
@@ -162,8 +162,8 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 				<< (UseTC ? "1" : "0") << ","
 				<< (Refine ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
-				<< error << ","
-				<< error_deviation << ","
+				<< residual << ","
+				<< residual_deviation << ","
 				<< orthogonality << ","
 				<< orthogonality_deviation << std::endl;
 			std::cout.flush();
@@ -305,7 +305,7 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-			std::vector<T> error_list;
+			std::vector<T> residual_list;
 			std::vector<T> orthogonality_list;
 
 			auto cusolver = cutf::cusolver::get_cusolver_dn_unique_ptr();
@@ -373,25 +373,25 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 					const auto tmp = cutf::type::cast<T>(h_a.get()[i]);
 					norm_diff += tmp * tmp;
 				}
-				error_list.push_back(std::sqrt(norm_diff/norm_a));
+				residual_list.push_back(std::sqrt(norm_diff/norm_a));
 				orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
 			}
-			T error = 0.0f;
+			T residual = 0.0f;
 			T orthogonality = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				error += error_list[c];
+				residual += residual_list[c];
 				orthogonality += orthogonality_list[c];
 			}
-			error /= C;
+			residual /= C;
 			orthogonality /= C;
 
-			T error_deviation = 0.0f;
+			T residual_deviation = 0.0f;
 			T orthogonality_deviation = 0.0f;
 			for(std::size_t c = 0; c < C; c++) {
-				error_deviation += (error_list[c] - error) * (error_list[c] - error);
+				residual_deviation += (residual_list[c] - residual) * (residual_list[c] - residual);
 				orthogonality_deviation += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
-			error_deviation /= C;
+			residual_deviation /= C;
 			orthogonality_deviation /= C;
 
 			std::cout << m << ","
@@ -401,8 +401,8 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 				<< "cusolver" << ","
 				<< "0" << ","
 				<< "0" << ","
-				<< error << ","
-				<< error_deviation << ","
+				<< residual << ","
+				<< residual_deviation << ","
 				<< orthogonality << ","
 				<< orthogonality_deviation << std::endl;
 			std::cout.flush();
