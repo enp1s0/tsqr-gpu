@@ -57,19 +57,20 @@ void print_speed_head() {
 } // namespace
 
 template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
-void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
+void mtk::test_qr::precision(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
 	print_precision_head();
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	for(const auto &size_pair : matrix_size_array) {
+	for(const auto &matrix_config : matrix_config_list) {
 		try {
-			const std::size_t m = size_pair.first;
-			const std::size_t n = size_pair.second;
+			const std::size_t m = std::get<0>(matrix_config);
+			const std::size_t n = std::get<1>(matrix_config);
+			const float rand_range_abs = std::get<2>(matrix_config);
+			std::uniform_real_distribution<> dist(-rand_range_abs, rand_range_abs);
 			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_a_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -175,32 +176,33 @@ void mtk::test_qr::precision(const std::vector<std::pair<std::size_t, std::size_
 	}
 }
 
-template void mtk::test_qr::precision<true , false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::precision<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::precision<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
-void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
+void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
 	print_speed_head();
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
-	for(const auto &size_pair : matrix_size_array) {
+	for(const auto &matrix_config : matrix_config_list) {
 		try {
-			const std::size_t m = size_pair.first;
-			const std::size_t n = size_pair.second;
+			const std::size_t m = std::get<0>(matrix_config);
+			const std::size_t n = std::get<1>(matrix_config);
+			const float rand_range_abs = std::get<2>(matrix_config);
+			std::uniform_real_distribution<> dist(-rand_range_abs, rand_range_abs);
 			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
@@ -275,31 +277,32 @@ void mtk::test_qr::speed(const std::vector<std::pair<std::size_t, std::size_t>>&
 	}
 }
 
-template void mtk::test_qr::speed<true , false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, false, half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , true , false, float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, false, float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, true , half , half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , true , true , float, float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , float, half >(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 template <class T>
-void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
+void mtk::test_qr::cusolver_precision(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	constexpr std::size_t block_size = 1 << 8;
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
 	print_precision_head();
 
-	for(const auto &size_pair : matrix_size_array) {
+	for(const auto &matrix_config : matrix_config_list) {
 		try {
-			const std::size_t m = size_pair.first;
-			const std::size_t n = size_pair.second;
+			const std::size_t m = std::get<0>(matrix_config);
+			const std::size_t n = std::get<1>(matrix_config);
+			const float rand_range_abs = std::get<2>(matrix_config);
+			std::uniform_real_distribution<> dist(-rand_range_abs, rand_range_abs);
 			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
@@ -416,23 +419,24 @@ void mtk::test_qr::cusolver_precision(const std::vector<std::pair<std::size_t, s
 	}
 }
 
-template void mtk::test_qr::cusolver_precision<float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::cusolver_precision<double>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::cusolver_precision<float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::cusolver_precision<double>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 template <class T>
-void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::size_t>>& matrix_size_array, const std::size_t C) {
+void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
 		return 2 * n * (m * m * n + m * m * m);
 	};
 
-	for(const auto &size_pair : matrix_size_array) {
+	for(const auto &matrix_config : matrix_config_list) {
 		try {
-			const std::size_t m = size_pair.first;
-			const std::size_t n = size_pair.second;
+			const std::size_t m = std::get<0>(matrix_config);
+			const std::size_t n = std::get<1>(matrix_config);
+			const float rand_range_abs = std::get<2>(matrix_config);
+			std::uniform_real_distribution<> dist(-rand_range_abs, rand_range_abs);
 			auto d_a = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
@@ -516,5 +520,5 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::pair<std::size_t, std::
 		}
 	}
 }
-template void mtk::test_qr::cusolver_speed<float>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
-template void mtk::test_qr::cusolver_speed<double>(const std::vector<std::pair<std::size_t, std::size_t>>&, const std::size_t);
+template void mtk::test_qr::cusolver_speed<float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::cusolver_speed<double>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
