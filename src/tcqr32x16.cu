@@ -542,20 +542,11 @@ __device__ void update_qr_f32tc_refine_with_u(
 
 	__syncthreads();
 	if (unique_id < FRAGMENT_DIM_M) {
-		u_ptr[unique_id] /= cutf::math::sqrt(norm_u2);
+		const auto u = u_ptr[unique_id] / cutf::math::sqrt(norm_u2);
+		u_ptr[unique_id] = u;
+		u_tmp_vec[unique_id] = u - cutf::type::cast<float>(cutf::type::cast<half>(u));
 	}
 	__syncthreads();
-
-	mtk::wmma::load_vector_sync(ut_0_frag, u_ptr);
-	mtk::wmma::load_vector_sync(ut_1_frag, u_ptr + FRAGMENT_DIM_N);
-	__syncthreads();
-	if (unique_id < FRAGMENT_DIM_M) {
-		u_tmp_vec[unique_id] = u_ptr[unique_id] - cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
-	}
-	__syncthreads();
-	mtk::wmma::load_vector_sync(ut_diff_0_frag, u_tmp_vec);
-	mtk::wmma::load_vector_sync(ut_diff_1_frag, u_tmp_vec + FRAGMENT_DIM_N);
-
 	/* Q */
 	mtk::wmma::fill_zero(tmp_vec_acc_frag);
 	mtk::wmma::foreach(
@@ -576,11 +567,15 @@ __device__ void update_qr_f32tc_refine_with_u(
 			});
 
 
+	mtk::wmma::load_vector_sync(ut_diff_0_frag, u_tmp_vec);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_0_frag, q_0_frag, tmp_vec_acc_frag);
+	mtk::wmma::load_vector_sync(ut_0_frag, u_ptr);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, q_diff_0_frag, tmp_vec_acc_frag);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, q_0_frag, tmp_vec_acc_frag);
 
+	mtk::wmma::load_vector_sync(ut_diff_1_frag, u_tmp_vec + FRAGMENT_DIM_N);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_1_frag, q_1_frag, tmp_vec_acc_frag);
+	mtk::wmma::load_vector_sync(ut_1_frag, u_ptr + FRAGMENT_DIM_N);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, q_diff_1_frag, tmp_vec_acc_frag);
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, q_1_frag, tmp_vec_acc_frag);
 
