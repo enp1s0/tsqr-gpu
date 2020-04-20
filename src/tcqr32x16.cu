@@ -541,9 +541,12 @@ __device__ void update_qr_f32tc_refine_with_u(
 	if (unique_id < FRAGMENT_DIM_M) {
 		u_ptr[unique_id] /= cutf::math::sqrt(norm_u2);
 	}
+	float tmp_u;
+	if (unique_id < FRAGMENT_DIM_M) {
+		tmp_u = u_ptr[unique_id];
+	}
 	__syncthreads();
-	mtk::wmma::load_vector_sync(u_0_frag, u_ptr);
-	mtk::wmma::load_vector_sync(u_1_frag, u_ptr + FRAGMENT_DIM_N);
+
 	mtk::wmma::load_vector_sync(ut_0_frag, u_ptr);
 	mtk::wmma::load_vector_sync(ut_1_frag, u_ptr + FRAGMENT_DIM_N);
 	__syncthreads();
@@ -551,8 +554,6 @@ __device__ void update_qr_f32tc_refine_with_u(
 		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
 	}
 	__syncthreads();
-	mtk::wmma::load_vector_sync(u_diff_0_frag, u_ptr);
-	mtk::wmma::load_vector_sync(u_diff_1_frag, u_ptr + FRAGMENT_DIM_N);
 	mtk::wmma::load_vector_sync(ut_diff_0_frag, u_ptr);
 	mtk::wmma::load_vector_sync(ut_diff_1_frag, u_ptr + FRAGMENT_DIM_N);
 
@@ -579,52 +580,36 @@ __device__ void update_qr_f32tc_refine_with_u(
 	nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, q_1_frag, tmp_vec_acc_frag);
 
 	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, -2.0f, nvcuda::wmma::mem_row_major);
-
-	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, tmp_vec_ptr);
 	__syncthreads();
+	float tmp_q_tmp;
 	if (unique_id < FRAGMENT_DIM_M) {
-		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
+		tmp_q_tmp = tmp_vec_ptr[unique_id];
 	}
 	__syncthreads();
-	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, tmp_vec_ptr);
-	__syncthreads();
-
-	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_0_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_diff_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-
-	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_1_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_diff_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
 	/* R */
 	copy_32x16(r16_ptr, r32_ptr, unique_id);
 	__syncthreads();
-	if (lane == 0) {
-		nvcuda::wmma::load_matrix_sync(r_0_frag, r16_ptr, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(r_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	}
+	nvcuda::wmma::load_matrix_sync(r_0_frag, r16_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	mtk::matrix_operation::diff32x16_2w(r16_ptr, r32_ptr, r16_ptr, unique_id);
 	__syncthreads();
-	if (lane == 0) {
-		mtk::wmma::fill_zero(tmp_vec_acc_frag);
-		nvcuda::wmma::load_matrix_sync(r_diff_0_frag, r16_ptr, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(r_diff_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	mtk::wmma::fill_zero(tmp_vec_acc_frag);
+	nvcuda::wmma::load_matrix_sync(r_diff_0_frag, r16_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 
+	if (lane == 0) {
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_0_frag, r_0_frag, tmp_vec_acc_frag);
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, r_diff_0_frag, tmp_vec_acc_frag);
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_0_frag, r_0_frag, tmp_vec_acc_frag);
-
-		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_1_frag, r_1_frag, tmp_vec_acc_frag);
-		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_diff_1_frag, tmp_vec_acc_frag);
-		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_1_frag, tmp_vec_acc_frag);
-
-		mtk::wmma::store_vector_sync(u_ptr, tmp_vec_acc_frag, -2.0f, nvcuda::wmma::mem_row_major);
+	} else {
+		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_1_frag, r_0_frag, tmp_vec_acc_frag);
+		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_diff_0_frag, tmp_vec_acc_frag);
+		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_0_frag, tmp_vec_acc_frag);
+	}
+	mtk::wmma::store_vector_sync(tmp_vec_ptr, tmp_vec_acc_frag, -2.0f, nvcuda::wmma::mem_row_major);
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_N) {
+		u_ptr[unique_id] += u_ptr[unique_id + 16];
 	}
 	__syncthreads();
 	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, u_ptr);
@@ -634,6 +619,22 @@ __device__ void update_qr_f32tc_refine_with_u(
 	}
 	__syncthreads();
 	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, u_ptr);
+
+	// restore u
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M) {
+		u_ptr[unique_id] = tmp_u;
+	}
+	__syncthreads();
+	mtk::wmma::load_vector_sync(u_0_frag, u_ptr);
+	mtk::wmma::load_vector_sync(u_1_frag, u_ptr + FRAGMENT_DIM_N);
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M) {
+		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
+	}
+	__syncthreads();
+	mtk::wmma::load_vector_sync(u_diff_0_frag, u_ptr);
+	mtk::wmma::load_vector_sync(u_diff_1_frag, u_ptr + FRAGMENT_DIM_N);
 
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, r32_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	if (lane == 0) {
@@ -647,6 +648,35 @@ __device__ void update_qr_f32tc_refine_with_u(
 	}
 	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	// restore q
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M) {
+		u_ptr[unique_id] = tmp_q_tmp;
+	}
+	__syncthreads();
+	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, tmp_vec_ptr);
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M) {
+		u_ptr[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[unique_id]));
+	}
+	__syncthreads();
+	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, tmp_vec_ptr);
+	__syncthreads();
+
+	// mma
+	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_0_frag, tmp_vec_mb_frag, mma_result_frag);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_diff_frag, mma_result_frag);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_frag, mma_result_frag);
+	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_1_frag, tmp_vec_mb_frag, mma_result_frag);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_diff_frag, mma_result_frag);
+	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_frag, mma_result_frag);
+	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
 }
 
 __device__ void update_qr_f32tc_with_u(
