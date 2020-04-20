@@ -601,61 +601,39 @@ __device__ void update_qr_f32tc_refine_with_u(
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_1_frag, r_0_frag, tmp_vec_acc_frag);
 	}
 	mtk::wmma::store_vector_sync(r_tmp_vec + lane * FRAGMENT_DIM_N, tmp_vec_acc_frag, -2.0f, nvcuda::wmma::mem_row_major);
-	__syncthreads();
-	if (unique_id < FRAGMENT_DIM_N) {
-		r_tmp_vec[unique_id] += r_tmp_vec[unique_id + 16];
-	}
-	__syncthreads();
-	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, r_tmp_vec);
-	__syncthreads();
-	if (unique_id < FRAGMENT_DIM_N) {
-		r_tmp_vec[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(r_tmp_vec[unique_id]));
-	}
-	__syncthreads();
-	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, r_tmp_vec);
 
-	// restore u
+	mtk::wmma::make_direct_product_fragment(u_0_frag, u_ptr, u_tmp_vec);
+	mtk::wmma::make_direct_product_fragment(u_1_frag, u_ptr + FRAGMENT_DIM_N, u_tmp_vec + FRAGMENT_DIM_N);
 	__syncthreads();
-	mtk::wmma::load_vector_sync(u_0_frag, u_ptr);
-	mtk::wmma::load_vector_sync(u_1_frag, u_ptr + FRAGMENT_DIM_N);
+	if (unique_id < FRAGMENT_DIM_N) {
+		u_tmp_vec[unique_id] = r_tmp_vec[unique_id] - cutf::type::cast<float>(cutf::type::cast<half>(r_tmp_vec[unique_id]));
+	}
 	__syncthreads();
-	mtk::wmma::load_vector_sync(u_diff_0_frag, u_tmp_vec);
-	mtk::wmma::load_vector_sync(u_diff_1_frag, u_tmp_vec + FRAGMENT_DIM_N);
+	mtk::wmma::make_direct_product_fragment(tmp_vec_mb_frag, r_tmp_vec, u_tmp_vec);
 
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, r32_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	if (lane == 0) {
 		nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_frag, mma_result_frag);
-		nvcuda::wmma::mma_sync(mma_result_frag, u_diff_0_frag, tmp_vec_mb_frag, mma_result_frag);
-		nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_diff_frag, mma_result_frag);
 	} else {
 		nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_frag, mma_result_frag);
-		nvcuda::wmma::mma_sync(mma_result_frag, u_diff_1_frag, tmp_vec_mb_frag, mma_result_frag);
-		nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_diff_frag, mma_result_frag);
 	}
 	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
 	// restore q
 	__syncthreads();
-	mtk::wmma::load_vector_sync(tmp_vec_mb_frag, q_tmp_vec + lane * FRAGMENT_DIM_N);
-	__syncthreads();
 	if (unique_id < FRAGMENT_DIM_M) {
-		q_tmp_vec[unique_id] -= cutf::type::cast<float>(cutf::type::cast<half>(q_tmp_vec[unique_id]));
+		u_tmp_vec[unique_id] = q_tmp_vec[unique_id] - cutf::type::cast<float>(cutf::type::cast<half>(q_tmp_vec[unique_id]));
 	}
 	__syncthreads();
-	mtk::wmma::load_vector_sync(tmp_vec_mb_diff_frag, q_tmp_vec + lane * FRAGMENT_DIM_N);
-	__syncthreads();
+	mtk::wmma::make_direct_product_fragment(tmp_vec_mb_frag, q_tmp_vec + lane * FRAGMENT_DIM_N, u_tmp_vec + lane * FRAGMENT_DIM_N);
 
 	// mma
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_0_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_diff_frag, mma_result_frag);
 	nvcuda::wmma::mma_sync(mma_result_frag, u_0_frag, tmp_vec_mb_frag, mma_result_frag);
 	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_diff_1_frag, tmp_vec_mb_frag, mma_result_frag);
-	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_diff_frag, mma_result_frag);
 	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_frag, mma_result_frag);
 	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
