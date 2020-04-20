@@ -140,8 +140,6 @@ __device__ void make_h_tc32_refine(
 
 	//nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
 	//nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
-	mtk::wmma::fill_zero(h_frag_0);
-	mtk::wmma::fill_zero(h_frag_1);
 	
 	mtk::wmma::make_identity_matrix(i_frag);
 
@@ -160,25 +158,33 @@ __device__ void make_h_tc32_refine(
 
 	// load original u
 	mtk::wmma::make_direct_product_fragment_c3(u_frag, u16_ptr + lane * 16, du16_ptr + lane * 16);
+
 	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u16_ptr, du16_ptr);
-	mtk::wmma::make_direct_product_fragment_c3(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
-
+	mtk::wmma::fill_zero(h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
-	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag_1, h_frag_1);
-
 	if(lane == 0) {
 		for(unsigned i = 0; i < i_frag.num_elements; i++) {
 			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
-			h_frag_1.x[i] = - h_frag_1.x[i];
 		}
 	} else {
 		for(unsigned i = 0; i < i_frag.num_elements; i++) {
 			h_frag_0.x[i] = - h_frag_0.x[i];
+		}
+	}
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	mtk::wmma::make_direct_product_fragment_c3(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
+	mtk::wmma::fill_zero(h_frag_1);
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag_1, h_frag_1);
+	if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_1.x[i] = - h_frag_1.x[i];
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
 			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
 		}
 	}
-
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
