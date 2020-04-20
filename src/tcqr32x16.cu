@@ -1526,26 +1526,18 @@ __global__ void qr32x16_f32tc_refine_batched_kernel(
 	const auto shared_memory_id = matrix_id & (max_batch_size_per_block - 1);
 	if(matrix_id >= batch_size) return;
 
-	// Adjust shared memory size.
-	// nvcc aytomatically makes the size of `shared_h32` zero if `shared_h32` is never used.
-#ifdef IMPLICIT_H
-	constexpr std::size_t shared_working16_col = FRAGMENT_DIM_M;
-#else
-	constexpr std::size_t shared_working16_col = FRAGMENT_DIM_N;
-#endif
-
 	__shared__ float shared_q32[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
 	__shared__ float shared_r32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ float shared_h32[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
-	__shared__ half shared_working16[FRAGMENT_DIM_M * shared_working16_col * max_batch_size_per_block];
+	__shared__ half shared_working16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ float shared_u32[FRAGMENT_DIM_M * max_batch_size_per_block];
 
 	const auto shared_q32_ptr = shared_q32 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
 	const auto shared_r32_ptr = shared_r32 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
 	const auto shared_h32_ptr = shared_h32 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
-	const auto shared_q16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * shared_working16_col;
-	const auto shared_r16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * shared_working16_col;
-	const auto shared_h16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * shared_working16_col;
+	const auto shared_q16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_r16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	const auto shared_h16_ptr = shared_working16 + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
 	const auto shared_u32_ptr = shared_u32 + shared_memory_id * FRAGMENT_DIM_M;
 
 	const auto sub_a_position = a_start_position[matrix_id];
