@@ -135,13 +135,12 @@ __device__ void make_h_tc32_refine(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag_0, ut_frag_1;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> h_frag_0, h_frag_1, i_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag_0;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> h_frag_0;
 
 	//nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
 	//nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
 	
-	mtk::wmma::make_identity_matrix(i_frag);
 
 	half* const u16_ptr = reinterpret_cast<half*>(u_ptr);
 	half* const du16_ptr = reinterpret_cast<half*>(u_ptr + FRAGMENT_DIM_M / 2);
@@ -163,29 +162,35 @@ __device__ void make_h_tc32_refine(
 	mtk::wmma::fill_zero(h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	if(lane == 0) {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
+		for(unsigned i = 0; i < 8; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
 		}
+		//mtk::wmma::add_eye(h_frag_0, 1.0f);
 	} else {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+		for(unsigned i = 0; i < 8; i++) {
 			h_frag_0.x[i] = - h_frag_0.x[i];
 		}
 	}
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	mtk::wmma::make_direct_product_fragment_c3(ut_frag_1, u16_ptr + 16, du16_ptr + 16);
-	mtk::wmma::fill_zero(h_frag_1);
-	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag_1, h_frag_1);
+	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u16_ptr + 16, du16_ptr + 16);
+	mtk::wmma::fill_zero(h_frag_0);
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	if(lane == 0) {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_1.x[i] = - h_frag_1.x[i];
+		for(unsigned i = 0; i < 8; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
 		}
 	} else {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+		for(unsigned i = 0; i < 8; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
 		}
+		//mtk::wmma::add_eye(h_frag_0, 1.0f);
 	}
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	__syncthreads();
+	if (unique_id < FRAGMENT_DIM_M) {
+		h_ptr[unique_id * (FRAGMENT_DIM_M + 1)] += 1.0f;
+	}
 }
 
 template <class T>
