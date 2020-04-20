@@ -985,6 +985,7 @@ __device__ void qr32x16_f32tc_refine_core(
 				q32_ptr, r32_ptr,
 				q16_ptr, r16_ptr,
 				u32_ptr, norm2_u_1,
+				h32_ptr,
 				unique_id
 				);
 		__syncthreads();
