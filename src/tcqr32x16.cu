@@ -582,14 +582,18 @@ __device__ void update_qr_f32tc_refine_with_u(
 	mtk::wmma::store_vector_sync(q_tmp_vec + lane * FRAGMENT_DIM_N, tmp_vec_acc_frag, -2.0f, nvcuda::wmma::mem_row_major);
 
 	/* R */
-	copy_32x16(r16_ptr, r32_ptr, unique_id);
-	__syncthreads();
-	nvcuda::wmma::load_matrix_sync(r_0_frag, r16_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	__syncthreads();
-	mtk::matrix_operation::diff32x16_2w(r16_ptr, r32_ptr, r16_ptr, unique_id);
-	__syncthreads();
-	mtk::wmma::fill_zero(tmp_vec_acc_frag);
-	nvcuda::wmma::load_matrix_sync(r_diff_0_frag, r16_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	mtk::wmma::foreach(
+			q_0_frag,
+			[&](const unsigned frag_index, const unsigned mem_index) {
+				const auto m = (mem_index & 0xf);
+				const auto n = mem_index >> 4;
+				const auto mem = m + FRAGMENT_DIM_M * n;
+
+				const auto v0_f32 = r32_ptr[FRAGMENT_DIM_N * FRAGMENT_DIM_M * lane + mem];
+				const auto v0_f16 = cutf::type::cast<half>(v0_f32);
+				r_0_frag.x[frag_index] = v0_f16;
+				r_diff_0_frag.x[frag_index] = cutf::type::cast<half>(v0_f32 - cutf::type::cast<float>(v0_f16));
+			});
 
 	if (lane == 0) {
 		nvcuda::wmma::mma_sync(tmp_vec_acc_frag, ut_diff_0_frag, r_0_frag, tmp_vec_acc_frag);
@@ -604,6 +608,7 @@ __device__ void update_qr_f32tc_refine_with_u(
 
 	mtk::wmma::make_direct_product_fragment(u_0_frag, u_ptr, u_tmp_vec);
 	mtk::wmma::make_direct_product_fragment(u_1_frag, u_ptr + FRAGMENT_DIM_N, u_tmp_vec + FRAGMENT_DIM_N);
+
 	__syncthreads();
 	if (unique_id < FRAGMENT_DIM_N) {
 		u_tmp_vec[unique_id] = r_tmp_vec[unique_id] - cutf::type::cast<float>(cutf::type::cast<half>(r_tmp_vec[unique_id]));
@@ -636,7 +641,6 @@ __device__ void update_qr_f32tc_refine_with_u(
 	nvcuda::wmma::load_matrix_sync(mma_result_frag, q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::mma_sync(mma_result_frag, u_1_frag, tmp_vec_mb_frag, mma_result_frag);
 	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, mma_result_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-
 }
 
 __device__ void update_qr_f32tc_with_u(
