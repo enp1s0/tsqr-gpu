@@ -101,6 +101,121 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 	}
 }
 
+template <bool A_UseTC, bool A_Refine, bool A_Reorthogonalization, class T>
+__inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C) {
+	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
+	auto cusolver_handle = cutf::cusolver::get_cusolver_dn_unique_ptr();
+
+	std::mt19937 mt(std::random_device{}());
+	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+	for (const auto& size_pair : size_pair_vector) {
+		const auto m = std::get<0>(size_pair);
+		const auto n = std::get<1>(size_pair);
+
+		auto dA = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto dQ = cutf::memory::get_device_unique_ptr<T>(m * n);
+		auto dR = cutf::memory::get_device_unique_ptr<T>(n * n);
+
+		auto hA = cutf::memory::get_host_unique_ptr<T>(m * n);
+		auto hQ_A = cutf::memory::get_host_unique_ptr<T>(m * n);
+		auto hR_A = cutf::memory::get_host_unique_ptr<T>(n * n);
+
+		auto hAd = cutf::memory::get_host_unique_ptr<double>(m * n);
+		auto hQ_Ad = cutf::memory::get_host_unique_ptr<double>(m * n);
+		auto hR_Ad = cutf::memory::get_host_unique_ptr<double>(n * n);
+		auto d_tau = cutf::memory::get_device_unique_ptr<double>(n * n);
+
+		std::vector<float> Q_residual_list;
+		std::vector<float> R_residual_list;
+
+		int geqrf_working_memory_size, gqr_working_memory_size;
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+					*cusolver_handle.get(), m, n,
+					hAd.get(), m, &geqrf_working_memory_size
+					));
+		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+					*cusolver_handle.get(), m, n, n,
+					hAd.get(), m, d_tau.get(), &gqr_working_memory_size
+					));
+
+		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<double>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<double>(gqr_working_memory_size);
+		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
+
+		for (std::size_t c = 0; c < C; c++) {
+			for (std::size_t i = 0; i < m * n; i++) {
+				hAd.get()[i] = hA.get()[i] = cutf::type::cast<T>(dist(mt));
+			}
+			cutf::memory::copy(dA.get(), hA.get(), m * n);
+
+			// A
+			{
+				mtk::qr::buffer<T, A_UseTC, A_Refine, A_Reorthogonalization> buffer;
+				buffer.allocate(m, n);
+				mtk::qr::qr<A_UseTC, A_Refine, A_Reorthogonalization, T, T>(
+						dQ.get(), m,
+						dR.get(), n,
+						dA.get(), m,
+						m, n,
+						buffer,
+						*cublas_handle.get()
+						);
+			}
+			cutf::memory::copy(hQ_A.get(), dQ.get(), m * n);
+			cutf::memory::copy(hR_A.get(), dR.get(), n * n);
+
+			// B
+			{
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+							*cusolver_handle.get(), m, n,
+							hAd.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
+							geqrf_working_memory_size, d_info.get()
+							));
+				constexpr std::size_t block_size = 256;
+				cudaDeviceSynchronize();
+				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(hR_Ad.get(), hAd.get(), m, n);
+				cudaDeviceSynchronize();
+				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+							*cusolver_handle.get(), m, n, n,
+							hAd.get(), m,
+							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
+							d_info.get()
+							));
+
+
+			}
+			cudaDeviceSynchronize();
+
+
+			// compare
+			float base_norm2_Q = 0.0f;
+			float diff_norm2_Q = 0.0f;
+#pragma omp parallel for reduction(+: base_norm2_Q) reduction(+: diff_norm2_Q)
+			for (std::size_t i = 0; i < m * n; i++) {
+				const auto diff = std::abs(hQ_A.get()[i]) - std::abs(hAd.get()[i]);
+				base_norm2_Q += hAd.get()[i] * hAd.get()[i];
+				diff_norm2_Q += diff * diff;
+			}
+			Q_residual_list.push_back(std::sqrt(diff_norm2_Q / base_norm2_Q));
+
+			float base_norm2_R = 0.0f;
+			float diff_norm2_R = 0.0f;
+#pragma omp parallel for reduction(+: base_norm2_R) reduction(+: diff_norm2_R)
+			for (std::size_t i = 0; i < n * n; i++) {
+				const auto diff = std::abs(hR_A.get()[i]) - std::abs(hR_Ad.get()[i]);
+				base_norm2_R += hR_Ad.get()[i] * hR_Ad.get()[i];
+				diff_norm2_R += diff * diff;
+			}
+			R_residual_list.push_back(std::sqrt(diff_norm2_R / base_norm2_R));
+		}
+		const auto Q_residual = std::accumulate(Q_residual_list.begin(), Q_residual_list.end(), 0.0f) / C;
+		const auto R_residual = std::accumulate(R_residual_list.begin(), R_residual_list.end(), 0.0f) / C;
+		std::printf("%lu,%lu,%e,%e\n", m, n, Q_residual, R_residual);
+	}
+}
+
+
 } // namespace test_qr
 } // namespace mtk
 #endif /* end of include guard */
