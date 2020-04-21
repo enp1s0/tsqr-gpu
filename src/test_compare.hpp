@@ -156,9 +156,9 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 					hAd.get(), m, d_tau.get(), &gqr_working_memory_size
 					));
 
-		auto d_geqrf_working_memory = cutf::memory::get_device_unique_ptr<double>(geqrf_working_memory_size);
-		auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<double>(gqr_working_memory_size);
-		auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
+		auto d_geqrf_working_memory = cutf::memory::get_host_unique_ptr<double>(geqrf_working_memory_size);
+		auto d_gqr_working_memory = cutf::memory::get_host_unique_ptr<double>(gqr_working_memory_size);
+		auto d_info = cutf::memory::get_host_unique_ptr<int>(1);
 
 		for (std::size_t c = 0; c < C; c++) {
 			for (std::size_t i = 0; i < m * n; i++) {
