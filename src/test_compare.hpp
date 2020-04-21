@@ -7,6 +7,23 @@
 #include <cutf/memory.hpp>
 #include <cutf/type.hpp>
 #include <cutf/cublas.hpp>
+#include <cutf/cusolver.hpp>
+
+namespace {
+template <class T>
+__global__ void cut_r(T* const dst, const T* const src, const std::size_t m, const std::size_t n) {
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+	const auto x = tid / n;
+	const auto y = tid % n;
+
+	if(y > x) return;
+
+	dst[tid] = src[m * x + y];
+}
+
+} // namespace
+
 
 namespace mtk {
 namespace test_qr {
