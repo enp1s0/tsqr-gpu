@@ -126,6 +126,8 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
+	std::printf("m,n,tc,correction,reorth,Q,R\n");
+
 	for (const auto& size_pair : size_pair_vector) {
 		const auto m = std::get<0>(size_pair);
 		const auto n = std::get<1>(size_pair);
@@ -228,7 +230,12 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 		}
 		const auto Q_residual = std::accumulate(Q_residual_list.begin(), Q_residual_list.end(), 0.0f) / C;
 		const auto R_residual = std::accumulate(R_residual_list.begin(), R_residual_list.end(), 0.0f) / C;
-		std::printf("%lu,%lu,%e,%e\n", m, n, Q_residual, R_residual);
+		std::printf("%lu,%lu,%d,%d,%d,%e,%e\n",
+				m, n,
+				(A_UseTC ? 1 : 0),
+				(A_Refine ? 1 : 0),
+				(A_Reorthogonalization ? 1 : 0),
+				Q_residual, R_residual);
 	}
 }
 
