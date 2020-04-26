@@ -46,12 +46,12 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_accuracy_head() {
-	std::cout << "m,n,rand_range,type,core_type,tc,refinement,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
+	std::cout << "m,n,rand_range,type,core_type,tc,correction,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
 	std::cout.flush();
 }
 
 void print_speed_head() {
-	std::cout << "m,n,rand_range,type,core_type,tc,refinement,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
+	std::cout << "m,n,rand_range,type,core_type,tc,correction,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
 	std::cout.flush();
 }
 } // namespace
