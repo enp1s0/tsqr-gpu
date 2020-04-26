@@ -15,21 +15,21 @@ using state_t = int;
 const state_t success_factorization = 0;
 const state_t error_invalid_matrix_size = 1;
 
-template <class T, bool UseTC, bool Refine>
-struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<T, UseTC, Refine>::type;};
+template <class T, bool UseTC, bool Correction>
+struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<T, UseTC, Correction>::type;};
 
-template <class T, bool UseTC, bool Refine>
-struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T, UseTC, Refine>::type;};
+template <class T, bool UseTC, bool Correction>
+struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T, UseTC, Correction>::type;};
 
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_l_size(const std::size_t m);
 
-template <class T, bool UseTC, bool Refine, bool Reorthogonalize>
+template <class T, bool UseTC, bool Correction, bool Reorthogonalize>
 struct buffer {
-	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
-	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
+	typename get_working_q_type<T, UseTC, Correction>::type* dwq;
+	typename get_working_r_type<T, UseTC, Correction>::type* dwr;
 	T* dw_reorth_r;
 	unsigned* dl;
 	unsigned* hl;
@@ -47,8 +47,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
@@ -78,8 +78,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
@@ -109,28 +109,28 @@ struct buffer {
 	}
 };
 
-template <bool UseTC, bool Refinement, bool Reorthogonalize, class T, class CORE_T = T>
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
 state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
 		T* const reorth_r_ptr,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
 
-template <bool UseTC, bool Refinement, bool Reorthogonalize, class T, class CORE_T = T>
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
 inline state_t qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		buffer<T, UseTC, Refinement, Reorthogonalize>& bf,
+		buffer<T, UseTC, Correction, Reorthogonalize>& bf,
 		cublasHandle_t const main_cublas_handle) {
-	return qr<UseTC, Refinement, Reorthogonalize, T, CORE_T>(
+	return qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,

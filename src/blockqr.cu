@@ -28,14 +28,14 @@ std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
 }
 
 namespace {
-template <bool UseTC, bool Refinement, class T, class CORE_T>
+template <bool UseTC, bool Correction, class T, class CORE_T>
 mtk::qr::state_t block_qr_core(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const cublas_handle) {
@@ -47,7 +47,7 @@ mtk::qr::state_t block_qr_core(
 	cublasMath_t original_math_mode;
 	CUTF_HANDLE_ERROR(cublasGetMathMode(cublas_handle, &original_math_mode));
 
-	if (UseTC && !Refinement) {
+	if (UseTC && !Correction) {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
 	} else {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
@@ -112,7 +112,7 @@ mtk::qr::state_t block_qr_core(
 		CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 		t3 = std::chrono::system_clock::now();
 #endif
-		mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
+		mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
 				q_ptr + previous_block_n * ldq, ldq,
 				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 				a_ptr + previous_block_n * lda, lda,
@@ -142,7 +142,7 @@ mtk::qr::state_t block_qr_core(
 			get_type_name<T>().c_str(),
 			get_type_name<CORE_T>().c_str(),
 			(UseTC ? 1 : 0),
-			(Refinement ? 1 : 0),
+			(Correction ? 1 : 0),
 			0,
 			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
 			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
@@ -153,7 +153,7 @@ mtk::qr::state_t block_qr_core(
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
 	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
 	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
-	std::printf("Refine : %s\n", (Refinement ? "YES" : "NO"));
+	std::printf("Correction : %s\n", (Correction ? "YES" : "NO"));
 	std::printf("Reorth : %s\n", "NO");
 	std::printf("GEMM-0 : %e[s] (%e%%)\n", gemm_0_count / 1.0e6, static_cast<double>(gemm_0_count) / time_sum * 100);
 	std::printf("GEMM-1 : %e[s] (%e%%)\n", gemm_1_count / 1.0e6, static_cast<double>(gemm_1_count) / time_sum * 100);
@@ -165,14 +165,14 @@ mtk::qr::state_t block_qr_core(
 	return mtk::qr::success_factorization;
 }
 
-template <bool UseTC, bool Refinement, class T, class CORE_T>
+template <bool UseTC, bool Correction, class T, class CORE_T>
 mtk::qr::state_t block_qr_reorthogonalization_core(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
 		T* const w_reorth,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
@@ -194,7 +194,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 	cublasMath_t original_math_mode;
 	CUTF_HANDLE_ERROR(cublasGetMathMode(cublas_handle, &original_math_mode));
 
-	if (UseTC && !Refinement) {
+	if (UseTC && !Correction) {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
 	} else {
 		CUTF_HANDLE_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
@@ -241,7 +241,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_1 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
+			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r2_ptr, mtk::qr::tsqr_colmun_size,
 					a_ptr + previous_block_n * lda, lda,
@@ -282,7 +282,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_3 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
+			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					w_ptr, mtk::qr::tsqr_colmun_size,
 					q_ptr + previous_block_n * ldq, ldq,
@@ -328,7 +328,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			CUTF_HANDLE_ERROR(cudaStreamSynchronize(cuda_stream));
 			const auto t_0 = std::chrono::system_clock::now();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Refinement, T, CORE_T>(
+			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 					a_ptr + previous_block_n * lda, lda,
@@ -356,7 +356,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			get_type_name<T>().c_str(),
 			get_type_name<CORE_T>().c_str(),
 			(UseTC ? 1 : 0),
-			(Refinement ? 1 : 0),
+			(Correction ? 1 : 0),
 			0,
 			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
 			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
@@ -367,7 +367,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
 	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
 	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
-	std::printf("Refine : %s\n", (Refinement ? "YES" : "NO"));
+	std::printf("Correction : %s\n", (Correction ? "YES" : "NO"));
 	std::printf("Reorth : %s\n", "YES");
 	std::printf("GEMM   : %e[s] (%e%%)\n", gemm_count / 1.0e6, static_cast<double>(gemm_count) / time_sum * 100);
 	std::printf("TSQR   : %e[s] (%e%%)\n", tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100);
@@ -381,14 +381,14 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 
 } // namespace
 
-template <bool UseTC, bool Refinement, bool Reorthoganalize, class T, class CORE_T>
+template <bool UseTC, bool Correction, bool Reorthoganalize, class T, class CORE_T>
 mtk::qr::state_t mtk::qr::qr(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Refinement>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Refinement>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
 		T* const reorth_r,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
@@ -399,7 +399,7 @@ mtk::qr::state_t mtk::qr::qr(
 	}
 
 	if (Reorthoganalize) {
-		return block_qr_reorthogonalization_core<UseTC, Refinement, T, CORE_T>(
+		return block_qr_reorthogonalization_core<UseTC, Correction, T, CORE_T>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
@@ -410,7 +410,7 @@ mtk::qr::state_t mtk::qr::qr(
 				cublas_handle
 				);
 	} else {
-		return block_qr_core<UseTC, Refinement, T, CORE_T>(
+		return block_qr_core<UseTC, Correction, T, CORE_T>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,

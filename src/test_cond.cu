@@ -106,19 +106,19 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 	dst[tid] = cutf::type::cast<DST_T>(0);
 }
 
-void print_precision_head() {
-	std::cout << "m,n,cond,type,core_type,tc,refinement,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+void print_accuracy_head() {
+	std::cout << "m,n,cond,type,core_type,tc,correction,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
 	std::cout.flush();
 }
 } // namespace
 
-template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T = T>
-void mtk::test_qr::precision_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	print_precision_head();
+	print_accuracy_head();
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
@@ -134,7 +134,7 @@ void mtk::test_qr::precision_cond(const std::vector<std::tuple<std::size_t, std:
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
+			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -159,7 +159,7 @@ void mtk::test_qr::precision_cond(const std::vector<std::tuple<std::size_t, std:
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-				mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
+				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
@@ -219,7 +219,7 @@ void mtk::test_qr::precision_cond(const std::vector<std::tuple<std::size_t, std:
 				<< get_type_name<T>() << ","
 				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
-				<< (Refine ? "1" : "0") << ","
+				<< (Correction ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< error << ","
 				<< error_deviation << ","
@@ -233,27 +233,27 @@ void mtk::test_qr::precision_cond(const std::vector<std::tuple<std::size_t, std:
 	}
 }
 
-template void mtk::test_qr::precision_cond<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::precision_cond<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 
 template <class T>
-void mtk::test_qr::cusolver_precision_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
+void mtk::test_qr::cusolver_accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
 	constexpr std::size_t block_size = 1 << 8;
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	print_precision_head();
+	print_accuracy_head();
 
 	for(const auto &test_case_tuple : test_case_tuple_vector) {
 		try {
@@ -379,5 +379,5 @@ void mtk::test_qr::cusolver_precision_cond(const std::vector<std::tuple<std::siz
 	}
 }
 
-template void mtk::test_qr::cusolver_precision_cond<float >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::cusolver_precision_cond<double>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::cusolver_accuracy_cond<float >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::cusolver_accuracy_cond<double>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
