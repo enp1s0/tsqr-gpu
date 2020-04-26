@@ -128,7 +128,7 @@ __device__ void make_h_tc32(
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-__device__ void make_h_tc32_refine(
+__device__ void make_h_tc32_correction(
 		float* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -279,7 +279,7 @@ __device__ void update_qr_f32tc(
 	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-__device__ void update_qr_f32tc_refine(
+__device__ void update_qr_f32tc_correction(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
 		float* const h32_ptr, half* const h16_ptr,
@@ -509,7 +509,7 @@ __device__ void update_qr(
 #else // IMPLICIT_H
 
 // update q and r not making H explicitly
-__device__ void update_qr_f32tc_refine_with_u(
+__device__ void update_qr_f32tc_correction_with_u(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
 		float* const u_ptr, const float norm_u2,
@@ -887,7 +887,7 @@ __device__ void update_qr_with_u(
 
 #endif // IMPLICIT_H
 
-__device__ void qr32x16_f32tc_refine_core(
+__device__ void qr32x16_f32tc_correction_core(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
 		float* const u32_ptr,
@@ -964,7 +964,7 @@ __device__ void qr32x16_f32tc_refine_core(
 		const auto t5 = clock64();
 #endif
 #ifdef IMPLICIT_H
-		update_qr_f32tc_refine_with_u(
+		update_qr_f32tc_correction_with_u(
 				q32_ptr, r32_ptr,
 				q16_ptr, r16_ptr,
 				u32_ptr, norm2_u_1,
@@ -987,7 +987,7 @@ __device__ void qr32x16_f32tc_refine_core(
 				[&norm2_u_1]() {printf("norm_u_1^2 = %.5f\n", norm2_u_1);}
 				);
 		// compute h
-		make_h_tc32_refine(
+		make_h_tc32_correction(
 				h32_ptr, m,
 				u32_ptr, norm2_u_1,
 				unique_id
@@ -995,7 +995,7 @@ __device__ void qr32x16_f32tc_refine_core(
 		__syncthreads();
 		debug_func(
 				unique_id,
-				[&h32_ptr, &m]() {mtk::utils::print_matrix_32x16(h32_ptr, m, m, "H (refined)");}
+				[&h32_ptr, &m]() {mtk::utils::print_matrix_32x16(h32_ptr, m, m, "H (correctiond)");}
 				);
 #ifdef MEASURE_CLOCK
 		const auto t6 = clock64();
@@ -1010,7 +1010,7 @@ __device__ void qr32x16_f32tc_refine_core(
 				);
 		__syncthreads();
 		// update q, r
-		update_qr_f32tc_refine(
+		update_qr_f32tc_correction(
 				q32_ptr, r32_ptr,
 				q16_ptr, r16_ptr,
 				h32_ptr, h16_ptr,
@@ -1491,7 +1491,7 @@ __device__ void qr32x16_core(
 	}
 }
 
-__global__ void qr32x16_f32tc_refine_batched_kernel(
+__global__ void qr32x16_f32tc_correction_batched_kernel(
 		float* const q32_ptr, const std::size_t ldq,
 		float* const r32_ptr, const std::size_t ldr,
 		const float* const a32_ptr, const std::size_t lda,
@@ -1545,7 +1545,7 @@ __global__ void qr32x16_f32tc_refine_batched_kernel(
 			);
 
 	// qr core
-	qr32x16_f32tc_refine_core(
+	qr32x16_f32tc_correction_core(
 			shared_q32_ptr, shared_r32_ptr,
 			shared_q16_ptr, shared_r16_ptr,
 			shared_u32_ptr,
@@ -1812,7 +1812,7 @@ __global__ void qr32x16_f32tc_kernel(
 			);
 }
 
-__global__ void qr32x16_f32tc_refine_kernel(
+__global__ void qr32x16_f32tc_correction_kernel(
 		float* const q32_ptr, const std::size_t ldq,
 		float* const r32_ptr, const std::size_t ldr,
 		const float* const a32_ptr, const std::size_t lda,
@@ -1843,7 +1843,7 @@ __global__ void qr32x16_f32tc_refine_kernel(
 			);
 
 	// qr core
-	qr32x16_f32tc_refine_core(
+	qr32x16_f32tc_correction_core(
 			shared_q32, shared_r32,
 			shared_q16, shared_r16,
 			shared_u32,
@@ -2142,7 +2142,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, true, float, float, float, flo
 	const auto grid_size = (batch_size + max_batch_size_per_block + 1) / max_batch_size_per_block;
 	const auto block_size = max_batch_size_per_block * 2 * warp_size;
 
-	qr32x16_f32tc_refine_batched_kernel<<<grid_size, block_size, 0, cuda_stream>>>(
+	qr32x16_f32tc_correction_batched_kernel<<<grid_size, block_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
@@ -2338,7 +2338,7 @@ template<> void mtk::tcqr::qr32x16<true, true, float, float, float, float>(
 		const float* const a, const std::size_t lda,
 		const unsigned int m, const unsigned int n,
 		cudaStream_t const cuda_stream) {
-	qr32x16_f32tc_refine_kernel<<<1, 2 * warp_size, 0, cuda_stream>>>(
+	qr32x16_f32tc_correction_kernel<<<1, 2 * warp_size, 0, cuda_stream>>>(
 			q, ldq,
 			r, ldr,
 			a, lda,
