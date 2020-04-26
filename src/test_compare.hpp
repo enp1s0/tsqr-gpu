@@ -28,7 +28,7 @@ __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, con
 namespace mtk {
 namespace test_qr {
 
-template <bool A_UseTC, bool A_Refine, bool A_Reorthogonalization, bool B_UseTC, bool B_Refine, bool B_Reorthogonalization, class T>
+template <bool A_UseTC, bool A_Correction, bool A_Reorthogonalization, bool B_UseTC, bool B_Correction, bool B_Reorthogonalization, class T>
 __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& size_pair_vector, const std::size_t C) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
@@ -60,9 +60,9 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 
 			// A
 			{
-				mtk::qr::buffer<T, A_UseTC, A_Refine, A_Reorthogonalization> buffer;
+				mtk::qr::buffer<T, A_UseTC, A_Correction, A_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<A_UseTC, A_Refine, A_Reorthogonalization, T, T>(
+				mtk::qr::qr<A_UseTC, A_Correction, A_Reorthogonalization, T, T>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -76,9 +76,9 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 
 			// B
 			{
-				mtk::qr::buffer<T, B_UseTC, B_Refine, B_Reorthogonalization> buffer;
+				mtk::qr::buffer<T, B_UseTC, B_Correction, B_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<B_UseTC, B_Refine, B_Reorthogonalization, T, T>(
+				mtk::qr::qr<B_UseTC, B_Correction, B_Reorthogonalization, T, T>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -118,7 +118,7 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 	}
 }
 
-template <bool A_UseTC, bool A_Refine, bool A_Reorthogonalization, class T>
+template <bool A_UseTC, bool A_Correction, bool A_Reorthogonalization, class T>
 __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 	auto cusolver_handle = cutf::cusolver::get_cusolver_dn_unique_ptr();
@@ -170,9 +170,9 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 
 			// A
 			{
-				mtk::qr::buffer<T, A_UseTC, A_Refine, A_Reorthogonalization> buffer;
+				mtk::qr::buffer<T, A_UseTC, A_Correction, A_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<A_UseTC, A_Refine, A_Reorthogonalization, T, T>(
+				mtk::qr::qr<A_UseTC, A_Correction, A_Reorthogonalization, T, T>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -233,7 +233,7 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 		std::printf("%lu,%lu,%d,%d,%d,%e,%e\n",
 				m, n,
 				(A_UseTC ? 1 : 0),
-				(A_Refine ? 1 : 0),
+				(A_Correction ? 1 : 0),
 				(A_Reorthogonalization ? 1 : 0),
 				Q_residual, R_residual);
 	}

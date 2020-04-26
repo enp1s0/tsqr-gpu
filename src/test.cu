@@ -56,7 +56,7 @@ void print_speed_head() {
 }
 } // namespace
 
-template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T>
 void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
@@ -78,7 +78,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
+			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -102,7 +102,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-				mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
+				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
@@ -162,7 +162,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				<< get_type_name<T>() << ","
 				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
-				<< (Refine ? "1" : "0") << ","
+				<< (Correction ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< residual << ","
 				<< residual_variance << ","
@@ -189,7 +189,7 @@ template void mtk::test_qr::accuracy<false, false, true , half , half >(const st
 template void mtk::test_qr::accuracy<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 template void mtk::test_qr::accuracy<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
-template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T>
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T>
 void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	std::mt19937 mt(std::random_device{}());
 
@@ -207,7 +207,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
+			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -220,7 +220,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 			// for cache
-			mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
+			mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 					d_q.get(), m,
 					d_r.get(), n,
 					d_a.get(), m,
@@ -231,7 +231,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 
 			const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 					for(std::size_t c = 0; c < C; c++) {
-					mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
+					mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 							d_q.get(), m,
 							d_r.get(), n,
 							d_a.get(), m,
@@ -264,7 +264,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 				<< get_type_name<T>() << ","
 				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
-				<< (Refine ? "1" : "0") << ","
+				<< (Correction ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","

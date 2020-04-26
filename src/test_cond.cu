@@ -112,7 +112,7 @@ void print_accuracy_head() {
 }
 } // namespace
 
-template <bool UseTC, bool Refine, bool Reorthogonalize, class T, class CORE_T = T>
+template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
 void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
@@ -134,7 +134,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Refine, Reorthogonalize> buffer;
+			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -159,7 +159,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
-				mtk::qr::qr<UseTC, Refine, Reorthogonalize, T, CORE_T>(
+				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
@@ -219,7 +219,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 				<< get_type_name<T>() << ","
 				<< get_type_name<CORE_T>() << ","
 				<< (UseTC ? "1" : "0") << ","
-				<< (Refine ? "1" : "0") << ","
+				<< (Correction ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< error << ","
 				<< error_deviation << ","

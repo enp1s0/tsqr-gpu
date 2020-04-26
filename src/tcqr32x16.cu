@@ -2080,7 +2080,7 @@ __global__ void qr32x16_kernel(
 }
 }
 
-template <bool UseTC, bool Refine, class CORE_T, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Correction, class CORE_T, class Q_T, class R_T, class A_T>
 void mtk::tcqr::qr32x16_batched(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
@@ -2243,7 +2243,7 @@ template <> void mtk::tcqr::qr32x16_batched<true, false, half, float, float, flo
 			);
 }
 
-template <bool UseTC, bool Refine, class CORE_T, class Q_T, class R_T, class A_T>
+template <bool UseTC, bool Correction, class CORE_T, class Q_T, class R_T, class A_T>
 void mtk::tcqr::qr32x16(
 		Q_T* const q, const std::size_t ldq,
 		R_T* const r, const std::size_t ldr,
