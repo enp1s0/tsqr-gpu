@@ -506,6 +506,7 @@ __device__ void update_qr_f32tc_correction_with_u(
 		float* const q32_ptr, float* const r32_ptr,
 		half* const q16_ptr, half* const r16_ptr,
 		float* const u_ptr, const float norm_u2,
+		float* const tmp_vec,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
@@ -960,6 +961,7 @@ __device__ void qr32x16_f32tc_correction_core(
 				q32_ptr, r32_ptr,
 				q16_ptr, r16_ptr,
 				u32_ptr, norm2_u_1,
+				h32_ptr,
 				unique_id
 				);
 		__syncthreads();
