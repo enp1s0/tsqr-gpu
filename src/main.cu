@@ -6,21 +6,21 @@
 constexpr std::size_t test_count = 16;
 
 void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_matrix_config_list) {
-	std::cout << "# precision test" << std::endl;
-	mtk::test_qr::precision<true , false, false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , false, false, half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , false, false, float, half>(test_matrix_config_list, test_count);
-	mtk::test_qr::precision<false, false, false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<false, false, false, half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , true , false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , false, true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , false, true , half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , false, true , float, half>(test_matrix_config_list, test_count);
-	mtk::test_qr::precision<false, false, true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<false, false, true , half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision<true , true , true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::cusolver_precision<float>(test_matrix_config_list                  , test_count);
-	mtk::test_qr::cusolver_precision<double>(test_matrix_config_list                 , test_count);
+	std::cout << "# accuracy test" << std::endl;
+	mtk::test_qr::accuracy<true , false, false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , false, false, half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , false, false, float, half>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<false, false, false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<false, false, false, half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , true , false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , false, true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , false, true , half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , false, true , float, half>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<false, false, true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<false, false, true , half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy<true , true , true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::cusolver_accuracy<float>(test_matrix_config_list                  , test_count);
+	mtk::test_qr::cusolver_accuracy<double>(test_matrix_config_list                 , test_count);
 	std::cout << "# speed test" << std::endl;
 	mtk::test_qr::speed<true , false, false, float>(test_matrix_config_list      , test_count);
 	mtk::test_qr::speed<true , false, false, half >(test_matrix_config_list      , test_count);
@@ -41,18 +41,18 @@ void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& tes
 
 void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_matrix_config_list) {
 	std::cout << "# condition number test" << std::endl;
-	mtk::test_qr::precision_cond<true , true , false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<true , false, false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<false, false, false, float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<true , false, false, half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<false, false, false, half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<true , true , true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<true , false, true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<false, false, true , float>(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<true , false, true , half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::precision_cond<false, false, true , half >(test_matrix_config_list      , test_count);
-	mtk::test_qr::cusolver_precision_cond<float>(test_matrix_config_list                  , test_count);
-	mtk::test_qr::cusolver_precision_cond<double>(test_matrix_config_list                 , test_count);
+	mtk::test_qr::accuracy_cond<true , true , false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<true , false, false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<false, false, false, float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<true , false, false, half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<false, false, false, half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<true , true , true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<true , false, true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<false, false, true , float>(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<true , false, true , half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::accuracy_cond<false, false, true , half >(test_matrix_config_list      , test_count);
+	mtk::test_qr::cusolver_accuracy_cond<float>(test_matrix_config_list                  , test_count);
+	mtk::test_qr::cusolver_accuracy_cond<double>(test_matrix_config_list                 , test_count);
 }
 
 int main() {

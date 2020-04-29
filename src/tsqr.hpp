@@ -10,11 +10,11 @@ namespace tsqr {
 std::size_t get_batch_size_log2(const std::size_t m);
 std::size_t get_batch_size(const std::size_t m);
 // get working memory type
-template <class T, bool UseTC, bool Refine>
+template <class T, bool UseTC, bool Correction>
 struct get_working_q_type{using type = T;};
 template <> struct get_working_q_type<float, true, false>{using type = half;};
 
-template <class T, bool UseTC, bool Refine>
+template <class T, bool UseTC, bool Correction>
 struct get_working_r_type{using type = T;};
 
 // get working memory size
@@ -25,10 +25,10 @@ inline std::size_t get_working_l_size(const std::size_t m) {
 }
 
 // integrated buffer struct
-template <class T, bool UseTC, bool Refine>
+template <class T, bool UseTC, bool Correction>
 struct buffer {
-	typename get_working_q_type<T, UseTC, Refine>::type* dwq;
-	typename get_working_r_type<T, UseTC, Refine>::type* dwr;
+	typename get_working_q_type<T, UseTC, Correction>::type* dwq;
+	typename get_working_r_type<T, UseTC, Correction>::type* dwr;
 	unsigned* dl;
 	unsigned* hl;
 
@@ -45,8 +45,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
@@ -64,8 +64,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Refine>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Refine>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
@@ -84,29 +84,29 @@ struct buffer {
 	}
 };
 
-template <bool UseTC, bool Refine, class T, class CORE_T>
+template <bool UseTC, bool Correction, class T, class CORE_T>
 void tsqr16(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		const T* const a_ptr, const std::size_t lda,
 		const std::size_t m,
 		const std::size_t n,
-		typename get_working_q_type<T, UseTC, Refine>::type* const working_q_ptr,
-		typename get_working_r_type<T, UseTC, Refine>::type* const working_r_ptr,
+		typename get_working_q_type<T, UseTC, Correction>::type* const working_q_ptr,
+		typename get_working_r_type<T, UseTC, Correction>::type* const working_r_ptr,
 		unsigned* const d_working_l_ptr,
 		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream = nullptr);
 
 
-template <bool UseTC, bool Refine, class T, class CORE_T>
+template <bool UseTC, bool Correction, class T, class CORE_T>
 inline void tsqr16(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		const T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		mtk::tsqr::buffer<T, UseTC, Refine>& buffer,
+		mtk::tsqr::buffer<T, UseTC, Correction>& buffer,
 		cudaStream_t const cuda_stream) {
-	mtk::tsqr::tsqr16<UseTC, Refine, T, CORE_T>(
+	mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,
