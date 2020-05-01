@@ -7,3 +7,6 @@
 [submodule "src/wmma-extension"]
 	path = src/wmma-extension
 	url = https://gitlab.momo86.net/mutsuki/wmma-extension
+[submodule "src/runtime-status"]
+	path = src/runtime-status
+	url = https://gitlab.momo86.net/mutsuki/runtime-status

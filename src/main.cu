@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cuda_fp16.h>
+#include <runtime_status.hpp>
 #include "test.hpp"
 
 constexpr std::size_t test_count = 16;
@@ -56,6 +57,7 @@ void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>
 }
 
 int main() {
+	mtk::runtime_status::print_git_info();
 	{
 		std::vector<std::tuple<std::size_t, std::size_t, float>> test_matrix_config_list;
 		for (std::size_t m = 10; m <= 15; m++) {
