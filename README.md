@@ -4,7 +4,7 @@
 
 ## Publication
 
-- "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (BP Candidate)
+- "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (BP Candidate) [[File](https://static.momo86.net/f/1/sc19-tsqr-on-tc-poster)]
 
 ## How to build test
 ```
