@@ -2,6 +2,10 @@
 
 ![TSQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
 
+## Publication
+
+- "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (BP Candidate) [[File](https://static.momo86.net/f/1/sc19-tsqr-on-tc-poster)]
+
 ## How to build test
 ```
 git clone [this remote repository] --recursive
