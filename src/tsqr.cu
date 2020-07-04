@@ -550,7 +550,7 @@ void tsqr16_geq32(
 	cutf::memory::copy_async(d_sub_m_list, h_sub_m_list, batch_size + 1, cuda_stream);
 
 #ifdef MEASURE_QR_TIME
-	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 	const auto t0 = std::chrono::system_clock::now();
 #endif
 
@@ -598,7 +598,7 @@ void tsqr16_geq32(
 				cuda_stream
 				);
 
-		debug_func([]() {CUTF_HANDLE_ERROR(cudaGetLastError());});
+		debug_func([]() {CUTF_CHECK_ERROR(cudaGetLastError());});
 
 #ifdef DEBUG_Q_MATRIX_PRINT
 		{
@@ -635,7 +635,7 @@ void tsqr16_geq32(
 #endif
 
 #ifdef MEASURE_QR_TIME
-	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 	const auto t1 = std::chrono::system_clock::now();
 #endif
 	debug_func([]() {std::printf("%s : Backword\n", __func__);});
@@ -689,7 +689,7 @@ void tsqr16_geq32(
 			d_sub_m_list
 			);
 	cudaStreamSynchronize(cuda_stream);
-	debug_func([]() {CUTF_HANDLE_ERROR(cudaDeviceSynchronize());});
+	debug_func([]() {CUTF_CHECK_ERROR(cudaDeviceSynchronize());});
 #ifdef DEBUG_Q_MATRIX_PRINT
 	{
 		auto h_tmp = cutf::memory::get_host_unique_ptr<T>(n * m);
@@ -698,7 +698,7 @@ void tsqr16_geq32(
 	}
 #endif
 #ifdef MEASURE_QR_TIME
-	CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+	CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 	const auto t2 = std::chrono::system_clock::now();
 
 	// analyze

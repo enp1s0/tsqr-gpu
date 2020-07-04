@@ -101,7 +101,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
@@ -110,11 +110,11 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 						buffer,
 						*cublas_handle.get()
 						);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 
 				convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
 				convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 
 				// verify
 				const float alpha = 1.0f, beta = -1.0f;
@@ -317,11 +317,11 @@ void mtk::test_qr::cusolver_accuracy(const std::vector<std::tuple<std::size_t, s
 
 			// working memory
 			int geqrf_working_memory_size, gqr_working_memory_size;
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 						*cusolver.get(), m, n,
 						d_a.get(), m, &geqrf_working_memory_size
 						));
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 						*cusolver.get(), m, n, n,
 						d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 						));
@@ -339,14 +339,14 @@ void mtk::test_qr::cusolver_accuracy(const std::vector<std::tuple<std::size_t, s
 				}
 				cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 							*cusolver.get(), m, n,
 							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 							geqrf_working_memory_size, d_info.get()
 							));
 				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
 
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 							*cusolver.get(), m, n, n,
 							d_a.get(), m,
 							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
@@ -447,11 +447,11 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 
 			// working memory
 			int geqrf_working_memory_size, gqr_working_memory_size;
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 						*cusolver.get(), m, n,
 						d_a.get(), m, &geqrf_working_memory_size
 						));
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 						*cusolver.get(), m, n, n,
 						d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 						));
@@ -467,13 +467,13 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 			// for cache
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 						*cusolver.get(), m, n,
 						d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 						geqrf_working_memory_size, d_info.get()
 						));
 
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 						*cusolver.get(), m, n, n,
 						d_a.get(), m,
 						d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
@@ -481,13 +481,13 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 						));
 			const auto start_clock = std::chrono::system_clock::now();
 			for(std::size_t c = 0; c < C; c++) {
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 							*cusolver.get(), m, n,
 							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 							geqrf_working_memory_size, d_info.get()
 							));
 				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 							*cusolver.get(), m, n, n,
 							d_a.get(), m,
 							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
@@ -495,7 +495,7 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 							));
 				cutf::memory::copy(d_q.get(), d_a.get(), n * m);
 			}
-			CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+			CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 			const auto end_clock = std::chrono::system_clock::now();
 			const auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_clock - start_clock).count() * 1e-6 / C;
 

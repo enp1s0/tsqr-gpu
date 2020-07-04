@@ -148,7 +148,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 			for(std::size_t c = 0; c < C; c++) {
 				float norm_a = 0.0f;
 				get_rand_matrix_with_cond_number(h_a_test.get(), m, n, condition_number, mt(), 1.0f);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 				for(std::size_t i = 0; i < m * n; i++) {
 					const auto tmp = h_a_test.get()[i];
 					h_a.get()[i] = tmp;
@@ -158,7 +158,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 				cutf::memory::copy(d_a_test.get(), h_a_test.get(), m * n);
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
 						d_q.get(), m,
 						d_r.get(), n,
@@ -167,11 +167,11 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 						buffer,
 						*cublas_handle.get()
 						);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 
 				convert_copy<float, T><<<(m * n + block_size - 1) / block_size, block_size>>>(d_q_test.get(), d_q.get(), m * n);
 				convert_copy<float, T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r_test.get(), d_r.get(), n * n);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 
 				// verify
 				const float alpha = 1.0f, beta = -1.0f;
@@ -275,11 +275,11 @@ void mtk::test_qr::cusolver_accuracy_cond(const std::vector<std::tuple<std::size
 
 			// working memory
 			int geqrf_working_memory_size, gqr_working_memory_size;
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 						*cusolver.get(), m, n,
 						d_a.get(), m, &geqrf_working_memory_size
 						));
-			CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+			CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 						*cusolver.get(), m, n, n,
 						d_a.get(), m, d_tau.get(), &gqr_working_memory_size
 						));
@@ -291,22 +291,22 @@ void mtk::test_qr::cusolver_accuracy_cond(const std::vector<std::tuple<std::size
 			for(std::size_t c = 0; c < C; c++) {
 				T norm_a = 0.0f;
 				get_rand_matrix_with_cond_number(h_a.get(), m, n, condition_number, mt(), 1.0f);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 				for(std::size_t i = 0; i < m * n; i++) {
 					const auto tmp = h_a.get()[i];
 					norm_a += tmp * tmp;
 				}
 				cutf::memory::copy(d_a.get(), h_a.get(), m * n);
-				CUTF_HANDLE_ERROR(cudaDeviceSynchronize());
+				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
 
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 							*cusolver.get(), m, n,
 							d_a.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 							geqrf_working_memory_size, d_info.get()
 							));
 				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), d_a.get(), m, n);
 
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 							*cusolver.get(), m, n, n,
 							d_a.get(), m,
 							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,

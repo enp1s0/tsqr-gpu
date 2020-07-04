@@ -23,8 +23,8 @@ void mtk::utils::latms(
 
 	auto cugen = cutf::curand::get_curand_unique_ptr(CURAND_RNG_PSEUDO_MT19937);
 	curandSetPseudoRandomGeneratorSeed(*cugen.get(), seed);
-	CUTF_HANDLE_ERROR(cutf::curand::generate_normal(*cugen.get(), u_ptr.get(), m * rank, 0.0f, 1.0f));
-	CUTF_HANDLE_ERROR(cutf::curand::generate_normal(*cugen.get(), v_ptr.get(), n * rank, 0.0f, 1.0f));
+	CUTF_CHECK_ERROR(cutf::curand::generate_normal(*cugen.get(), u_ptr.get(), m * rank, 0.0f, 1.0f));
+	CUTF_CHECK_ERROR(cutf::curand::generate_normal(*cugen.get(), v_ptr.get(), n * rank, 0.0f, 1.0f));
 
 	auto d_tau = cutf::memory::get_device_unique_ptr<T>(n * n);
 	auto h_a = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -33,21 +33,21 @@ void mtk::utils::latms(
 
 	// working memory
 	int u_geqrf_working_memory_size, u_gqr_working_memory_size;
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 				*cusolver.get(), m, rank,
 				u_ptr.get(), m, &u_geqrf_working_memory_size
 				));
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 				*cusolver.get(), m, rank, rank,
 				u_ptr.get(), m, d_tau.get(), &u_gqr_working_memory_size
 				));
 
 	int v_geqrf_working_memory_size, v_gqr_working_memory_size;
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 				*cusolver.get(), n, rank,
 				v_ptr.get(), n, &v_geqrf_working_memory_size
 				));
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 				*cusolver.get(), n, rank, rank,
 				v_ptr.get(), n, d_tau.get(), &v_gqr_working_memory_size
 				));
@@ -59,26 +59,26 @@ void mtk::utils::latms(
 	auto d_gqr_working_memory = cutf::memory::get_device_unique_ptr<T>(gqr_working_memory_size);
 	auto d_info = cutf::memory::get_device_unique_ptr<int>(1);
 
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 				*cusolver.get(), m, rank,
 				u_ptr.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 				geqrf_working_memory_size, d_info.get()
 				));
 
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 				*cusolver.get(), m, rank, rank,
 				u_ptr.get(), m,
 				d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
 				d_info.get()
 				));
 
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 				*cusolver.get(), n, rank,
 				v_ptr.get(), n, d_tau.get(), d_geqrf_working_memory.get(),
 				geqrf_working_memory_size, d_info.get()
 				));
 
-	CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+	CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 				*cusolver.get(), n, rank, rank,
 				v_ptr.get(), n,
 				d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
@@ -138,7 +138,7 @@ T mtk::utils::get_cond(
 	auto dInfo = cutf::memory::get_device_unique_ptr<int>(1);
 
 	int svd_w_size;
-	CUTF_HANDLE_ERROR(
+	CUTF_CHECK_ERROR(
 			cutf::cusolver::dn::gesvd_buffer_size<T>(
 				*cusolver.get(),
 				m, n,
@@ -148,7 +148,7 @@ T mtk::utils::get_cond(
 
 	auto dwsvd = cutf::memory::get_device_unique_ptr<T>(svd_w_size);
 	auto dwrsvd = cutf::memory::get_device_unique_ptr<T>(std::min(m, n) - 1);
-	CUTF_HANDLE_ERROR(
+	CUTF_CHECK_ERROR(
 			cutf::cusolver::dn::gesvd(
 				*cusolver.get(),
 				'S', 'S',
