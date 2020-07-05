@@ -134,3 +134,6 @@ void multi_orthogonality(const T* const ptr, const std::size_t m, const std::siz
 	}
 	std::printf("avg : %e\n", avg_orth / size);
 }
+
+template void multi_orthogonality<half >(const half * const ptr, const std::size_t m, const std::size_t n, const std::size_t size);
+template void multi_orthogonality<float>(const float* const ptr, const std::size_t m, const std::size_t n, const std::size_t size);
