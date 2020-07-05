@@ -111,3 +111,26 @@ void mtk::validation::check_submatrix_orthogonality(
 template void mtk::validation::check_submatrix_orthogonality<double>(const double* const, const std::size_t, const unsigned);
 template void mtk::validation::check_submatrix_orthogonality<float>(const float* const, const std::size_t, const unsigned);
 template void mtk::validation::check_submatrix_orthogonality<half>(const half* const, const std::size_t, const unsigned);
+
+template <class T>
+void multi_orthogonality(const T* const ptr, const std::size_t m, const std::size_t n, const std::size_t size) {
+	auto h_mem = cutf::memory::get_host_unique_ptr<T>(m * n);
+	double avg_orth = 0.0;
+	for (std::size_t b = 0; b < size; b++) {
+		cutf::memory::copy(h_mem.get(), ptr + m * n * b, sizeof(T) * m * n);
+		double tmp = 0.0;
+		for (unsigned i = 0; i < n; i++) {
+			for (unsigned j = 0; j < n; j++) {
+				double c = 0.0;
+				for (unsigned k = 0; k < m; k++) {
+					c += cutf::type::cast<double>(h_mem.get()[i * m + k]) * cutf::type::cast<double>(h_mem.get()[j * m + k]);
+				}
+				tmp += std::abs(c - (i == j ? 1.0 : 0.0));
+			}
+		}
+		tmp /= std::sqrt(n);
+		std::printf("%5lu : %e\n", b, tmp);
+		avg_orth += tmp;
+	}
+	std::printf("avg : %e\n", avg_orth / size);
+}
