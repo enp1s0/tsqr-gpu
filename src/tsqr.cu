@@ -10,6 +10,7 @@
 #include "tsqr.hpp"
 #include "tcqr.hpp"
 #include "utils.hpp"
+#include "validation.hpp"
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 #include "gemm_core/gemm_core.cuh"
@@ -18,6 +19,7 @@
 //#define DEBUG_INPUT_MATRIX_PRINT
 //#define DEBUG_Q_MATRIX_PRINT
 //#define MEASURE_QR_TIME
+//#define EVALUATE_EACH_SMALL_Q
 
 namespace mtk {
 namespace tsqr {
@@ -655,6 +657,10 @@ void tsqr16_geq32(
 		}
 #endif
 		cudaStreamSynchronize(cuda_stream);
+#ifdef EVALUATE_EACH_SMALL_Q
+		mtk::validation::multi_orthogonality(working_q_ptr + working_q_sride, 2 * n * (1lu << k), 2 * n, n, 1lu << k, cuda_stream);
+		cudaStreamSynchronize(cuda_stream);
+#endif
 		tsqr_backward<UseTC, Correction><<<grid_size, block_size, 0, cuda_stream>>>(
 				working_q_ptr + working_q_sride,
 				working_q_ptr + working_q_sride + (1lu << k) * 2 * n * n,
