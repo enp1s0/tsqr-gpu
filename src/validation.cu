@@ -113,8 +113,8 @@ template void mtk::validation::check_submatrix_orthogonality<float>(const float*
 template void mtk::validation::check_submatrix_orthogonality<half>(const half* const, const std::size_t, const unsigned);
 
 template <class T>
-void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size) {
-	cudaDeviceSynchronize();
+void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream) {
+	cudaStreamSynchronize(stream);
 	auto h_mem = cutf::memory::get_host_unique_ptr<T>(m * n * size);
 	cutf::memory::copy(h_mem.get(), ptr, sizeof(T) * m * n * size);
 	double avg_orth = 0.0;
@@ -137,5 +137,5 @@ void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t 
 	std::printf("avg : %e\n", avg_orth / size);
 }
 
-template void mtk::validation::multi_orthogonality<half >(const half * const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size);
-template void mtk::validation::multi_orthogonality<float>(const float* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size);
+template void mtk::validation::multi_orthogonality<half >(const half * const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
+template void mtk::validation::multi_orthogonality<float>(const float* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
