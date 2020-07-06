@@ -149,11 +149,11 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 		std::vector<float> R_residual_list;
 
 		int geqrf_working_memory_size, gqr_working_memory_size;
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
+		CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf_buffer_size(
 					*cusolver_handle.get(), m, n,
 					hAd.get(), m, &geqrf_working_memory_size
 					));
-		CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr_buffer_size(
+		CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr_buffer_size(
 					*cusolver_handle.get(), m, n, n,
 					hAd.get(), m, d_tau.get(), &gqr_working_memory_size
 					));
@@ -186,7 +186,7 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 
 			// B
 			{
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::geqrf(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::geqrf(
 							*cusolver_handle.get(), m, n,
 							hAd.get(), m, d_tau.get(), d_geqrf_working_memory.get(),
 							geqrf_working_memory_size, d_info.get()
@@ -195,7 +195,7 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 				cudaDeviceSynchronize();
 				cut_r<<<(n * n + block_size - 1) / block_size, block_size>>>(hR_Ad.get(), hAd.get(), m, n);
 				cudaDeviceSynchronize();
-				CUTF_HANDLE_ERROR(cutf::cusolver::dn::gqr(
+				CUTF_CHECK_ERROR(cutf::cusolver::dn::gqr(
 							*cusolver_handle.get(), m, n, n,
 							hAd.get(), m,
 							d_tau.get(), d_gqr_working_memory.get(), gqr_working_memory_size,
