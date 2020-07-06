@@ -131,7 +131,6 @@ void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t 
 			}
 		}
 		tmp = std::sqrt(tmp / n);
-		std::printf("%5lu : %e\n", b, tmp);
 		avg_orth += tmp;
 	}
 	std::printf("avg : %e\n", avg_orth / size);
