@@ -116,7 +116,9 @@ template <class T>
 void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream) {
 	cudaStreamSynchronize(stream);
 	auto h_mem = cutf::memory::get_host_unique_ptr<T>(m * n * size);
-	cutf::memory::copy(h_mem.get(), ptr, sizeof(T) * m * n * size);
+	cudaStreamSynchronize(stream);
+	cutf::memory::copy_async(h_mem.get(), ptr, sizeof(T) * m * n * size, stream);
+	cudaStreamSynchronize(stream);
 	double avg_orth = 0.0;
 	for (std::size_t b = 0; b < size; b++) {
 		double tmp = 0.0;
