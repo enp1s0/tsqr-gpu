@@ -685,6 +685,10 @@ void tsqr16_geq32(
 		mtk::utils::print_matrix(h_tmp.get(), m, n, "Q (before backwarding)");
 	}
 #endif
+#ifdef EVALUATE_EACH_SMALL_Q
+	mtk::validation::multi_orthogonality(working_q_ptr + m * n, 2 * n * batch_size, 2 * n, n, batch_size, cuda_stream);
+	cudaStreamSynchronize(cuda_stream);
+#endif
 	cudaStreamSynchronize(cuda_stream);
 	tsqr_backward_layer0<UseTC, Correction><<<grid_size, block_size, 0, cuda_stream>>>(
 			q_ptr, ldq,
