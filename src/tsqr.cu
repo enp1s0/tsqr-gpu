@@ -658,7 +658,7 @@ void tsqr16_geq32(
 #endif
 		cudaStreamSynchronize(cuda_stream);
 #ifdef EVALUATE_EACH_SMALL_Q
-		mtk::validation::multi_orthogonality(working_q_ptr + working_q_sride, 2 * n * (1lu << k), 2 * n, n, 1lu << k, cuda_stream);
+		mtk::validation::multi_orthogonality(working_q_ptr + working_q_sride, 2 * n, n, 2 * n * (1lu << k), 1lu << k, cuda_stream);
 		cudaStreamSynchronize(cuda_stream);
 #endif
 		tsqr_backward<UseTC, Correction><<<grid_size, block_size, 0, cuda_stream>>>(
@@ -686,7 +686,7 @@ void tsqr16_geq32(
 	}
 #endif
 #ifdef EVALUATE_EACH_SMALL_Q
-	mtk::validation::multi_orthogonality(working_q_ptr + m * n, 2 * n * batch_size, 2 * n, n, batch_size, cuda_stream);
+	mtk::validation::multi_orthogonality(working_q_ptr + m * n, 2 * n, n, 2 * n * batch_size, batch_size, cuda_stream);
 	cudaStreamSynchronize(cuda_stream);
 #endif
 	cudaStreamSynchronize(cuda_stream);
