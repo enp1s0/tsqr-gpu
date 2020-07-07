@@ -15,7 +15,7 @@
 //#define MEASURE_CLOCK
 //#define IMPLICIT_H
 //#define THREE_TERMS_CORRECTION
-#define EMULATE_TF32
+//#define EMULATE_TF32
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
 
