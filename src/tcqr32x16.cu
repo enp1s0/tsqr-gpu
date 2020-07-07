@@ -82,11 +82,7 @@ __device__ void make_h(
 			tmp = 1.0f;
 		}
 		if(x < m && y < m)
-#ifdef EMULATE_TF32
-			tmp -= 2.0f * cutf::debug::tf32::to_tf32(cutf::type::cast<float>(u_ptr[y])) * cutf::debug::tf32::to_tf32(cutf::type::cast<float>(u_ptr[x])) / norm2_u_1;
-#else
 			tmp -= 2.0f * cutf::type::cast<float>(u_ptr[y]) * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
-#endif
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
