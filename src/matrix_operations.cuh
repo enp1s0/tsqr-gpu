@@ -106,6 +106,12 @@ __device__ inline void to_tf32_32x16_2w(
 	}
 	__syncthreads();
 }
+__device__ inline void to_tf32_32x16_2w(
+		half* const dst,
+		const half* const src,
+		const unsigned tid
+		) {
+}
 } // namespace matrix_operation
 } // namespace mtk
 #endif /* end of include guard */
