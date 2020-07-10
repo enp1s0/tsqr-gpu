@@ -576,6 +576,77 @@ __global__ void tsqr_backward_layer0<true, true, float, float>(
 			tid
 			);
 }
+#ifdef EMULATE_TF32
+template <>
+__global__ void tsqr_backward_layer0<false, false, float, float>(
+		float* const q_ptr, const std::size_t ldq,
+		const float* const a_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t batch_size,
+		const unsigned* const q_start_position
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = q_start_position[batch_size];
+	const auto q_start_pos = q_start_position[matrix_id];
+	const auto sub_m = q_start_position[matrix_id + 1] - q_start_pos;
+
+	if(matrix_id >= batch_size) return;
+
+	__shared__ float shared_ac_in[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// A(in) のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_in_ptr, sub_m, n,
+			a_ptr, q_start_pos, ac_m,
+			tid
+			);
+	// AC(out)の初期化
+	mtk::matrix_operation::make_zero_matrix<float, FRAGMENT_DIM_M, FRAGMENT_DIM_N, 1>(
+			shared_ac_out_ptr, tid);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_ptr, n, n,
+			b_ptr, matrix_id * n, n * batch_size,
+			tid
+			);
+
+	__syncthreads();
+
+	mtk::a100_tc_cor::gemm_core16x16(
+			shared_ac_out_ptr, FRAGMENT_DIM_M,
+			shared_ac_in_ptr, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	mtk::a100_tc_cor::gemm_core16x16(
+			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	__syncthreads();
+
+	mtk::matrix_copy::s2g32x16_1w(
+			q_ptr, q_start_pos, ldq,
+			shared_ac_out_ptr, sub_m, n,
+			tid
+			);
+}
+#endif
 }
 
 // 必要な作業用メモリ
