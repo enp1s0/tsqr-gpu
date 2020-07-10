@@ -20,6 +20,11 @@
 //#define DEBUG_Q_MATRIX_PRINT
 //#define MEASURE_QR_TIME
 //#define EVALUATE_EACH_SMALL_Q
+//#define EMULATE_TF32
+
+#ifdef EMULATE_TF32
+#include "a100_tc_emulator.hpp"
+#endif
 
 namespace mtk {
 namespace tsqr {
@@ -281,6 +286,74 @@ __global__ void tsqr_backward<true, true, float>(
 			tid
 			);
 }
+
+#ifdef EMULATE_TF32
+template <>
+__global__ void tsqr_backward<false, false, float>(
+		float* const ac_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t k
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = (1lu << (k)) * 2 * n;
+
+	if(matrix_id >= (1lu << k)) return;
+
+	__shared__ float shared_ac_in[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	// AC(in)のコピー
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_in_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
+	// Bのコピー
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
+	// AC(out)の初期化
+	mtk::matrix_operation::make_zero_matrix<float, FRAGMENT_DIM_M, FRAGMENT_DIM_N, 1>(
+			shared_ac_out_ptr, tid);
+
+	__syncthreads();
+
+	mtk::a100_tc_cor::gemm_core16x16(
+			shared_ac_out_ptr, FRAGMENT_DIM_M,
+			shared_ac_in_ptr, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	mtk::a100_tc_cor::gemm_core16x16(
+			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			shared_b_ptr, FRAGMENT_DIM_N,
+			tid & 0x1f
+			);
+
+	__syncthreads();
+
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_out_ptr, 2 * n, n,
+			tid
+			);
+}
+#endif
 
 template <bool UseTC, bool Correction, class OUTPUT_T, class INPUT_T>
 __global__ void tsqr_backward_layer0(
