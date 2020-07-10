@@ -2,7 +2,6 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
-#include <cutf/debug/tf32.hpp>
 #include <wmma_extension.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
@@ -18,6 +17,9 @@
 //#define EMULATE_TF32
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
+#ifdef EMULATE_TF32
+#include "a100_tc_emulator.hpp"
+#endif
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -501,6 +503,57 @@ __device__ void update_qr(
 			unique_id & 0x1f);
 	__syncthreads();
 }
+
+#ifdef EMULATE_TF32
+template <>
+__device__ void update_qr<float>(
+		float* const out_q_ptr, float* const out_r_ptr,
+		const float* const in_q_ptr, const float* const in_r_ptr,
+		float* const h_ptr,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+
+	/* mma q 0 */
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/* mma q 1 */
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/*  R */
+	mtk::a100_tc_cor::gemm_core16x16(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+			in_r_ptr, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	__syncthreads();
+}
+#endif
 #else // IMPLICIT_H
 
 // update q and r not making H explicitly
