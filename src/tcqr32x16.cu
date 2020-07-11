@@ -15,7 +15,7 @@
 //#define IMPLICIT_H
 //#define THREE_TERMS_CORRECTION
 
-// Difinign `EMULATE_TF32` enable `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
+// Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 #ifdef EMULATE_TF32
 #include <cutf/debug/tf32.hpp>
