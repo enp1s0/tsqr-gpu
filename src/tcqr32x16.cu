@@ -113,7 +113,7 @@ __device__ void make_h<float, float>(
 			const auto x_v = cutf::debug::tf32::to_tf32(u_ptr[x]);
 			const auto y_dv = cutf::debug::tf32::to_tf32(u_ptr[y] - y_v);
 			const auto x_dv = cutf::debug::tf32::to_tf32(u_ptr[x] - x_v);
-			tmp -= 2.0f * (x_dv * y_v + x_v * x_dv + x_v * y_v) / norm2_u_1;
+			tmp -= 2.0f * (x_dv * y_v + x_v * y_dv + x_v * y_v) / norm2_u_1;
 		}
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = tmp;
