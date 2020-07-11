@@ -18,6 +18,7 @@
 // Difinign `EMULATE_TF32` enable `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 #ifdef EMULATE_TF32
+#include <cutf/debug/tf32.hpp>
 #include "a100_tc_emulator.hpp"
 #endif
 
@@ -92,6 +93,33 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
+#ifdef EMULATE_TF32
+template <>
+__device__ void make_h<float, float>(
+		float* const h_ptr, const unsigned m,
+		const float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto y = unique_id & 0x1f;
+	const auto lane = unique_id >> 5;
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
+		const auto x = k + lane;
+		float tmp = 0.0f;
+		if(x == y) {
+			tmp = 1.0f;
+		}
+		if(x < m && y < m) {
+			const auto y_v = cutf::debug::tf32::to_tf32(u_ptr[y]);
+			const auto x_v = cutf::debug::tf32::to_tf32(u_ptr[x]);
+			const auto y_dv = cutf::debug::tf32::to_tf32(u_ptr[y] - y_v);
+			const auto x_dv = cutf::debug::tf32::to_tf32(u_ptr[x] - x_v);
+			tmp -= 2.0f * (x_dv * y_v + x_v * x_dv + x_v * y_v) / norm2_u_1;
+		}
+
+		h_ptr[x * FRAGMENT_DIM_M + y] = tmp;
+	}
+}
+#endif
 
 template <class T>
 __device__ void make_h_tc32(
