@@ -81,7 +81,7 @@ __device__ void make_h(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
 		const auto x = k + lane;
 		float tmp = 0.0f;
 		if(x == y) {
@@ -102,7 +102,7 @@ __device__ void make_h<float, float>(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
 		const auto x = k + lane;
 		float tmp = 0.0f;
 		if(x == y) {

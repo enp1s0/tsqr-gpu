@@ -6,12 +6,12 @@ namespace a100_tc_cor {
 __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id){
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
-	for(auto i = 0; i < 16; i+= 2){
+	for(auto i = 0; i < 16; i += 2){
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
 		float sum_dab = 0.0f;
 		float sum_adb = 0.0f;
-		for(unsigned k = 0; k < 16; k+=1){
+		for(unsigned k = 0; k < 16; k += 1){
 			const auto a_v = cutf::debug::tf32::to_tf32(a[y + ldm_a * k]);
 			const auto b_v = cutf::debug::tf32::to_tf32(b[x * ldm_b + k]);
 			const auto a_dv = cutf::debug::tf32::to_tf32(a[y + ldm_a * k] - a_v);
