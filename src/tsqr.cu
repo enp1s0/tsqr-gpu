@@ -20,6 +20,8 @@
 //#define DEBUG_Q_MATRIX_PRINT
 //#define MEASURE_QR_TIME
 //#define EVALUATE_EACH_SMALL_Q
+
+// Difinign `EMULATE_TF32` enable `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 
 #ifdef EMULATE_TF32

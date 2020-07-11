@@ -14,12 +14,15 @@
 //#define MEASURE_CLOCK
 //#define IMPLICIT_H
 //#define THREE_TERMS_CORRECTION
+
+// Difinign `EMULATE_TF32` enable `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
-// clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
-// clock : make_u,norm1,update_u,norm2,update_qr_with_u
 #ifdef EMULATE_TF32
 #include "a100_tc_emulator.hpp"
 #endif
+
+// clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
+// clock : make_u,norm1,update_u,norm2,update_qr_with_u
 
 namespace {
 constexpr unsigned warp_size = 32;
