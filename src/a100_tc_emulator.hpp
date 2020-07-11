@@ -6,9 +6,6 @@ namespace a100_tc_cor {
 __device__ inline void gemm_core16x16(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id){
 	const auto lane = unique_id >> 4;
 	const auto y = unique_id & 0xf;
-	// unrollするとレジスタを1つ多く確保する
-	// 実行すると遅い
-//#pragma unroll
 	for(auto i = 0; i < 16; i+= 2){
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
