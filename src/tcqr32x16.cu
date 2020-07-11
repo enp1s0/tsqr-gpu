@@ -14,6 +14,14 @@
 //#define MEASURE_CLOCK
 //#define IMPLICIT_H
 //#define THREE_TERMS_CORRECTION
+
+// Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
+//#define EMULATE_TF32
+#ifdef EMULATE_TF32
+#include <cutf/debug/tf32.hpp>
+#include "a100_tc_emulator.hpp"
+#endif
+
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
 
@@ -73,7 +81,7 @@ __device__ void make_h(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	for(unsigned k = 0; k < FRAGMENT_DIM_M; k+= 2) {
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
 		const auto x = k + lane;
 		float tmp = 0.0f;
 		if(x == y) {
@@ -85,6 +93,33 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
+#ifdef EMULATE_TF32
+template <>
+__device__ void make_h<float, float>(
+		float* const h_ptr, const unsigned m,
+		const float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto y = unique_id & 0x1f;
+	const auto lane = unique_id >> 5;
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
+		const auto x = k + lane;
+		float tmp = 0.0f;
+		if(x == y) {
+			tmp = 1.0f;
+		}
+		if(x < m && y < m) {
+			const auto y_v = cutf::debug::tf32::to_tf32(u_ptr[y]);
+			const auto x_v = cutf::debug::tf32::to_tf32(u_ptr[x]);
+			const auto y_dv = cutf::debug::tf32::to_tf32(u_ptr[y] - y_v);
+			const auto x_dv = cutf::debug::tf32::to_tf32(u_ptr[x] - x_v);
+			tmp -= 2.0f * (x_dv * y_v + x_v * y_dv + x_v * y_v) / norm2_u_1;
+		}
+
+		h_ptr[x * FRAGMENT_DIM_M + y] = tmp;
+	}
+}
+#endif
 
 template <class T>
 __device__ void make_h_tc32(
@@ -499,6 +534,57 @@ __device__ void update_qr(
 			unique_id & 0x1f);
 	__syncthreads();
 }
+
+#ifdef EMULATE_TF32
+template <>
+__device__ void update_qr<float>(
+		float* const out_q_ptr, float* const out_r_ptr,
+		const float* const in_q_ptr, const float* const in_r_ptr,
+		float* const h_ptr,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+
+	/* mma q 0 */
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/* mma q 1 */
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/*  R */
+	mtk::a100_tc_cor::gemm_core16x16(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+			in_r_ptr, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	mtk::a100_tc_cor::gemm_core16x16(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	__syncthreads();
+}
+#endif
 #else // IMPLICIT_H
 
 // update q and r not making H explicitly
