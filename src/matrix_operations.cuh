@@ -1,7 +1,6 @@
 #ifndef __MATRIX_OPERATIONS_CUH__
 #define __MATRIX_OPERATIONS_CUH__
 #include <cutf/type.hpp>
-#include <cutf/debug/tf32.hpp>
 namespace mtk {
 namespace matrix_operation {
 template <class T, std::size_t FRAGMENT_DIM_M, std::size_t FRAGMENT_DIM_N, std::size_t num_warps = 2>
@@ -87,30 +86,6 @@ __device__ inline void diff16x16_1w(
 		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
 	}
 	__syncthreads();
-}
-
-// Converting a float matrix to a tf32 matrix
-template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
-__device__ inline void to_tf32_32x16_2w(
-		float* const dst,
-		const float* const src,
-		const unsigned tid
-		) {
-	const auto unique_id = tid & 0x3f;
-	const auto y = unique_id & 0x1f;
-	const auto lane = unique_id >> 5;
-	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
-		const auto shared_index = FRAGMENT_DIM_M * x + y;
-
-		dst[shared_index] = cutf::debug::tf32::to_tf32(src[shared_index]);
-	}
-	__syncthreads();
-}
-__device__ inline void to_tf32_32x16_2w(
-		half* const dst,
-		const half* const src,
-		const unsigned tid
-		) {
 }
 } // namespace matrix_operation
 } // namespace mtk
