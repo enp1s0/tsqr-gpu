@@ -2,6 +2,7 @@
 #define __A100_TC_EMULATOR_HPP__
 #include <cutf/debug/tf32.hpp>
 
+// If this flag is node defined, error correction does not work.
 #define A100_TC_COR
 
 namespace mtk {
