@@ -2,6 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
+#include <cutf/debug/tf32.hpp>
 #include <wmma_extension.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
@@ -9,6 +10,7 @@
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 #include "gemm_core/gemm_core.cuh"
+#include "a100_tc_emulator.hpp"
 
 //#define DEBUG
 //#define MEASURE_CLOCK
@@ -17,10 +19,6 @@
 
 // Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
-#ifdef EMULATE_TF32
-#include <cutf/debug/tf32.hpp>
-#include "a100_tc_emulator.hpp"
-#endif
 
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
