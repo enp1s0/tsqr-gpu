@@ -28,6 +28,17 @@
 namespace {
 constexpr unsigned warp_size = 32;
 
+enum compute_mode {
+	fp16_notc,
+	fp32_notc,
+	fp16_tc_nocor,
+	fp32_tc_nocor,
+	tf32_tc_nocor,
+	fp32_tc_cor,
+	tf32_tc_cor,
+	mixed_tc_cor,
+};
+
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
 #ifdef DEBUG
