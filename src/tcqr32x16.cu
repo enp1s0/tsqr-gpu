@@ -240,61 +240,171 @@ __device__ void make_h<compute_mode::fp32_tc_cor, float, float>(
 	}
 }
 
-__device__ void update_qr_f32tc(
-		float* const q32_ptr, float* const r32_ptr,
-		const half* const q16_ptr, const half* const r16_ptr,
-		half* const h16_ptr,
+//
+// Updating Q and R
+//
+template <compute_mode mode, class OUT_T, class IN_T, class H_T, class WORK_T>
+__device__ void update_qr(
+		OUT_T* const out_q_ptr, OUT_T* const out_r_ptr,
+		const IN_T* const in_q_ptr, const IN_T* const in_r_ptr,
+		H_T* const h_ptr,
+		WORK_T* const working_memory,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> q16_0_frag, q16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> r32_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> q32_0_frag, q32_1_frag;
 
-	nvcuda::wmma::fill_fragment(r32_frag, 0.0f);
-	nvcuda::wmma::fill_fragment(q32_0_frag, 0.0f);
-	nvcuda::wmma::fill_fragment(q32_1_frag, 0.0f);
+	/* mma q 0 */
+	mtk::gemm_core16x16<IN_T, 1>(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::gemm_core16x16<IN_T, 1>(
+		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/* mma q 1 */
+	mtk::gemm_core16x16<IN_T, 1>(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+	mtk::gemm_core16x16<IN_T, 1>(
+		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		unique_id & 0x1f);
+
+	/*  R */
+	mtk::gemm_core16x16<IN_T, 1>(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
+			in_r_ptr, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	mtk::gemm_core16x16<IN_T, 1>(
+			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			unique_id & 0x1f);
+	__syncthreads();
+}
+
+template <>
+__device__ void update_qr<compute_mode::fp32_tc_nocor, float, half, half, float>(
+		float* const out_q_ptr, float* const out_r_ptr,
+		const half* const in_q_ptr, const half* const in_r_ptr,
+		half* const h_ptr,
+		float* const working_memory,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h_0_frag, h_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_r_0_frag, in_r_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_q_0_frag, in_q_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> out_r_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> out_q_0_frag, out_q_1_frag;
+
+	nvcuda::wmma::fill_fragment(out_r_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_0_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_1_frag, 0.0f);
 
 	// load h
-	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(h16_1_frag, h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(h_0_frag, h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(h_1_frag, h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 
 	/*  Q 0 */
 	// load q
-	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, in_q_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
-	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
-	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_0_frag, in_q_0_frag, out_q_0_frag);
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_1_frag, in_q_1_frag, out_q_0_frag);
 	/*  Q 1 */
 	// load q
-	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
-	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_frag, q32_1_frag);
-	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_frag, q32_1_frag);
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_0_frag, in_q_0_frag, out_q_1_frag);
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_1_frag, in_q_1_frag, out_q_1_frag);
 	/*  R */
 	// load r
-	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_r_0_frag, in_r_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_r_1_frag, in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
-	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_frag, r32_frag);
-	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
+	nvcuda::wmma::mma_sync(out_r_frag, h_0_frag, in_r_0_frag, out_r_frag);
+	nvcuda::wmma::mma_sync(out_r_frag, h_1_frag, in_r_1_frag, out_r_frag);
 
 	// store
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N, out_q_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-__device__ void update_qr_f32tc_correction(
-		float* const q32_ptr, float* const r32_ptr,
-		half* const q16_ptr, half* const r16_ptr,
-		float* const h32_ptr, half* const h16_ptr,
+template <>
+__device__ void update_qr<compute_mode::fp16_tc_nocor, half, half, half, float>(
+		half* const out_q_ptr, half* const out_r_ptr,
+		const half* const in_q_ptr, const half* const in_r_ptr,
+		half* const h_ptr,
+		float* const working_memory,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h_0_frag, h_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_r_0_frag, in_r_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_q_0_frag, in_q_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> out_r_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> out_q_0_frag, out_q_1_frag;
+
+	nvcuda::wmma::fill_fragment(out_r_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_0_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_1_frag, 0.0f);
+
+	// load h
+	nvcuda::wmma::load_matrix_sync(h_0_frag, h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(h_1_frag, h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+
+	/*  Q 0 */
+	// load q
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, in_q_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_0_frag, in_q_0_frag, out_q_0_frag);
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_1_frag, in_q_1_frag, out_q_0_frag);
+	/*  Q 1 */
+	// load q
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_0_frag, in_q_0_frag, out_q_1_frag);
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_1_frag, in_q_1_frag, out_q_1_frag);
+	/*  R */
+	// load r
+	nvcuda::wmma::load_matrix_sync(in_r_0_frag, in_r_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_r_1_frag, in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_r_frag, h_0_frag, in_r_0_frag, out_r_frag);
+	nvcuda::wmma::mma_sync(out_r_frag, h_1_frag, in_r_1_frag, out_r_frag);
+
+	// store
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N, out_q_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
+template <>
+__device__ void update_qr<compute_mode::fp32_tc_cor, float, float, float, half>(
+		float* const out_q_ptr, float* const out_r_ptr,
+		const float* const in_q_ptr, const float* const in_r_ptr,
+		float* const h_ptr,
+		half* const working_memory,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
@@ -318,11 +428,11 @@ __device__ void update_qr_f32tc_correction(
 				const auto n = mem_index >> 4;
 				const auto mem = m + FRAGMENT_DIM_M * n;
 
-				const auto v0_f32 = h32_ptr[FRAGMENT_DIM_N * lane + mem];
+				const auto v0_f32 = h_ptr[FRAGMENT_DIM_N * lane + mem];
 				const auto v0_f16 = cutf::type::cast<half>(v0_f32);
 				h16_0_frag.x[frag_index] = v0_f16;
 				h16_0_diff_frag.x[frag_index] = cutf::type::cast<half>(v0_f32 - cutf::type::cast<float>(v0_f16));
-				const auto v1_f32 = h32_ptr[FRAGMENT_DIM_N * lane + mem + FRAGMENT_DIM_N * FRAGMENT_DIM_M];
+				const auto v1_f32 = h_ptr[FRAGMENT_DIM_N * lane + mem + FRAGMENT_DIM_N * FRAGMENT_DIM_M];
 				const auto v1_f16 = cutf::type::cast<half>(v1_f32);
 				h16_1_frag.x[frag_index] = v1_f16;
 				h16_1_diff_frag.x[frag_index] = cutf::type::cast<half>(v1_f32 - cutf::type::cast<float>(v1_f16));
@@ -331,14 +441,15 @@ __device__ void update_qr_f32tc_correction(
 
 	/*  Q 0 */
 	// load q
-	copy_32x16(q16_ptr, q32_ptr, unique_id);
+	half* const q16_ptr = working_memory;
+	copy_32x16(q16_ptr, in_q_ptr, unique_id);
 	mtk::wmma::fill_zero(q32_0_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// make q diff
 	__syncthreads();
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, in_q_ptr, q16_ptr, unique_id);
 	// diff mma
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 #ifdef THREE_TERMS_CORRECTION
@@ -356,19 +467,19 @@ __device__ void update_qr_f32tc_correction(
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
 
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	__syncthreads();
 
 	/*  Q 1 */
 	// load q
-	copy_32x16(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	copy_32x16(q16_ptr, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 	mtk::wmma::fill_zero(q32_1_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load q diff
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, q32_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	// diff mma
 #ifdef THREE_TERMS_CORRECTION
@@ -385,20 +496,21 @@ __device__ void update_qr_f32tc_correction(
 	// mma
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_frag, q32_1_frag);
-	nvcuda::wmma::store_matrix_sync(q32_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	__syncthreads();
 
 	/*  R */
 	// load r
 	__syncthreads();
-	copy_32x16(r16_ptr, r32_ptr, unique_id);
+	half* const r16_ptr = working_memory;
+	copy_32x16(r16_ptr, in_r_ptr, unique_id);
 	mtk::wmma::fill_zero(r32_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load r diff
-	mtk::matrix_operation::diff32x16_2w(r16_ptr, r32_ptr, r16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(r16_ptr, in_r_ptr, r16_ptr, unique_id);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, r16_ptr, FRAGMENT_DIM_M);
 	// diff mma
@@ -416,115 +528,15 @@ __device__ void update_qr_f32tc_correction(
 	// mma
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
-	nvcuda::wmma::store_matrix_sync(r32_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(out_r_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-__device__ void update_qr_f16tc(
-		half* const q16_ptr, half* const r16_ptr,
-		half* const h16_ptr,
-		const unsigned unique_id
-		) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	const auto lane = unique_id >> 5;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> q16_0_frag, q16_1_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> r32_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> q32_0_frag, q32_1_frag;
-
-	nvcuda::wmma::fill_fragment(r32_frag, cutf::type::cast<half>(0.0f));
-	nvcuda::wmma::fill_fragment(q32_0_frag, cutf::type::cast<half>(0.0f));
-	nvcuda::wmma::fill_fragment(q32_1_frag, cutf::type::cast<half>(0.0f));
-
-	// load h
-	nvcuda::wmma::load_matrix_sync(h16_0_frag, h16_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(h16_1_frag, h16_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-
-	/*  Q 0 */
-	// load q
-	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	// mma
-	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
-	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
-	/*  Q 1 */
-	// load q
-	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	// mma
-	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_frag, q32_1_frag);
-	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_frag, q32_1_frag);
-	/*  R */
-	// load r
-	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-	// mma
-	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_frag, r32_frag);
-	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
-
-	// store
-	__syncthreads();
-	nvcuda::wmma::store_matrix_sync(q16_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(q16_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(r16_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-}
-
-template <class T>
-__device__ void update_qr(
-		T* const out_q_ptr, T* const out_r_ptr,
-		const T* const in_q_ptr, const T* const in_r_ptr,
-		T* const h_ptr,
-		const unsigned unique_id
-		) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	const auto lane = unique_id >> 5;
-
-	/* mma q 0 */
-	mtk::gemm_core16x16<T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-	mtk::gemm_core16x16<T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-
-	/* mma q 1 */
-	mtk::gemm_core16x16<T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-	mtk::gemm_core16x16<T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-
-	/*  R */
-	mtk::gemm_core16x16<T, 1>(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-			in_r_ptr, FRAGMENT_DIM_M,
-			unique_id & 0x1f);
-	mtk::gemm_core16x16<T, 1>(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			unique_id & 0x1f);
-	__syncthreads();
-}
-
-#ifdef EMULATE_TF32
 template <>
-__device__ void update_qr<float>(
+__device__ void update_qr<compute_mode::tf32_tc_cor_emu, float, float, float, float>(
 		float* const out_q_ptr, float* const out_r_ptr,
 		const float* const in_q_ptr, const float* const in_r_ptr,
 		float* const h_ptr,
+		float* const working_memory,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
@@ -568,7 +580,6 @@ __device__ void update_qr<float>(
 			unique_id & 0x1f);
 	__syncthreads();
 }
-#endif
 #else // IMPLICIT_H
 
 // update q and r not making H explicitly
