@@ -84,7 +84,7 @@ __device__ void copy_32x16(
 }
 
 #ifndef IMPLICIT_H
-template <class T, class U_T>
+template <compute_mode mode, class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m,
 		const U_T* const u_ptr, const float norm2_u_1,
@@ -104,38 +104,11 @@ __device__ void make_h(
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
 }
-#ifdef EMULATE_TF32
+
 template <>
-__device__ void make_h<float, float>(
-		float* const h_ptr, const unsigned m,
-		const float* const u_ptr, const float norm2_u_1,
-		const unsigned unique_id) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	const auto y = unique_id & 0x1f;
-	const auto lane = unique_id >> 5;
-	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
-		const auto x = k + lane;
-		float tmp = 0.0f;
-		if(x == y) {
-			tmp = 1.0f;
-		}
-		if(x < m && y < m) {
-			const auto y_v = cutf::debug::tf32::to_tf32(u_ptr[y]);
-			const auto x_v = cutf::debug::tf32::to_tf32(u_ptr[x]);
-			const auto y_dv = cutf::debug::tf32::to_tf32(u_ptr[y] - y_v);
-			const auto x_dv = cutf::debug::tf32::to_tf32(u_ptr[x] - x_v);
-			tmp -= 2.0f * (x_dv * y_v + x_v * y_dv + x_v * y_v) / norm2_u_1;
-		}
-
-		h_ptr[x * FRAGMENT_DIM_M + y] = tmp;
-	}
-}
-#endif
-
-template <class T>
-__device__ void make_h_tc32(
+__device__ void make_h<compute_mode::fp16_tc_nocor, half, half>(
 		half* const h_ptr, const unsigned m,
-		T* const u_ptr, const float norm2_u_1,
+		const half* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
@@ -174,9 +147,52 @@ __device__ void make_h_tc32(
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
-__device__ void make_h_tc32_correction(
+template <>
+__device__ void make_h<compute_mode::fp16_tc_nocor, half, float>(
+		half* const h_ptr, const unsigned m,
+		const float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1, i_frag;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+
+	const auto alpha = 2.0f / norm2_u_1;
+	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
+
+	mtk::wmma::make_identity_matrix(i_frag);
+
+
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
+			h_frag_1.x[i] = - h_frag_1.x[i];
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
+			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+		}
+	}
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
+template <>
+__device__ void make_h<compute_mode::fp32_tc_cor, float, float>(
 		float* const h_ptr, const unsigned m,
-		float* const u_ptr, const float norm2_u_1,
+		const float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
@@ -219,52 +235,6 @@ __device__ void make_h_tc32_correction(
 	if (unique_id < FRAGMENT_DIM_M) {
 		h_ptr[unique_id * (FRAGMENT_DIM_M + 1)] += 1.0f;
 	}
-}
-
-template <class T>
-__device__ void make_h_tc16(
-		half* const h_ptr, const unsigned m,
-		T* const u_ptr, const float norm2_u_1,
-		const unsigned unique_id) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	const auto lane = unique_id >> 5;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> h_frag_0, h_frag_1, i_frag;
-
-	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
-	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
-
-	mtk::wmma::make_identity_matrix(i_frag);
-
-	const auto alpha = cutf::math::sqrt(2.0f / norm2_u_1);
-
-	if(lane == 0) {
-		u_ptr[unique_id] *= alpha;
-	}
-	__syncthreads();
-
-	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16);
-	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
-	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
-
-	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
-	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
-
-	if(lane == 0) {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
-			h_frag_1.x[i] = - h_frag_1.x[i];
-		}
-	} else {
-		for(unsigned i = 0; i < i_frag.num_elements; i++) {
-			h_frag_0.x[i] = - h_frag_0.x[i];
-			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
-		}
-	}
-
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
 __device__ void update_qr_f32tc(
