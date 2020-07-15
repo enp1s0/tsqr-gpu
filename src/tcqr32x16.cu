@@ -85,6 +85,9 @@ __device__ void copy_32x16(
 }
 
 #ifndef IMPLICIT_H
+//
+// Generating Householder matrix from the vector `u`
+//
 // `u_ptr` is not `const` pointer because the values are destoried in `<compute_mode::fp32_tc_cor, float, float>`
 template <compute_mode mode, class T, class U_T>
 __device__ void make_h(
