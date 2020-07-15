@@ -36,6 +36,7 @@ enum compute_mode {
 	tf32_tc_nocor,
 	fp32_tc_cor,
 	tf32_tc_cor,
+	tf32_tc_cor_emu,
 	mixed_tc_cor,
 };
 
