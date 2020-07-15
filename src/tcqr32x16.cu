@@ -84,10 +84,11 @@ __device__ void copy_32x16(
 }
 
 #ifndef IMPLICIT_H
+// `u_ptr` is not `const` pointer because the values are destoried in `<compute_mode::fp32_tc_cor, float, float>`
 template <compute_mode mode, class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m,
-		const U_T* const u_ptr, const float norm2_u_1,
+		U_T* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
@@ -108,7 +109,7 @@ __device__ void make_h(
 template <>
 __device__ void make_h<compute_mode::fp16_tc_nocor, half, half>(
 		half* const h_ptr, const unsigned m,
-		const half* const u_ptr, const float norm2_u_1,
+		half* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
@@ -150,7 +151,7 @@ __device__ void make_h<compute_mode::fp16_tc_nocor, half, half>(
 template <>
 __device__ void make_h<compute_mode::fp16_tc_nocor, half, float>(
 		half* const h_ptr, const unsigned m,
-		const float* const u_ptr, const float norm2_u_1,
+		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
@@ -192,7 +193,7 @@ __device__ void make_h<compute_mode::fp16_tc_nocor, half, float>(
 template <>
 __device__ void make_h<compute_mode::fp32_tc_cor, float, float>(
 		float* const h_ptr, const unsigned m,
-		const float* const u_ptr, const float norm2_u_1,
+		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
