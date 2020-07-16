@@ -281,6 +281,9 @@ __device__ void update_qr(
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 
+	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(out_q_ptr, unique_id);
+	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(out_r_ptr, unique_id);
+
 	/* mma q 0 */
 	mtk::gemm_core16x16<IN_T, 1>(
 		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
@@ -568,6 +571,9 @@ __device__ void update_qr<compute_mode::tf32_tc_cor_emu, float, float, float, fl
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
+
+	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(out_q_ptr, unique_id);
+	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(out_r_ptr, unique_id);
 
 	/* mma q 0 */
 	mtk::a100_tc_cor::gemm_core16x16(
