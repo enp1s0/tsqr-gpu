@@ -273,10 +273,9 @@ __device__ void make_h<compute_mode::tf32_tc_cor_emu, float, float>(
 //
 // Updating Q and R
 //
-template <compute_mode mode, class OUT_T, class IN_T, class H_T, class WORK_T>
+template <compute_mode mode, class IO_T, class H_T, class WORK_T>
 __device__ void update_qr(
-		OUT_T* const out_q_ptr, OUT_T* const out_r_ptr,
-		const IN_T* const in_q_ptr, const IN_T* const in_r_ptr,
+		IO_T* const q_ptr, IO_T* const r_ptr,
 		H_T* const h_ptr,
 		WORK_T* const working_memory,
 		const unsigned unique_id
@@ -285,43 +284,43 @@ __device__ void update_qr(
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 
-	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(out_q_ptr, unique_id);
-	mtk::matrix_operation::make_zero_matrix<OUT_T, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(out_r_ptr, unique_id);
+	auto tmp_q_ptr = working_memory;
 
 	/* mma q 0 */
-	mtk::gemm_core16x16<IN_T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul_core16x16<IO_T>(
+		tmp_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr, FRAGMENT_DIM_M,
+		q_ptr, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::gemm_core16x16<IN_T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::gemm_core16x16<IO_T, 1>(
+		tmp_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/* mma q 1 */
-	mtk::gemm_core16x16<IN_T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul_core16x16<IO_T>(
+		tmp_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::gemm_core16x16<IN_T, 1>(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::gemm_core16x16<IO_T, 1>(
+		tmp_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/*  R */
-	mtk::gemm_core16x16<IN_T, 1>(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	auto tmp_r_ptr = working_memory;
+	mtk::matmul_core16x16<IO_T>(
+			tmp_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-			in_r_ptr, FRAGMENT_DIM_M,
+			r_ptr, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
-	mtk::gemm_core16x16<IN_T, 1>(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::gemm_core16x16<IO_T, 1>(
+			tmp_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
 	__syncthreads();
 }
