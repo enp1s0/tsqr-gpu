@@ -38,6 +38,10 @@ enum compute_mode {
 	mixed_tc_cor,
 };
 
+template <compute_mode mode, class IO_T>
+struct h_mat_t {using type = IO_T;};
+template <> struct h_mat_t<compute_mode::fp32_tc_nocor, float> {using type = half;};
+
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
 #ifdef DEBUG
