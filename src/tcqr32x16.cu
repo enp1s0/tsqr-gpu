@@ -43,14 +43,9 @@ struct h_mat_t {using type = IO_T;};
 template <> struct h_mat_t<compute_mode::fp32_tc_nocor, float> {using type = half;};
 
 template <compute_mode mode>
-constexpr unsigned get_shared_working_memory_size() {return 0u;}
-template <> constexpr unsigned get_shared_working_memory_size<compute_mode::fp32_tc_cor  >() {return 512u;}
-template <> constexpr unsigned get_shared_working_memory_size<compute_mode::fp32_tc_nocor>() {return 512u;}
-
-template <compute_mode mode>
 constexpr unsigned get_max_batch_size_per_block() {return 4u;}
 template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp32_tc_cor  >() {return 8u;}
-template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp32_tc_nocor>() {return 8u;}
+template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp32_tc_nocor>() {return 4u;}
 template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp16_notc    >() {return 12u;}
 template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp16_tc_nocor>() {return 12u;}
 
