@@ -48,15 +48,15 @@ void debug_func(Func func) {
 template <mtk::tsqr::compute_mode>
 constexpr mtk::tcqr::compute_mode get_tcqr_compute_mode();
 #define TSQR_GET_TCQR_COMPUTE_MODE(mode) template<> constexpr mtk::tcqr::compute_mode get_tcqr_compute_mode<mtk::tsqr::compute_mode::mode>() {return mtk::tcqr::compute_mode::mode;}
-TSQR_GET_TCQR_COMPUTE_MODE(fp16_notc);
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_notc);
-TSQR_GET_TCQR_COMPUTE_MODE(fp16_tc_nocor);
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_nocor);
-TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_nocor);
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_cor);
-TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor);
+TSQR_GET_TCQR_COMPUTE_MODE(fp16_notc      );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_notc      );
+TSQR_GET_TCQR_COMPUTE_MODE(fp16_tc_nocor  );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_nocor  );
+TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_nocor  );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_cor    );
+TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor    );
 TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor_emu);
-TSQR_GET_TCQR_COMPUTE_MODE(mixed_tc_cor);
+TSQR_GET_TCQR_COMPUTE_MODE(mixed_tc_cor   );
 
 template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
