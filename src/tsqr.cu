@@ -14,6 +14,7 @@
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 #include "gemm_core/gemm_core.cuh"
+#include "a100_tc_emulator.hpp"
 
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
@@ -24,9 +25,6 @@
 // Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 
-#ifdef EMULATE_TF32
-#include "a100_tc_emulator.hpp"
-#endif
 
 namespace mtk {
 namespace tsqr {
