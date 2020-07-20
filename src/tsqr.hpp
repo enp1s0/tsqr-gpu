@@ -112,11 +112,11 @@ struct buffer {
 	}
 };
 
-template <mtk::tsqr::compute_mode mode, class T>
+template <mtk::tsqr::compute_mode mode>
 void tsqr16(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		typename mtk::tsqr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::tsqr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		const typename mtk::tsqr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m,
 		const std::size_t n,
 		typename get_working_q_type<mode>::type* const working_q_ptr,
@@ -126,11 +126,11 @@ void tsqr16(
 		cudaStream_t const cuda_stream = nullptr);
 
 
-template <mtk::tsqr::compute_mode mode, class T>
+template <mtk::tsqr::compute_mode mode>
 inline void tsqr16(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		typename mtk::tsqr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::tsqr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		const typename mtk::tsqr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		mtk::tsqr::buffer<mode>& buffer,
 		cudaStream_t const cuda_stream) {
