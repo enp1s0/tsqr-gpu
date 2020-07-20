@@ -1070,7 +1070,7 @@ __device__ void qr32x16_core(
 				);
 		// compute h
 
-		h_mat_t<mode, IO_T>::type const *h_ptr = work;
+		auto *h_ptr = reinterpret_cast<typename h_mat_t<mode, IO_T>::type*>(work);
 		make_h<mode>(
 				h_ptr, m,
 				u_ptr, norm2_u_1,
