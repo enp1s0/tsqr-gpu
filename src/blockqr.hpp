@@ -29,16 +29,16 @@ const state_t error_invalid_matrix_size = 1;
 
 template <mtk::qr::compute_mode>
 constexpr mtk::tsqr::compute_mode get_tsqr_compute_mode();
-#define BQR_GET_TCQR_COMPUTE_MODE(mode) template<> constexpr mtk::tsqr::compute_mode get_tsqr_compute_mode<mtk::qr::compute_mode::mode>() {return mtk::tsqr::compute_mode::mode;}
-BQR_GET_TCQR_COMPUTE_MODE(fp16_notc      );
-BQR_GET_TCQR_COMPUTE_MODE(fp32_notc      );
-BQR_GET_TCQR_COMPUTE_MODE(fp16_tc_nocor  );
-BQR_GET_TCQR_COMPUTE_MODE(fp32_tc_nocor  );
-BQR_GET_TCQR_COMPUTE_MODE(tf32_tc_nocor  );
-BQR_GET_TCQR_COMPUTE_MODE(fp32_tc_cor    );
-BQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor    );
-BQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor_emu);
-BQR_GET_TCQR_COMPUTE_MODE(mixed_tc_cor   );
+#define BQR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::tsqr::compute_mode get_tsqr_compute_mode<mtk::qr::compute_mode::mode>() {return mtk::tsqr::compute_mode::mode;}
+BQR_GET_TSQR_COMPUTE_MODE(fp16_notc      );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_notc      );
+BQR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor  );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor  );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor  );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor    );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor    );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu);
+BQR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor   );
 
 template <mtk::qr::compute_mode mode>
 struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<get_tsqr_compute_mode<mode>>::type;};
