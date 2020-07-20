@@ -1249,58 +1249,9 @@ void mtk::tcqr::qr32x16(
 			);
 }
 
-template<> void mtk::tcqr::qr32x16<true, false, half, half, float, float>(
-		half* const q, const std::size_t ldq,
-		float* const r, const std::size_t ldr,
-		const float* const a,  const std::size_t lda,
-		const unsigned int m, const unsigned int n,
-		cudaStream_t const cuda_stream) {
-	qr32x16_f32tc_f16tc_core_kernel<half, float><<<1, 2 * warp_size, 0, cuda_stream>>>(
-			q, ldq,
-			r, ldr,
-			a, lda,
-			m, n
-			);
-}
-
-template<> void mtk::tcqr::qr32x16<true, false, half, float, float, float>(
-		float* const q, const std::size_t ldq,
-		float* const r, const std::size_t ldr,
-		const float* const a,  const std::size_t lda,
-		const unsigned int m, const unsigned int n,
-		cudaStream_t const cuda_stream) {
-	qr32x16_f32tc_f16tc_core_kernel<float, float><<<1, 2 * warp_size, 0, cuda_stream>>>(
-			q, ldq,
-			r, ldr,
-			a, lda,
-			m, n
-			);
-}
-
-template<> void mtk::tcqr::qr32x16<true, false, float, float, float, float>(
-		float* const q, const std::size_t ldq,
-		float* const r, const std::size_t ldr,
-		const float* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n,
-		cudaStream_t const cuda_stream) {
-	qr32x16_f32tc_kernel<float, float><<<1, 2 * warp_size, 0, cuda_stream>>>(
-			q, ldq,
-			r, ldr,
-			a, lda,
-			m, n
-			);
-}
-
-template<> void mtk::tcqr::qr32x16<true, true, float, float, float, float>(
-		float* const q, const std::size_t ldq,
-		float* const r, const std::size_t ldr,
-		const float* const a, const std::size_t lda,
-		const unsigned int m, const unsigned int n,
-		cudaStream_t const cuda_stream) {
-	qr32x16_f32tc_correction_kernel<<<1, 2 * warp_size, 0, cuda_stream>>>(
-			q, ldq,
-			r, ldr,
-			a, lda,
-			m, n
-			);
-}
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_cor    , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_notc      , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, half , float>(half * const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp16_notc      , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp16_tc        , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
