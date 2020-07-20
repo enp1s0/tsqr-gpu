@@ -46,6 +46,9 @@ struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<ge
 template <mtk::qr::compute_mode mode>
 struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<get_tsqr_compute_mode<mode>>::type;};
 
+template <mtk::qr::compute_mode mode>
+struct get_io_type{using type = typename mtk::tsqr::get_io_type<get_tsqr_compute_mode<mode>>::type;};
+
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
