@@ -1153,7 +1153,7 @@ __global__ void qr32x16_batched_kernel(
 }
 
 template <mtk::tcqr::compute_mode mode, class Q_T, class R_T, class A_T>
-__global__ void qr32x16_f32tc_kernel(
+__global__ void qr32x16_kernel(
 		Q_T* const q32_ptr, const std::size_t ldq,
 		R_T* const r32_ptr, const std::size_t ldr,
 		const A_T* const a_ptr, const std::size_t lda,
