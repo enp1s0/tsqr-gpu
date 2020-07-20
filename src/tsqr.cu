@@ -873,11 +873,11 @@ void tsqr16_geq32(
 #endif
 }
 
-template <mtk::tsqr::compute_mode mode, class T>
+template <mtk::tsqr::compute_mode mode>
 void mtk::tsqr::tsqr16(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		typename mtk::tsqr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::tsqr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		const typename mtk::tsqr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
 		typename get_working_q_type<mode>::type* const working_q_ptr, typename get_working_r_type<mode>::type* const working_r_ptr,
 		unsigned* const d_working_l_ptr,
@@ -905,8 +905,9 @@ void mtk::tsqr::tsqr16(
 }
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
-template void mtk::tsqr::tsqr16<mtk::tsqr::compute_mode::fp16_notc      , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mtk::tsqr::compute_mode::fp16_notc      >::type* const, typename mtk::tsqr::get_working_r_type<mtk::tsqr::compute_mode::fp16_notc      >::type* const, unsigned* const, unsigned* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<mtk::tsqr::compute_mode::fp32_notc      , float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mtk::tsqr::compute_mode::fp32_notc      >::type* const, typename mtk::tsqr::get_working_r_type<mtk::tsqr::compute_mode::fp32_notc      >::type* const, unsigned* const, unsigned* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<mtk::tsqr::compute_mode::fp16_tc_nocor  , half >(half*  const, const std::size_t, half*  const, const std::size_t, const half*  const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >::type* const, typename mtk::tsqr::get_working_r_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >::type* const, unsigned* const, unsigned* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<mtk::tsqr::compute_mode::fp32_tc_nocor  , float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >::type* const, typename mtk::tsqr::get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >::type* const, unsigned* const, unsigned* const, cudaStream_t const);
-template void mtk::tsqr::tsqr16<mtk::tsqr::compute_mode::fp32_tc_cor    , float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_cor    >::type* const, typename mtk::tsqr::get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_cor    >::type* const, unsigned* const, unsigned* const, cudaStream_t const);
+#define TSQR_TEMPLATE_INSTANCE(mode) template void mtk::tsqr::tsqr16<mode>(mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, const mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mode>::type* const, typename mtk::tsqr::get_working_r_type<mode>::type* const, unsigned* const, unsigned* const, cudaStream_t const)
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_notc    );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_notc    );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_tc_nocor);
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_nocor);
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_cor  );
