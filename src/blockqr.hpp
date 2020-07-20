@@ -9,6 +9,18 @@
 namespace mtk {
 namespace qr {
 
+enum compute_mode {
+	fp16_notc,
+	fp32_notc,
+	fp16_tc_nocor,
+	fp32_tc_nocor,
+	tf32_tc_nocor,
+	fp32_tc_cor,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	mixed_tc_cor,
+};
+
 constexpr std::size_t tsqr_colmun_size = 16;
 
 using state_t = int;
