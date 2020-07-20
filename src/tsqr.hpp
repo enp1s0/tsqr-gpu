@@ -37,6 +37,14 @@ template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_notc      >{u
 template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
 template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = float;};
 
+template <compute_mode mode>
+struct get_io_type{using type = void;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_notc      >{using type = float;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = float;};
+
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
