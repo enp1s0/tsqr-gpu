@@ -6,6 +6,17 @@
 
 namespace mtk {
 namespace tsqr {
+enum compute_mode {
+	fp16_notc,
+	fp32_notc,
+	fp16_tc_nocor,
+	fp32_tc_nocor,
+	tf32_tc_nocor,
+	fp32_tc_cor,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	mixed_tc_cor,
+};
 // get batch size
 std::size_t get_batch_size_log2(const std::size_t m);
 std::size_t get_batch_size(const std::size_t m);
