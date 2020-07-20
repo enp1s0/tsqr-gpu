@@ -42,6 +42,11 @@ template <compute_mode mode, class IO_T>
 struct h_mat_t {using type = IO_T;};
 template <> struct h_mat_t<compute_mode::fp32_tc_nocor, float> {using type = half;};
 
+template <compute_mode mode>
+__device__ constexpr unsigned get_shared_working_memory_size() {return 0u;}
+template <> __device__ constexpr unsigned get_shared_working_memory_size<compute_mode::fp32_tc_cor  >() {return 512u;}
+template <> __device__ constexpr unsigned get_shared_working_memory_size<compute_mode::fp32_tc_nocor>() {return 512u;}
+
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
 #ifdef DEBUG
