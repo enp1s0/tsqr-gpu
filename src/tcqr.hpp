@@ -5,6 +5,19 @@
 
 namespace mtk {
 namespace tcqr{
+
+enum compute_mode {
+	fp16_notc,
+	fp32_notc,
+	fp16_tc_nocor,
+	fp32_tc_nocor,
+	tf32_tc_nocor,
+	fp32_tc_cor,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	mixed_tc_cor,
+};
+
 template <bool UseTC, bool Correction, class CORE_T, class Q_T, class R_T, class A_T>
 void qr32x16(
 		Q_T* const q, const std::size_t ldq,

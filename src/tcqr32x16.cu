@@ -26,18 +26,6 @@
 namespace {
 constexpr unsigned warp_size = 32;
 
-enum compute_mode {
-	fp16_notc,
-	fp32_notc,
-	fp16_tc_nocor,
-	fp32_tc_nocor,
-	tf32_tc_nocor,
-	fp32_tc_cor,
-	tf32_tc_cor,
-	tf32_tc_cor_emu,
-	mixed_tc_cor,
-};
-
 template <compute_mode mode, class IO_T>
 struct h_mat_t {using type = IO_T;};
 template <> struct h_mat_t<compute_mode::fp32_tc_nocor, float> {using type = half;};
