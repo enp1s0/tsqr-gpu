@@ -21,9 +21,13 @@ enum compute_mode {
 std::size_t get_batch_size_log2(const std::size_t m);
 std::size_t get_batch_size(const std::size_t m);
 // get working memory type
-template <class T, bool UseTC, bool Correction>
-struct get_working_q_type{using type = T;};
-template <> struct get_working_q_type<float, true, false>{using type = half;};
+template <compute_mode mode>
+struct get_working_q_type{using type = void;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_notc      >{using type = float;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = half ;};
 
 template <class T, bool UseTC, bool Correction>
 struct get_working_r_type{using type = T;};
