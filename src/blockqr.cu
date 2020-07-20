@@ -28,14 +28,14 @@ std::size_t mtk::qr::get_working_l_size(const std::size_t m) {
 }
 
 namespace {
-template <bool UseTC, bool Correction, class T, class CORE_T>
+template <mtk::qr::compute_mode mode, class T>
 mtk::qr::state_t block_qr_core(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<mode>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<mode>::type* const wr_ptr,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const cublas_handle) {
@@ -47,7 +47,7 @@ mtk::qr::state_t block_qr_core(
 	cublasMath_t original_math_mode;
 	CUTF_CHECK_ERROR(cublasGetMathMode(cublas_handle, &original_math_mode));
 
-	if (UseTC && !Correction) {
+	if (mode == mtk::qr::fp16_tc_nocor || mode == mtk::qr::fp32_tc_nocor) {
 		CUTF_CHECK_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
 	} else {
 		CUTF_CHECK_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
@@ -112,7 +112,7 @@ mtk::qr::state_t block_qr_core(
 		CUTF_CHECK_ERROR(cudaStreamSynchronize(cuda_stream));
 		t3 = std::chrono::system_clock::now();
 #endif
-		mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
+		mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>, T>(
 				q_ptr + previous_block_n * ldq, ldq,
 				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 				a_ptr + previous_block_n * lda, lda,
@@ -151,7 +151,6 @@ mtk::qr::state_t block_qr_core(
 	std::printf("# BlockQR breakdown\n");
 	std::printf("Size   : %lu x %lu\n", m, n);
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
-	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
 	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
 	std::printf("Correction : %s\n", (Correction ? "YES" : "NO"));
 	std::printf("Reorth : %s\n", "NO");
@@ -165,14 +164,14 @@ mtk::qr::state_t block_qr_core(
 	return mtk::qr::success_factorization;
 }
 
-template <bool UseTC, bool Correction, class T, class CORE_T>
+template <mtk::qr::compute_mode mode, class T>
 mtk::qr::state_t block_qr_reorthogonalization_core(
 		T* const q_ptr, const std::size_t ldq,
 		T* const r_ptr, const std::size_t ldr,
 		T* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
+		typename mtk::qr::get_working_q_type<mode>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<mode>::type* const wr_ptr,
 		T* const w_reorth,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
@@ -194,7 +193,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 	cublasMath_t original_math_mode;
 	CUTF_CHECK_ERROR(cublasGetMathMode(cublas_handle, &original_math_mode));
 
-	if (UseTC && !Correction) {
+	if (mode == mtk::qr::fp16_tc_nocor || mode == mtk::qr::fp32_tc_nocor) {
 		CUTF_CHECK_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_TENSOR_OP_MATH));
 	} else {
 		CUTF_CHECK_ERROR(cublasSetMathMode(cublas_handle, CUBLAS_DEFAULT_MATH));
@@ -241,7 +240,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_1 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
+			mtk::tsqr::tsqr16<mode, T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r2_ptr, mtk::qr::tsqr_colmun_size,
 					a_ptr + previous_block_n * lda, lda,
@@ -282,7 +281,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_3 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
+			mtk::tsqr::tsqr16<mode, T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					w_ptr, mtk::qr::tsqr_colmun_size,
 					q_ptr + previous_block_n * ldq, ldq,
@@ -328,7 +327,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			CUTF_CHECK_ERROR(cudaStreamSynchronize(cuda_stream));
 			const auto t_0 = std::chrono::system_clock::now();
 #endif
-			mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
+			mtk::tsqr::tsqr16<mode, T>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 					a_ptr + previous_block_n * lda, lda,
@@ -381,15 +380,15 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 
 } // namespace
 
-template <bool UseTC, bool Correction, bool Reorthoganalize, class T, class CORE_T>
+template <mtk::qr::compute_mode mode, bool Reorthoganalize>
 mtk::qr::state_t mtk::qr::qr(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		T* const a_ptr, const std::size_t lda,
+		typename mtk::qr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::qr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		typename mtk::qr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
-		T* const reorth_r,
+		typename mtk::qr::get_working_q_type<mode>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<mode>::type* const wr_ptr,
+		typename mtk::qr::get_io_type<mode>::type* const reorth_r,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const cublas_handle) {
@@ -399,7 +398,7 @@ mtk::qr::state_t mtk::qr::qr(
 	}
 
 	if (Reorthoganalize) {
-		return block_qr_reorthogonalization_core<UseTC, Correction, T, CORE_T>(
+		return block_qr_reorthogonalization_core<mode>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
@@ -410,7 +409,7 @@ mtk::qr::state_t mtk::qr::qr(
 				cublas_handle
 				);
 	} else {
-		return block_qr_core<UseTC, Correction, T, CORE_T>(
+		return block_qr_core<mode>(
 				q_ptr, ldq,
 				r_ptr, ldr,
 				a_ptr, lda,
@@ -422,15 +421,10 @@ mtk::qr::state_t mtk::qr::qr(
 	}
 }
 
-template mtk::qr::state_t mtk::qr::qr<false, false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , true , false, float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , true >::type* const, typename mtk::qr::get_working_r_type<float, true , true >::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<false, false, false, half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , false, false>::type* const, typename mtk::qr::get_working_r_type<half , false, false>::type* const, half*  const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, false, half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , true , false>::type* const, typename mtk::qr::get_working_r_type<half , true , false>::type* const, half*  const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, false, float, half >(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<false, false, true , float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, false, false>::type* const, typename mtk::qr::get_working_r_type<float, false, false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, true , float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , true , true , float, float>(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , true >::type* const, typename mtk::qr::get_working_r_type<float, true , true >::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<false, false, true , half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , false, false>::type* const, typename mtk::qr::get_working_r_type<half , false, false>::type* const, half*  const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, true , half , half >(half * const, const std::size_t, half * const, const std::size_t, half * const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<half , true , false>::type* const, typename mtk::qr::get_working_r_type<half , true , false>::type* const, half*  const, unsigned* const, unsigned* const, cublasHandle_t const);
-template mtk::qr::state_t mtk::qr::qr<true , false, true , float, half >(float* const, const std::size_t, float* const, const std::size_t, float* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<float, true , false>::type* const, typename mtk::qr::get_working_r_type<float, true , false>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
+
+#define BQR_TEMPLATE_INSTANCE(mode, reorth) template mtk::qr::state_t mtk::qr::qr<mode, reorth>(mtk::qr::get_io_type<mode>::type* const, const std::size_t, mtk::qr::get_io_type<mode>::type* const, const std::size_t, mtk::qr::get_io_type<mode>::type* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<mode>::type* const, typename mtk::qr::get_working_r_type<mode>::type* const, float* const, unsigned* const, unsigned* const, cublasHandle_t const);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_notc    , true);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_notc    , true);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_tc_nocor, true);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_nocor, true);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_cor  , true);
