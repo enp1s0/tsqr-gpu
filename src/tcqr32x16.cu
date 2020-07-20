@@ -26,16 +26,16 @@
 namespace {
 constexpr unsigned warp_size = 32;
 
-template <compute_mode mode, class IO_T>
+template <mtk::tcqr::compute_mode mode, class IO_T>
 struct h_mat_t {using type = IO_T;};
-template <> struct h_mat_t<compute_mode::fp32_tc_nocor, float> {using type = half;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp32_tc_nocor, float> {using type = half;};
 
-template <compute_mode mode>
+template <mtk::tcqr::compute_mode mode>
 constexpr unsigned get_max_batch_size_per_block() {return 4u;}
-template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp32_tc_cor  >() {return 8u;}
-template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp32_tc_nocor>() {return 4u;}
-template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp16_notc    >() {return 12u;}
-template <> constexpr unsigned get_max_batch_size_per_block<compute_mode::fp16_tc_nocor>() {return 12u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_cor  >() {return 8u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_nocor>() {return 4u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_notc    >() {return 12u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_tc_nocor>() {return 12u;}
 
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
@@ -85,8 +85,8 @@ __device__ void copy_32x16(
 //
 // Generating Householder matrix from the vector `u`
 //
-// `u_ptr` is not `const` pointer because the values are destoried in `<compute_mode::fp32_tc_cor, float, float>`
-template <compute_mode mode, class T, class U_T>
+// `u_ptr` is not `const` pointer because the values are destoried in `<mtk::tcqr::compute_mode::fp32_tc_cor, float, float>`
+template <mtk::tcqr::compute_mode mode, class T, class U_T>
 __device__ void make_h(
 		T* const h_ptr, const unsigned m,
 		U_T* const u_ptr, const float norm2_u_1,
@@ -108,7 +108,7 @@ __device__ void make_h(
 }
 
 template <>
-__device__ void make_h<compute_mode::fp16_tc_nocor, half, half>(
+__device__ void make_h<mtk::tcqr::compute_mode::fp16_tc_nocor, half, half>(
 		half* const h_ptr, const unsigned m,
 		half* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -150,7 +150,7 @@ __device__ void make_h<compute_mode::fp16_tc_nocor, half, half>(
 }
 
 template <>
-__device__ void make_h<compute_mode::fp16_tc_nocor, half, float>(
+__device__ void make_h<mtk::tcqr::compute_mode::fp16_tc_nocor, half, float>(
 		half* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -192,7 +192,7 @@ __device__ void make_h<compute_mode::fp16_tc_nocor, half, float>(
 }
 
 template <>
-__device__ void make_h<compute_mode::fp32_tc_cor, float, float>(
+__device__ void make_h<mtk::tcqr::compute_mode::fp32_tc_cor, float, float>(
 		float* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -240,7 +240,7 @@ __device__ void make_h<compute_mode::fp32_tc_cor, float, float>(
 }
 
 template <>
-__device__ void make_h<compute_mode::tf32_tc_cor_emu, float, float>(
+__device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float>(
 		float* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
@@ -268,7 +268,7 @@ __device__ void make_h<compute_mode::tf32_tc_cor_emu, float, float>(
 //
 // Updating Q and R
 //
-template <compute_mode mode, class IO_T, class H_T, class WORK_T>
+template <mtk::tcqr::compute_mode mode, class IO_T, class H_T, class WORK_T>
 __device__ void update_qr(
 		IO_T* const q_ptr, IO_T* const r_ptr,
 		H_T* const h_ptr,
@@ -321,7 +321,7 @@ __device__ void update_qr(
 }
 
 template <>
-__device__ void update_qr<compute_mode::fp32_tc_nocor, float, half, half, float>(
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, float, half, half, float>(
 		float* const out_q_ptr, float* const out_r_ptr,
 		const half* const in_q_ptr, const half* const in_r_ptr,
 		half* const h_ptr,
@@ -374,7 +374,7 @@ __device__ void update_qr<compute_mode::fp32_tc_nocor, float, half, half, float>
 }
 
 template <>
-__device__ void update_qr<compute_mode::fp16_tc_nocor, half, half, half, float>(
+__device__ void update_qr<mtk::tcqr::compute_mode::fp16_tc_nocor, half, half, half, float>(
 		half* const out_q_ptr, half* const out_r_ptr,
 		const half* const in_q_ptr, const half* const in_r_ptr,
 		half* const h_ptr,
@@ -427,7 +427,7 @@ __device__ void update_qr<compute_mode::fp16_tc_nocor, half, half, half, float>(
 }
 
 template <>
-__device__ void update_qr<compute_mode::fp32_tc_cor, float, float, float, half>(
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, float, half>(
 		float* const out_q_ptr, float* const out_r_ptr,
 		const float* const in_q_ptr, const float* const in_r_ptr,
 		float* const h_ptr,
@@ -559,7 +559,7 @@ __device__ void update_qr<compute_mode::fp32_tc_cor, float, float, float, half>(
 }
 
 template <>
-__device__ void update_qr<compute_mode::tf32_tc_cor_emu, float, float, float, float>(
+__device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float, float, float>(
 		float* const out_q_ptr, float* const out_r_ptr,
 		const float* const in_q_ptr, const float* const in_r_ptr,
 		float* const h_ptr,
