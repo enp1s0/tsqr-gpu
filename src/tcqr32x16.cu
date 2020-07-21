@@ -36,10 +36,10 @@ template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_tc_nocor > {using type 
 
 template <mtk::tcqr::compute_mode mode>
 constexpr unsigned get_max_batch_size_per_block() {return 4u;}
-template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_cor  >() {return 8u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_cor  >() {return 4u;}
 template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_nocor>() {return 4u;}
-template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_notc    >() {return 12u;}
-template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_tc_nocor>() {return 12u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_notc    >() {return 4u;}
+template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_tc_nocor>() {return 4u;}
 
 template <mtk::tcqr::compute_mode>
 constexpr mtk::matmul::compute_mode get_matmul_compute_mode();
