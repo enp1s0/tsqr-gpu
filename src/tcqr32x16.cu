@@ -436,9 +436,8 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp16_tc_nocor, half, half, ha
 }
 
 template <>
-__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, float, half>(
-		float* const out_q_ptr, float* const out_r_ptr,
-		const float* const in_q_ptr, const float* const in_r_ptr,
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, half>(
+		float* const q_ptr, float* const r_ptr,
 		float* const h_ptr,
 		half* const working_memory,
 		const unsigned unique_id
@@ -478,14 +477,14 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	/*  Q 0 */
 	// load q
 	half* const q16_ptr = working_memory;
-	copy_32x16(q16_ptr, in_q_ptr, unique_id);
+	copy_32x16(q16_ptr, q_ptr, unique_id);
 	mtk::wmma::fill_zero(q32_0_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// make q diff
 	__syncthreads();
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, in_q_ptr, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr, q16_ptr, unique_id);
 	// diff mma
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 #ifdef THREE_TERMS_CORRECTION
@@ -503,19 +502,19 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
 
-	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N, q32_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	__syncthreads();
 
 	/*  Q 1 */
 	// load q
-	copy_32x16(q16_ptr, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	copy_32x16(q16_ptr, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
 	mtk::wmma::fill_zero(q32_1_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(q16_0_frag, q16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load q diff
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	// diff mma
 #ifdef THREE_TERMS_CORRECTION
@@ -532,14 +531,14 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	// mma
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_frag, q32_1_frag);
-	nvcuda::wmma::store_matrix_sync(out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	__syncthreads();
 
 	/*  R */
 	// load r
 	__syncthreads();
 	half* const r16_ptr = working_memory;
-	copy_32x16(r16_ptr, in_r_ptr, unique_id);
+	copy_32x16(r16_ptr, r_ptr, unique_id);
 	mtk::wmma::fill_zero(r32_frag);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_frag, r16_ptr, FRAGMENT_DIM_M);
