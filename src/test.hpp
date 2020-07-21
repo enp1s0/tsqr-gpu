@@ -20,16 +20,17 @@ enum compute_mode {
 	mixed_tc_cor,
 };
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
+
 template <class T>
 void cusolver_accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
 template <class T>
 void cusolver_speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
 template <class T>
 void cusolver_accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
