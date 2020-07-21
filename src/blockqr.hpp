@@ -41,13 +41,13 @@ BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu);
 BQR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor   );
 
 template <mtk::qr::compute_mode mode>
-struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<get_tsqr_compute_mode<mode>>::type;};
+struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<get_tsqr_compute_mode<mode>()>::type;};
 
 template <mtk::qr::compute_mode mode>
-struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<get_tsqr_compute_mode<mode>>::type;};
+struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<get_tsqr_compute_mode<mode>()>::type;};
 
 template <mtk::qr::compute_mode mode>
-struct get_io_type{using type = typename mtk::tsqr::get_io_type<get_tsqr_compute_mode<mode>>::type;};
+struct get_io_type{using type = typename mtk::tsqr::get_io_type<get_tsqr_compute_mode<mode>()>::type;};
 
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
