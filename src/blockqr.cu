@@ -112,7 +112,7 @@ mtk::qr::state_t block_qr_core(
 		CUTF_CHECK_ERROR(cudaStreamSynchronize(cuda_stream));
 		t3 = std::chrono::system_clock::now();
 #endif
-		mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>, T>(
+		mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>()>(
 				q_ptr + previous_block_n * ldq, ldq,
 				r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 				a_ptr + previous_block_n * lda, lda,
@@ -240,7 +240,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_1 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_1 - t_0).count();
 #endif
-			mtk::tsqr::tsqr16<mode, T>(
+			mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>()>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r2_ptr, mtk::qr::tsqr_colmun_size,
 					a_ptr + previous_block_n * lda, lda,
@@ -281,7 +281,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			const auto t_3 = std::chrono::system_clock::now();
 			gemm_count += std::chrono::duration_cast<std::chrono::microseconds>(t_3 - t_2).count();
 #endif
-			mtk::tsqr::tsqr16<mode, T>(
+			mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>()>(
 					q_ptr + previous_block_n * ldq, ldq,
 					w_ptr, mtk::qr::tsqr_colmun_size,
 					q_ptr + previous_block_n * ldq, ldq,
@@ -327,7 +327,7 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 			CUTF_CHECK_ERROR(cudaStreamSynchronize(cuda_stream));
 			const auto t_0 = std::chrono::system_clock::now();
 #endif
-			mtk::tsqr::tsqr16<mode, T>(
+			mtk::tsqr::tsqr16<mtk::qr::get_tsqr_compute_mode<mode>()>(
 					q_ptr + previous_block_n * ldq, ldq,
 					r_ptr + previous_block_n * ldr + previous_block_n, ldr,
 					a_ptr + previous_block_n * lda, lda,
