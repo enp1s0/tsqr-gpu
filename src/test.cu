@@ -54,6 +54,20 @@ void print_speed_head() {
 	std::cout << "m,n,rand_range,type,core_type,tc,correction,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
 	std::cout.flush();
 }
+
+template <mtk::test_qr::compute_mode>
+constexpr mtk::qr::compute_mode get_qr_compute_mode();
+#define TEST_QR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::qr::compute_mode get_qr_compute_mode<mtk::test_qr::compute_mode::mode>() {return mtk::qr::compute_mode::mode;}
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_notc      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_notc      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu);
+TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor   );
+
 } // namespace
 
 template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T>
