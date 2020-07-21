@@ -567,9 +567,8 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, ha
 }
 
 template <>
-__device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float, float, float>(
-		float* const out_q_ptr, float* const out_r_ptr,
-		const float* const in_q_ptr, const float* const in_r_ptr,
+__device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float, float>(
+		float* const q_ptr, float* const r_ptr,
 		float* const h_ptr,
 		float* const working_memory,
 		const unsigned unique_id
@@ -578,12 +577,9 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 
-	mtk::matrix_operation::make_zero_matrix<float, FRAGMENT_DIM_M, FRAGMENT_DIM_M>(out_q_ptr, unique_id);
-	mtk::matrix_operation::make_zero_matrix<float, FRAGMENT_DIM_M, FRAGMENT_DIM_N>(out_r_ptr, unique_id);
-
 	/* mma q 0 */
-	mtk::a100_tc_cor::gemm_core16x16(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::a100_tc_cor::matmul_core16x16(
+		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		in_q_ptr, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
@@ -594,27 +590,27 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float
 		unique_id & 0x1f);
 
 	/* mma q 1 */
-	mtk::a100_tc_cor::gemm_core16x16(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::a100_tc_cor::matmul_core16x16(
+		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 	mtk::a100_tc_cor::gemm_core16x16(
-		out_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/*  R */
-	mtk::a100_tc_cor::gemm_core16x16(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::a100_tc_cor::matmul_core16x16(
+			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-			in_r_ptr, FRAGMENT_DIM_M,
+			r_ptr, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
-	mtk::a100_tc_cor::gemm_core16x16(
-			out_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::a100_tc_cor::matmul_core16x16(
+			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			in_r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
 	__syncthreads();
 }
