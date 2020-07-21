@@ -46,12 +46,12 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_accuracy_head() {
-	std::cout << "m,n,rand_range,type,core_type,tc,correction,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
+	std::cout << "m,n,rand_range,type,compute_mode,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
 	std::cout.flush();
 }
 
 void print_speed_head() {
-	std::cout << "m,n,rand_range,type,core_type,tc,correction,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
+	std::cout << "m,n,rand_range,type,compute_mode,reorthogonalization,elapsed_time,tflops,working_memory_size" << std::endl;
 	std::cout.flush();
 }
 
@@ -175,8 +175,8 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			std::cout << m << ","
 				<< n << ","
 				<< rand_range_abs << ","
-				<< get_compute_mode_name_string<mode>() << ","
 				<< get_type_name<T>() << ","
+				<< get_compute_mode_name_string<mode>() << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< residual << ","
 				<< residual_variance << ","
@@ -413,9 +413,7 @@ void mtk::test_qr::cusolver_accuracy(const std::vector<std::tuple<std::size_t, s
 				<< n << ","
 				<< rand_range_abs << ","
 				<< get_type_name<T>() << ","
-				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
-				<< "0" << ","
 				<< "0" << ","
 				<< residual << ","
 				<< residual_variance << ","
@@ -516,9 +514,7 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 				<< n << ","
 				<< rand_range_abs << ","
 				<< get_type_name<T>() << ","
-				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
-				<< "0" << ","
 				<< "0" << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
