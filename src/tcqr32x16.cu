@@ -26,9 +26,13 @@
 namespace {
 constexpr unsigned warp_size = 32;
 
-template <mtk::tcqr::compute_mode mode, class IO_T>
-struct h_mat_t {using type = IO_T;};
-template <> struct h_mat_t<mtk::tcqr::compute_mode::fp32_tc_nocor, float> {using type = half;};
+template <mtk::tcqr::compute_mode mode>
+struct h_mat_t {using type = void;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp32_tc_nocor > {using type = half;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp32_notc     > {using type = float;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp32_tc_cor   > {using type = float;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_notc     > {using type = half;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_tc_nocor > {using type = half;};
 
 template <mtk::tcqr::compute_mode mode>
 constexpr unsigned get_max_batch_size_per_block() {return 4u;}
@@ -36,6 +40,14 @@ template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_m
 template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp32_tc_nocor>() {return 4u;}
 template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_notc    >() {return 12u;}
 template <> constexpr unsigned get_max_batch_size_per_block<mtk::tcqr::compute_mode::fp16_tc_nocor>() {return 12u;}
+
+template <mtk::tcqr::compute_mode>
+constexpr mtk::matmul::compute_mode get_matmul_compute_mode();
+#define TCQR_GET_MATMUL_COMPUTE_MODE(mode) template<> constexpr mtk::matmul::compute_mode get_matmul_compute_mode<mtk::tcqr::compute_mode::mode>() {return mtk::matmul::compute_mode::mode;}
+TCQR_GET_MATMUL_COMPUTE_MODE(fp16_notc      );
+TCQR_GET_MATMUL_COMPUTE_MODE(fp32_notc      );
+TCQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu);
+TCQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor   );
 
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
@@ -268,52 +280,49 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float>(
 //
 // Updating Q and R
 //
-template <mtk::tcqr::compute_mode mode, class IO_T, class H_T, class WORK_T>
+template <mtk::tcqr::compute_mode mode, class Q_T, class R_T, class H_T>
 __device__ void update_qr(
-		IO_T* const q_ptr, IO_T* const r_ptr,
+		Q_T* const q_ptr, R_T* const r_ptr,
 		H_T* const h_ptr,
-		WORK_T* const working_memory,
+		half* const working_memory,
 		const unsigned unique_id
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 
-	auto tmp_q_ptr = working_memory;
-
 	/* mma q 0 */
-	mtk::matmul_core16x16<IO_T>(
-		tmp_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::gemm_core16x16<IO_T, 1>(
-		tmp_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
+		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/* mma q 1 */
-	mtk::matmul_core16x16<IO_T>(
-		tmp_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::gemm_core16x16<IO_T, 1>(
-		tmp_q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
+		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/*  R */
-	auto tmp_r_ptr = working_memory;
-	mtk::matmul_core16x16<IO_T>(
-			tmp_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 			r_ptr, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
-	mtk::gemm_core16x16<IO_T, 1>(
-			tmp_r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
+			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
@@ -321,7 +330,7 @@ __device__ void update_qr(
 }
 
 template <>
-__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, float, half, half>(
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, float, float, half>(
 		float* const q_ptr, float* const r_ptr,
 		half* const h_ptr,
 		half* const working_memory,
@@ -363,6 +372,65 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, float, half, h
 	// load q
 	nvcuda::wmma::load_matrix_sync(in_q_0_frag, working_memory, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(in_q_1_frag, working_memory + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_0_frag, in_q_0_frag, out_q_1_frag);
+	nvcuda::wmma::mma_sync(out_q_1_frag, h_1_frag, in_q_1_frag, out_q_1_frag);
+	/*  R */
+	__syncthreads();
+	copy_32x16(working_memory, r_ptr, unique_id);
+	__syncthreads();
+	// load r
+	nvcuda::wmma::load_matrix_sync(in_r_0_frag, working_memory, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_r_1_frag, working_memory + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_r_frag, h_0_frag, in_r_0_frag, out_r_frag);
+	nvcuda::wmma::mma_sync(out_r_frag, h_1_frag, in_r_1_frag, out_r_frag);
+
+	// store
+	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N, out_q_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
+template <>
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, half, float, half>(
+		half* const q_ptr, float* const r_ptr,
+		half* const h_ptr,
+		half* const working_memory,
+		const unsigned unique_id
+		) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h_0_frag, h_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_r_0_frag, in_r_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> in_q_0_frag, in_q_1_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> out_r_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> out_q_0_frag, out_q_1_frag;
+
+	nvcuda::wmma::fill_fragment(out_r_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_0_frag, 0.0f);
+	nvcuda::wmma::fill_fragment(out_q_1_frag, 0.0f);
+
+	// load h
+	nvcuda::wmma::load_matrix_sync(h_0_frag, h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(h_1_frag, h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+
+	/*  Q 0 */
+	// load q
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, q_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	// mma
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_0_frag, in_q_0_frag, out_q_0_frag);
+	nvcuda::wmma::mma_sync(out_q_0_frag, h_1_frag, in_q_1_frag, out_q_0_frag);
+	/*  Q 1 */
+
+	__syncthreads();
+	copy_32x16(working_memory, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
+	__syncthreads();
+	// load q
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, q_ptr, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
 	nvcuda::wmma::mma_sync(out_q_1_frag, h_0_frag, in_q_0_frag, out_q_1_frag);
 	nvcuda::wmma::mma_sync(out_q_1_frag, h_1_frag, in_q_1_frag, out_q_1_frag);
@@ -436,7 +504,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp16_tc_nocor, half, half, ha
 }
 
 template <>
-__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, half>(
+__device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, float>(
 		float* const q_ptr, float* const r_ptr,
 		float* const h_ptr,
 		half* const working_memory,
@@ -476,7 +544,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, ha
 
 	/*  Q 0 */
 	// load q
-	half* const q16_ptr = working_memory;
+	half* const q16_ptr = reinterpret_cast<half*>(working_memory);
 	copy_32x16(q16_ptr, q_ptr, unique_id);
 	mtk::wmma::fill_zero(q32_0_frag);
 	__syncthreads();
@@ -537,7 +605,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, ha
 	/*  R */
 	// load r
 	__syncthreads();
-	half* const r16_ptr = working_memory;
+	half* const r16_ptr = reinterpret_cast<half*>(working_memory);
 	copy_32x16(r16_ptr, r_ptr, unique_id);
 	mtk::wmma::fill_zero(r32_frag);
 	__syncthreads();
@@ -545,7 +613,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, ha
 	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load r diff
-	mtk::matrix_operation::diff32x16_2w(r16_ptr, in_r_ptr, r16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(r16_ptr, r_ptr, r16_ptr, unique_id);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, r16_ptr, FRAGMENT_DIM_M);
 	// diff mma
@@ -563,56 +631,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, ha
 	// mma
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
-	nvcuda::wmma::store_matrix_sync(out_r_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-}
-
-template <>
-__device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float, float>(
-		float* const q_ptr, float* const r_ptr,
-		float* const h_ptr,
-		float* const working_memory,
-		const unsigned unique_id
-		) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	const auto lane = unique_id >> 5;
-
-	/* mma q 0 */
-	mtk::a100_tc_cor::matmul_core16x16(
-		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		in_q_ptr, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-	mtk::a100_tc_cor::gemm_core16x16(
-		out_q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		in_q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-
-	/* mma q 1 */
-	mtk::a100_tc_cor::matmul_core16x16(
-		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-	mtk::a100_tc_cor::gemm_core16x16(
-		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
-
-	/*  R */
-	mtk::a100_tc_cor::matmul_core16x16(
-			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
-			r_ptr, FRAGMENT_DIM_M,
-			unique_id & 0x1f);
-	mtk::a100_tc_cor::matmul_core16x16(
-			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			unique_id & 0x1f);
-	__syncthreads();
+	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 #else // IMPLICIT_H
 
@@ -1023,9 +1042,9 @@ __device__ void qr32x16_core(
 		debug_func(0, []() {__syncthreads();});
 		// copy u
 		if(unique_id < FRAGMENT_DIM_M) {
-			u_ptr[unique_id] = 0.0f;
+			u_ptr[unique_id] = cutf::type::cast<A_T>(0.0f);
 			if(unique_id >= k && unique_id < m) {
-				u_ptr[unique_id] = r_ptr[FRAGMENT_DIM_M * k + unique_id];
+				u_ptr[unique_id] = cutf::type::cast<A_T>(r_ptr[FRAGMENT_DIM_M * k + unique_id]);
 			}
 		}
 		__syncthreads();
@@ -1044,16 +1063,16 @@ __device__ void qr32x16_core(
 				);
 		// update u
 		if(unique_id == k) {
-			u_ptr[unique_id] += cutf::math::sign(u32_ptr[unique_id]) * norm_u_0;
+			u_ptr[unique_id] += cutf::type::cast<A_T>(cutf::type::cast<float>(cutf::math::sign(u_ptr[unique_id])) * norm_u_0);
 		}
 		__syncthreads();
 		debug_func(
 				unique_id,
-				[&u32_ptr, &m]() {mtk::utils::print_matrix(u32_ptr, 1, m, "u`");}
+				[&u_ptr, &m]() {mtk::utils::print_matrix(u_ptr, 1, m, "u`");}
 				);
 		// recompute |u|
 		__syncthreads();
-		const auto norm2_u_1 = get_norm2_32(u32_ptr, m, unique_id & 0x1f);
+		const auto norm2_u_1 = get_norm2_32(u_ptr, m, unique_id & 0x1f);
 		__syncthreads();
 
 		debug_func(
@@ -1062,7 +1081,7 @@ __device__ void qr32x16_core(
 				);
 		// compute h
 
-		auto *h_ptr = reinterpret_cast<typename h_mat_t<mode, IO_T>::type*>(work);
+		auto *h_ptr = reinterpret_cast<typename h_mat_t<mode>::type*>(work);
 		make_h<mode>(
 				h_ptr, m,
 				u_ptr, norm2_u_1,
@@ -1071,22 +1090,21 @@ __device__ void qr32x16_core(
 		__syncthreads();
 		debug_func(
 				unique_id,
-				[&h32_ptr, &m]() {mtk::utils::print_matrix_32x16(h32_ptr, m, m, "H");}
+				[&h_ptr, &m]() {mtk::utils::print_matrix_32x16(h_ptr, m, m, "H");}
 				);
 		debug_func(
 				unique_id,
-				[&r16_ptr, &m, &n]() {mtk::utils::print_matrix_32x16(r16_ptr, 32, 16, "R (before update)");}
+				[&r_ptr, &m, &n]() {mtk::utils::print_matrix_32x16(r_ptr, 32, 16, "R (before update)");}
 				);
 		debug_func(
 				unique_id,
-				[&q16_ptr, &m]() {mtk::utils::print_matrix_32x16(q16_ptr, 32, 32, "Q (before update)");}
+				[&q_ptr, &m]() {mtk::utils::print_matrix_32x16(q_ptr, 32, 32, "Q (before update)");}
 				);
 		__syncthreads();
 		// update q, r
 		update_qr<mode>(
-				q32_ptr, r32_ptr,
-				q16_ptr, r16_ptr,
-				h32_ptr, h16_ptr,
+				q_ptr, r_ptr,
+				h_ptr, reinterpret_cast<half*>(h_ptr),
 				unique_id
 				);
 		__syncthreads();
@@ -1114,7 +1132,7 @@ __global__ void qr32x16_batched_kernel(
 	__shared__ Q_T shared_q[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
 	__shared__ R_T shared_r[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ A_T shared_u[FRAGMENT_DIM_M * max_batch_size_per_block];
-	__shared__ h_mat_t<mode, A_T> shared_w[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
+	__shared__ typename h_mat_t<mode>::type shared_w[FRAGMENT_DIM_M * FRAGMENT_DIM_M * max_batch_size_per_block];
 
 	const auto shared_q_ptr = shared_q + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_M;
 	const auto shared_r_ptr = shared_r + shared_memory_id * FRAGMENT_DIM_M * FRAGMENT_DIM_N;
@@ -1130,7 +1148,7 @@ __global__ void qr32x16_batched_kernel(
 			a_ptr, sub_a_position, lda,
 			tid
 			);
-	mtk::matrix_operation::make_identity_matrix<float, FRAGMENT_DIM_M>(
+	mtk::matrix_operation::make_identity_matrix<Q_T, FRAGMENT_DIM_M>(
 			shared_q_ptr,
 			tid
 			);
@@ -1158,8 +1176,8 @@ __global__ void qr32x16_batched_kernel(
 
 template <mtk::tcqr::compute_mode mode, class Q_T, class R_T, class A_T>
 __global__ void qr32x16_kernel(
-		Q_T* const q32_ptr, const std::size_t ldq,
-		R_T* const r32_ptr, const std::size_t ldr,
+		Q_T* const q_ptr, const std::size_t ldq,
+		R_T* const r_ptr, const std::size_t ldr,
 		const A_T* const a_ptr, const std::size_t lda,
 		const unsigned m,
 		const unsigned n
@@ -1171,7 +1189,7 @@ __global__ void qr32x16_kernel(
 	__shared__ Q_T shared_q[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
 	__shared__ R_T shared_r[FRAGMENT_DIM_M * FRAGMENT_DIM_N];
 	__shared__ A_T shared_u[FRAGMENT_DIM_M];
-	__shared__ h_mat_t<mode, A_T> shared_w[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
+	__shared__ typename h_mat_t<mode>::type shared_w[FRAGMENT_DIM_M * FRAGMENT_DIM_M];
 
 	// init shared memory
 	mtk::matrix_copy::g2s32x16_2w(
@@ -1179,16 +1197,16 @@ __global__ void qr32x16_kernel(
 			a_ptr, 0, lda,
 			tid
 			);
-	mtk::matrix_operation::make_identity_matrix<float, FRAGMENT_DIM_M>(
+	mtk::matrix_operation::make_identity_matrix<Q_T, FRAGMENT_DIM_M>(
 			shared_q,
 			tid
 			);
 
 	// qr core
 	qr32x16_core<mode> (
-			shared_q_ptr, shared_r_ptr,
-			shared_w_ptr, shared_u_ptr,
-			sub_a_m, n,
+			shared_q, shared_r,
+			shared_w, shared_u,
+			m, n,
 			tid
 			);
 
@@ -1232,10 +1250,10 @@ void mtk::tcqr::qr32x16_batched(
 
 template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp32_tc_cor    , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
 template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp32_notc      , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
-template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, half , float>(half * const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
+template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp32_tc_nocor  , half , float, float>(half * const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
 template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
 template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp16_notc      , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
-template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp16_tc        , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
+template void mtk::tcqr::qr32x16_batched<mtk::tcqr::compute_mode::fp16_tc_nocor  , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, const std::size_t, const unsigned*, cudaStream_t const);
 
 template <mtk::tcqr::compute_mode mode, class Q_T, class R_T, class A_T>
 void mtk::tcqr::qr32x16(
@@ -1255,7 +1273,7 @@ void mtk::tcqr::qr32x16(
 
 template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_cor    , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
 template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_notc      , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
-template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, half , float>(half * const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_nocor  , half , float, float>(half * const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
 template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp32_tc_nocor  , float, float, float>(float* const, const std::size_t, float* const, const std::size_t, const float* const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
 template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp16_notc      , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
-template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp16_tc        , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
+template void mtk::tcqr::qr32x16<mtk::tcqr::compute_mode::fp16_tc_nocor  , half , half , half >(half * const, const std::size_t, half * const, const std::size_t, const half * const, const std::size_t, const unsigned int, const unsigned int, cudaStream_t const);
