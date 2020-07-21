@@ -16,7 +16,7 @@ enum compute_mode {
 
 template <mtk::matmul::compute_mode mode, class T>
 __device__ inline void gemm_core16x16(T* const c, const unsigned ldm_c, const T* const a, const unsigned ldm_a, const T* const b, const unsigned ldm_b, const unsigned unique_id) {
-	mtk::gemm_core16x16<T>(c, ldm_c, a, ldm_a, b, ldm_b, unique_id);
+	mtk::gemm_core16x16(c, ldm_c, a, ldm_a, b, ldm_b, unique_id);
 }
 
 template <> __device__ inline void gemm_core16x16<mtk::matmul::compute_mode::tf32_tc_cor_emu, float>(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
@@ -119,7 +119,7 @@ template <> __device__ inline void gemm_core16x16<mtk::matmul::compute_mode::tf3
 
 template <mtk::matmul::compute_mode mode, class T>
 __device__ inline void matmul_core16x16(T* const c, const unsigned ldm_c, const T* const a, const unsigned ldm_a, const T* const b, const unsigned ldm_b, const unsigned unique_id) {
-	mtk::matmul_core16x16<T>(c, ldm_c, a, ldm_a, b, ldm_b, unique_id);
+	mtk::matmul_core16x16(c, ldm_c, a, ldm_a, b, ldm_b, unique_id);
 }
 
 template <> __device__ inline void matmul_core16x16<mtk::matmul::compute_mode::tf32_tc_cor_emu, float>(float* const c, const unsigned ldm_c, const float* const a, const unsigned ldm_a, const float* const b, const unsigned ldm_b, const unsigned unique_id) {
