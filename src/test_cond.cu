@@ -131,7 +131,7 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 	std::mt19937 mt(std::random_device{}());
 	std::uniform_real_distribution<> dist(-1.0f, 1.0f);
 
-	using T = typename mtk::qr::get_io_type<get_qr_compute_mode<mode>>::type;
+	using T = typename mtk::qr::get_io_type<get_qr_compute_mode<mode>()>::type;
 
 	print_accuracy_head();
 
