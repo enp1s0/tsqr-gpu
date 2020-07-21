@@ -7,6 +7,19 @@
 #include <tuple>
 namespace mtk {
 namespace test_qr {
+
+enum compute_mode {
+	fp16_notc,
+	fp32_notc,
+	fp16_tc_nocor,
+	fp32_tc_nocor,
+	tf32_tc_nocor,
+	fp32_tc_cor,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	mixed_tc_cor,
+};
+
 template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
 void accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);
 template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
