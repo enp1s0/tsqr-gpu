@@ -21,8 +21,8 @@ enum compute_mode {
 };
 
 template <compute_mode mode>
-std::string get_compute_mode_name_string();
-#define TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mode) template <> std::string get_compute_mode_name_string<mode>() {return #mode;}
+inline std::string get_compute_mode_name_string();
+#define TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mode) template <> inline std::string get_compute_mode_name_string<mode>() {return #mode;}
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp16_notc      );
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp32_notc      );
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp16_tc_nocor  );
