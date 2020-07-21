@@ -70,12 +70,14 @@ TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor   );
 
 } // namespace
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T>
+template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
 
 	print_accuracy_head();
+
+	using T = typename mtk::qr::get_io_type<get_qr_compute_mode<mode>()>::type;
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
@@ -92,7 +94,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			auto d_q_test = cutf::memory::get_device_unique_ptr<float>(m * n);
 			auto d_r_test = cutf::memory::get_device_unique_ptr<float>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
+			mtk::qr::buffer<get_qr_compute_mode<mode>(), Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -116,7 +118,7 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				make_zero<T><<<(n * n + block_size - 1) / block_size, block_size>>>(d_r.get(), n * n);
 
 				CUTF_CHECK_ERROR(cudaDeviceSynchronize());
-				mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
+				mtk::qr::qr<get_qr_compute_mode<mode>(), Reorthogonalize>(
 						d_q.get(), m,
 						d_r.get(), n,
 						d_a.get(), m,
@@ -173,10 +175,8 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			std::cout << m << ","
 				<< n << ","
 				<< rand_range_abs << ","
+				<< get_compute_mode_name_string<mode>() << ","
 				<< get_type_name<T>() << ","
-				<< get_type_name<CORE_T>() << ","
-				<< (UseTC ? "1" : "0") << ","
-				<< (Correction ? "1" : "0") << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< residual << ","
 				<< residual_variance << ","
@@ -190,24 +190,24 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 	}
 }
 
-template void mtk::test_qr::accuracy<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor    , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor    , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T>
+template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
 	std::mt19937 mt(std::random_device{}());
 
 	print_speed_head();
+
+	using T = typename mtk::qr::get_io_type<get_qr_compute_mode<mode>()>::type;
 
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
@@ -221,7 +221,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 			auto d_q = cutf::memory::get_device_unique_ptr<T>(m * n);
 			auto d_r = cutf::memory::get_device_unique_ptr<T>(n * n);
 
-			mtk::qr::buffer<T, UseTC, Correction, Reorthogonalize> buffer;
+			mtk::qr::buffer<get_qr_compute_mode<mode>(), Reorthogonalize> buffer;
 			buffer.allocate(m, n);
 
 			auto h_a = cutf::memory::get_host_unique_ptr<T>(m * n);
@@ -234,7 +234,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 			cutf::memory::copy(d_a.get(), h_a.get(), m * n);
 
 			// for cache
-			mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
+			mtk::qr::qr<get_qr_compute_mode<mode>(), Reorthogonalize>(
 					d_q.get(), m,
 					d_r.get(), n,
 					d_a.get(), m,
@@ -245,7 +245,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 
 			const auto elapsed_time = mtk::utils::get_elapsed_time([&](){
 					for(std::size_t c = 0; c < C; c++) {
-					mtk::qr::qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
+						mtk::qr::qr<get_qr_compute_mode<mode>(), Reorthogonalize>(
 							d_q.get(), m,
 							d_r.get(), n,
 							d_a.get(), m,
@@ -276,9 +276,7 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 				<< n << ","
 				<< rand_range_abs << ","
 				<< get_type_name<T>() << ","
-				<< get_type_name<CORE_T>() << ","
-				<< (UseTC ? "1" : "0") << ","
-				<< (Correction ? "1" : "0") << ","
+				<< get_compute_mode_name_string<mode>() << ","
 				<< (Reorthogonalize ? "1" : "0") << ","
 				<< elapsed_time << ","
 				<< (complexity / elapsed_time / (1024.0 * 1024.0 * 1024.0 * 1024.0)) << ","
@@ -291,18 +289,16 @@ void mtk::test_qr::speed(const std::vector<std::tuple<std::size_t, std::size_t, 
 	}
 }
 
-template void mtk::test_qr::speed<true , false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, false, half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , true , false, float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, false, float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<false, false, true , half , half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , true , true , float, float>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::speed<true , false, true , float, half >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_cor    , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_cor    , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 template <class T>
 void mtk::test_qr::cusolver_accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C) {
