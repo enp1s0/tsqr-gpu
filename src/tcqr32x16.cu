@@ -2,7 +2,7 @@
 #include <cuda_fp16.h>
 #include <cutf/type.hpp>
 #include <cutf/math.hpp>
-#include <cutf/debug/tf32.hpp>
+#include <cutf/experimental/tf32.hpp>
 #include <wmma_extension.hpp>
 #include <stdio.h>
 #include "tcqr.hpp"
@@ -266,10 +266,10 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float>(
 			tmp = 1.0f;
 		}
 		if(x < m && y < m) {
-			const auto y_v = cutf::debug::tf32::to_tf32(u_ptr[y]);
-			const auto x_v = cutf::debug::tf32::to_tf32(u_ptr[x]);
-			const auto y_dv = cutf::debug::tf32::to_tf32(u_ptr[y] - y_v);
-			const auto x_dv = cutf::debug::tf32::to_tf32(u_ptr[x] - x_v);
+			const auto y_v = cutf::experimental::tf32::to_tf32(u_ptr[y]);
+			const auto x_v = cutf::experimental::tf32::to_tf32(u_ptr[x]);
+			const auto y_dv = cutf::experimental::tf32::to_tf32(u_ptr[y] - y_v);
+			const auto x_dv = cutf::experimental::tf32::to_tf32(u_ptr[x] - x_v);
 			tmp -= 2.0f * (x_dv * y_v + x_v * y_dv + x_v * y_v) / norm2_u_1;
 		}
 

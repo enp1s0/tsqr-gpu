@@ -1,6 +1,6 @@
 #ifndef __A100_TC_EMULATOR_HPP__
 #define __A100_TC_EMULATOR_HPP__
-#include <cutf/debug/tf32.hpp>
+#include <cutf/experimental/tf32.hpp>
 #include <cutf/type.hpp>
 #include "gemm_core/gemm_core.cuh"
 
@@ -36,10 +36,10 @@ template <> __device__ inline void gemm_core16x16<mtk::matmul::compute_mode::tf3
 		float sum_dab = 0.0f;
 		float sum_adb = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::debug::tf32::to_tf32(tmp_a[k]);
-			const auto b_v = cutf::debug::tf32::to_tf32(b[x * ldm_b + k]);
-			const auto a_dv = cutf::debug::tf32::to_tf32(tmp_a[k] - a_v);
-			const auto b_dv = cutf::debug::tf32::to_tf32(b[x * ldm_b + k] - b_v);
+			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
+			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
+			const auto a_dv = cutf::experimental::tf32::to_tf32(tmp_a[k] - a_v);
+			const auto b_dv = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k] - b_v);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
@@ -72,8 +72,8 @@ template <> __device__ inline void gemm_core16x16<mtk::matmul::compute_mode::mix
 		for(unsigned k = 0; k < 16; k += 1){
 			const auto a_v = cutf::type::cast<float>(cutf::type::cast<half>(tmp_a[k]));
 			const auto b_v = cutf::type::cast<float>(cutf::type::cast<half>(b[x * ldm_b + k]));
-			const auto a_dv = cutf::debug::tf32::to_tf32(tmp_a[k] - a_v);
-			const auto b_dv = cutf::debug::tf32::to_tf32(b[x * ldm_b + k] - b_v);
+			const auto a_dv = cutf::experimental::tf32::to_tf32(tmp_a[k] - a_v);
+			const auto b_dv = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k] - b_v);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
@@ -104,8 +104,8 @@ template <> __device__ inline void gemm_core16x16<mtk::matmul::compute_mode::tf3
 		float sum_dab = 0.0f;
 		float sum_adb = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::debug::tf32::to_tf32(tmp_a[k]);
-			const auto b_v = cutf::debug::tf32::to_tf32(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
+			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] += sum_adb + sum_dab + sum_ab;
@@ -139,10 +139,10 @@ template <> __device__ inline void matmul_core16x16<mtk::matmul::compute_mode::t
 		float sum_dab = 0.0f;
 		float sum_adb = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::debug::tf32::to_tf32(tmp_a[k]);
-			const auto b_v = cutf::debug::tf32::to_tf32(b[x * ldm_b + k]);
-			const auto a_dv = cutf::debug::tf32::to_tf32(tmp_a[k] - a_v);
-			const auto b_dv = cutf::debug::tf32::to_tf32(b[x * ldm_b + k] - b_v);
+			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
+			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
+			const auto a_dv = cutf::experimental::tf32::to_tf32(tmp_a[k] - a_v);
+			const auto b_dv = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k] - b_v);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
@@ -175,8 +175,8 @@ template <> __device__ inline void matmul_core16x16<mtk::matmul::compute_mode::m
 		for(unsigned k = 0; k < 16; k += 1){
 			const auto a_v = cutf::type::cast<float>(cutf::type::cast<half>(tmp_a[k]));
 			const auto b_v = cutf::type::cast<float>(cutf::type::cast<half>(b[x * ldm_b + k]));
-			const auto a_dv = cutf::debug::tf32::to_tf32(tmp_a[k] - a_v);
-			const auto b_dv = cutf::debug::tf32::to_tf32(b[x * ldm_b + k] - b_v);
+			const auto a_dv = cutf::experimental::tf32::to_tf32(tmp_a[k] - a_v);
+			const auto b_dv = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k] - b_v);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
@@ -207,8 +207,8 @@ template <> __device__ inline void matmul_core16x16<mtk::matmul::compute_mode::t
 		float sum_dab = 0.0f;
 		float sum_adb = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::debug::tf32::to_tf32(tmp_a[k]);
-			const auto b_v = cutf::debug::tf32::to_tf32(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
+			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] += sum_adb + sum_dab + sum_ab;
