@@ -106,8 +106,7 @@ __device__ void make_h(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto y = unique_id & 0x1f;
 	const auto lane = unique_id >> 5;
-	__syncthreads();
-	const auto uy = cutf::type::cast<float>(u_ptr[y]);
+	const auto uy = 2.0f * cutf::type::cast<float>(u_ptr[y]) / norm2_u_1;
 	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
 		const auto x = k + lane;
 		float tmp = 0.0f;
@@ -115,11 +114,10 @@ __device__ void make_h(
 			tmp = 1.0f;
 		}
 		if(x < m && y < m)
-			tmp -= 2.0f * uy * cutf::type::cast<float>(u_ptr[x]) / norm2_u_1;
+			tmp -= uy * cutf::type::cast<float>(u_ptr[x]);
 
 		h_ptr[x * FRAGMENT_DIM_M + y] = cutf::type::cast<T>(tmp);
 	}
-	__syncthreads();
 }
 
 template <>
