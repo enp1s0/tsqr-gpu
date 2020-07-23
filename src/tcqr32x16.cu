@@ -1159,7 +1159,7 @@ __global__ void qr32x16_batched_kernel(
 	// qr core
 	qr32x16_core<mode> (
 			shared_q_ptr, shared_r_ptr,
-			shared_w_ptr, shared_u_ptr,
+			shared_u_ptr, shared_w_ptr,
 			sub_a_m, n,
 			tid
 			);
@@ -1208,7 +1208,7 @@ __global__ void qr32x16_kernel(
 	// qr core
 	qr32x16_core<mode> (
 			shared_q, shared_r,
-			shared_w, shared_u,
+			shared_u, shared_w,
 			m, n,
 			tid
 			);
