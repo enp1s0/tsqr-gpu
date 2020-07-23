@@ -303,11 +303,6 @@ __device__ void update_qr(
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
-		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
 
 	/* mma q 1 */
 	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
@@ -315,22 +310,12 @@ __device__ void update_qr(
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
-	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
-		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-		unique_id & 0x1f);
 
 	/*  R */
 	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
-			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
+			r_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 			r_ptr, FRAGMENT_DIM_M,
-			unique_id & 0x1f);
-	mtk::matmul::gemm_core16x16<get_matmul_compute_mode<mode>()>(
-			r_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			h_ptr + FRAGMENT_DIM_N * lane + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
-			r_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			unique_id & 0x1f);
 	__syncthreads();
 }
