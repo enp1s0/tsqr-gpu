@@ -173,6 +173,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::fp32_tc_nocor, half, float>(
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> u_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::row_major> ut_frag;
@@ -186,11 +187,10 @@ __device__ void make_h<mtk::tcqr::compute_mode::fp32_tc_nocor, half, float>(
 
 	mtk::wmma::make_identity_matrix(i_frag);
 
-
 	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
-	mtk::wmma::load_vector_sync(ut_frag, u_ptr + 16);
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + FRAGMENT_DIM_N);
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
 	if(lane == 0) {
@@ -205,8 +205,8 @@ __device__ void make_h<mtk::tcqr::compute_mode::fp32_tc_nocor, half, float>(
 		}
 	}
 
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
-	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16 + FRAGMENT_DIM_M * 16, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 }
 
 template <>
