@@ -161,8 +161,9 @@ __global__ void tsqr_backward(
 			tid
 			);
 }
+
 template <>
-__global__ void tsqr_backward<mtk::tsqr::compute_mode::fp16_tc_nocor, half>(
+__global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_nocor, half>(
 		half* const ac_ptr,
 		const half* const b_ptr,
 		const unsigned n,
@@ -225,9 +226,9 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp16_tc_nocor, half>(
 }
 
 template <>
-__global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
-		float* const ac_ptr,
-		const float* const b_ptr,
+__global__ void tsqr_backward<mtk::tsqr::compute_mode::fp16_tc_nocor, half>(
+		half* const ac_ptr,
+		const half* const b_ptr,
 		const unsigned n,
 		const std::size_t k
 		) {
