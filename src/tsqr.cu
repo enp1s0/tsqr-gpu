@@ -106,9 +106,9 @@ __global__ void tsqr_backward(
 		const unsigned n,
 		const std::size_t k
 		) {
-	constexpr std::size_t FRAGMENT_DIM_M = 32;
-	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	constexpr std::size_t max_batch_size_per_block = 4;
+	constexpr unsigned FRAGMENT_DIM_M = 32;
+	constexpr unsigned FRAGMENT_DIM_N = 16;
+	constexpr unsigned max_batch_size_per_block = 4;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -120,9 +120,9 @@ __global__ void tsqr_backward(
 	__shared__ T shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ T shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
 
-	const auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
-	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
-	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+	auto shared_ac_in_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
 	// AC(in)のコピー
 	mtk::matrix_copy::g2s32x16_1w(
