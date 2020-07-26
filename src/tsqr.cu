@@ -136,20 +136,17 @@ __global__ void tsqr_backward(
 			b_ptr, matrix_id * n, ac_m / 2,
 			tid
 			);
-	// AC(out)の初期化
-	mtk::matrix_operation::make_zero_matrix<T, FRAGMENT_DIM_M, FRAGMENT_DIM_N, 1>(
-			shared_ac_out_ptr, tid);
 
 	__syncthreads();
 
-	mtk::gemm_core16x16<T, 1>(
+	mtk::matmul::matmul_core_m16n16k16<get_matmul_compute_mode<mode>(), T>(
 			shared_ac_out_ptr, FRAGMENT_DIM_M,
 			shared_ac_in_ptr, FRAGMENT_DIM_M,
 			shared_b_ptr, FRAGMENT_DIM_N,
 			tid & 0x1f
 			);
 
-	mtk::gemm_core16x16<T, 1>(
+	mtk::matmul::matmul_core_m16n16k16<get_matmul_compute_mode<mode>(), T>(
 			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			shared_b_ptr, FRAGMENT_DIM_N,
