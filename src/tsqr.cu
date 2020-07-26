@@ -187,20 +187,19 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_nocor, half>(
 	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// ACのコピー
+	// Copy A
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, 2 * n, n,
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, ac_m / 2,
 			tid
 			);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> frag_c0, frag_c1;
