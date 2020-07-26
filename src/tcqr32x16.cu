@@ -298,21 +298,21 @@ __device__ void update_qr(
 	const auto lane = unique_id >> 5;
 
 	/* mma q 0 */
-	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+	mtk::matmul::matmul_core_m16n16k32<get_matmul_compute_mode<mode>()>(
 		q_ptr + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/* mma q 1 */
-	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+	mtk::matmul::matmul_core_m16n16k32<get_matmul_compute_mode<mode>()>(
 		q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 		q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 		unique_id & 0x1f);
 
 	/*  R */
-	mtk::matmul::matmul_core16x16<get_matmul_compute_mode<mode>()>(
+	mtk::matmul::matmul_core_m16n16k32<get_matmul_compute_mode<mode>()>(
 			r_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 			h_ptr + FRAGMENT_DIM_N * lane, FRAGMENT_DIM_M,
 			r_ptr, FRAGMENT_DIM_M,
@@ -489,6 +489,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp16_tc_nocor, half, half, ha
 	nvcuda::wmma::mma_sync(out_r_frag, h_1_frag, in_r_1_frag, out_r_frag);
 
 	// store
+	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N, out_q_0_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, out_q_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
@@ -1072,6 +1073,7 @@ __device__ void qr32x16_core(
 				);
 		// compute h
 
+		__syncthreads();
 		auto *h_ptr = reinterpret_cast<typename h_mat_t<mode>::type*>(work);
 		make_h<mode>(
 				h_ptr, m,
