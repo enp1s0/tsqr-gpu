@@ -48,23 +48,21 @@ void debug_func(Func func) {
 template <mtk::tsqr::compute_mode>
 constexpr mtk::tcqr::compute_mode get_tcqr_compute_mode();
 #define TSQR_GET_TCQR_COMPUTE_MODE(mode) template<> constexpr mtk::tcqr::compute_mode get_tcqr_compute_mode<mtk::tsqr::compute_mode::mode>() {return mtk::tcqr::compute_mode::mode;}
-TSQR_GET_TCQR_COMPUTE_MODE(fp16_notc      );
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_notc      );
-TSQR_GET_TCQR_COMPUTE_MODE(fp16_tc_nocor  );
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_nocor  );
-TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_nocor  );
-TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_cor    );
-TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor    );
-TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor_emu);
-TSQR_GET_TCQR_COMPUTE_MODE(mixed_tc_cor   );
+TSQR_GET_TCQR_COMPUTE_MODE(fp16_notc        );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_notc        );
+TSQR_GET_TCQR_COMPUTE_MODE(fp16_tc_nocor    );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_nocor    );
+TSQR_GET_TCQR_COMPUTE_MODE(fp32_tc_cor      );
+TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_nocor_emu);
+TSQR_GET_TCQR_COMPUTE_MODE(tf32_tc_cor_emu  );
 
 template <mtk::tsqr::compute_mode>
 constexpr mtk::matmul::compute_mode get_matmul_compute_mode();
 #define TSQR_GET_MATMUL_COMPUTE_MODE(mode) template<> constexpr mtk::matmul::compute_mode get_matmul_compute_mode<mtk::tsqr::compute_mode::mode>() {return mtk::matmul::compute_mode::mode;}
-TSQR_GET_MATMUL_COMPUTE_MODE(fp16_notc      );
-TSQR_GET_MATMUL_COMPUTE_MODE(fp32_notc      );
-TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu);
-TSQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor   );
+TSQR_GET_MATMUL_COMPUTE_MODE(fp16_notc        );
+TSQR_GET_MATMUL_COMPUTE_MODE(fp32_notc        );
+TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu  );
+TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_nocor_emu);
 
 template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
@@ -908,8 +906,10 @@ void mtk::tsqr::tsqr16(
 
 // (T *const q_ptr, T *const r_ptr, const T *const a_ptr, const std::size_t m, const std::size_t n, T *const working_memory_ptr)
 #define TSQR_TEMPLATE_INSTANCE(mode) template void mtk::tsqr::tsqr16<mode>(mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, const mtk::tsqr::get_io_type<mode>::type* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::tsqr::get_working_q_type<mode>::type* const, typename mtk::tsqr::get_working_r_type<mode>::type* const, unsigned* const, unsigned* const, cudaStream_t const)
-TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_notc    );
-TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_notc    );
-TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_tc_nocor);
-TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_nocor);
-TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_cor  );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_notc        );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_notc        );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp16_tc_nocor    );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_nocor    );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::fp32_tc_cor      );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::tf32_tc_cor_emu  );
+TSQR_TEMPLATE_INSTANCE(mtk::tsqr::compute_mode::tf32_tc_nocor_emu);

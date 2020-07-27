@@ -8,42 +8,35 @@ namespace mtk {
 namespace tsqr {
 enum compute_mode {
 	fp16_notc,
-	fp32_notc,
 	fp16_tc_nocor,
-	fp32_tc_nocor,
-	tf32_tc_nocor,
+	fp32_notc,
 	fp32_tc_cor,
+	fp32_tc_nocor,
+	mixed_tc_cor,
 	tf32_tc_cor,
 	tf32_tc_cor_emu,
-	mixed_tc_cor,
+	tf32_tc_nocor,
+	tf32_tc_nocor_emu,
 };
 // get batch size
 std::size_t get_batch_size_log2(const std::size_t m);
 std::size_t get_batch_size(const std::size_t m);
 // get working memory type
 template <compute_mode mode>
-struct get_working_q_type{using type = void;};
+struct get_working_q_type{using type = float;};
 template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
 template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
-template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_notc      >{using type = float;};
-template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
 template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = half ;};
 
 template <compute_mode mode>
-struct get_working_r_type{using type = void;};
+struct get_working_r_type{using type = float;};
 template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
 template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
-template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_notc      >{using type = float;};
-template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
-template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = float;};
 
 template <compute_mode mode>
-struct get_io_type{using type = void;};
+struct get_io_type{using type = float;};
 template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
 template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
-template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_notc      >{using type = float;};
-template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_tc_cor    >{using type = float;};
-template<> struct get_io_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = float;};
 
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
