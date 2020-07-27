@@ -8,14 +8,15 @@ namespace tcqr{
 
 enum compute_mode {
 	fp16_notc,
-	fp32_notc,
 	fp16_tc_nocor,
-	fp32_tc_nocor,
-	tf32_tc_nocor,
+	fp32_notc,
 	fp32_tc_cor,
+	fp32_tc_nocor,
+	mixed_tc_cor,
 	tf32_tc_cor,
 	tf32_tc_cor_emu,
-	mixed_tc_cor,
+	tf32_tc_nocor,
+	tf32_tc_nocor_emu,
 };
 
 template <compute_mode mode, class Q_T, class R_T, class A_T>
