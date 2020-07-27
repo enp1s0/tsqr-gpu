@@ -437,8 +437,8 @@ __global__ void tsqr_backward_layer0(
 }
 
 template <>
-__global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_nocor, float, half>(
-		float* const q_ptr, const std::size_t ldq,
+__global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp16_tc_nocor, half, half>(
+		half* const q_ptr, const std::size_t ldq,
 		const half* const a_ptr,
 		const half* const b_ptr,
 		const unsigned n,
@@ -457,12 +457,12 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_nocor, flo
 
 	if(matrix_id >= batch_size) return;
 
-	__shared__ half shared_ac_f16[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
-	__shared__ float shared_ac_f32[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_ac_in[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ half shared_ac_out[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
 	__shared__ half shared_b_f16[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
 
-	const auto shared_ac_fp16_ptr = shared_ac_f16 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
-	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp16_ptr = shared_ac_in + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_ac_fp32_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
 	// A のコピー
@@ -481,7 +481,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_nocor, flo
 	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
-	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> frag_c0, frag_c1;
 
 	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
