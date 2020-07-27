@@ -413,14 +413,14 @@ __global__ void tsqr_backward_layer0(
 
 	__syncthreads();
 
-	mtk::gemm_core16x16<INPUT_T, 1>(
+	mtk::matmul::matmul_core_m16n16k16<get_matmul_compute_mode<mode>()>(
 			shared_ac_out_ptr, FRAGMENT_DIM_M,
 			shared_ac_in_ptr, FRAGMENT_DIM_M,
 			shared_b_ptr, FRAGMENT_DIM_N,
 			tid & 0x1f
 			);
 
-	mtk::gemm_core16x16<INPUT_T, 1>(
+	mtk::matmul::matmul_core_m16n16k16<get_matmul_compute_mode<mode>()>(
 			shared_ac_out_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			shared_ac_in_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M,
 			shared_b_ptr, FRAGMENT_DIM_N,
