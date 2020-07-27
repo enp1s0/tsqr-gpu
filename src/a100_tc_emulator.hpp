@@ -133,7 +133,7 @@ template <> __device__ inline void matmul_core_m16n16k16<mtk::matmul::compute_mo
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
 		}
-		tmp_c[i / 2] += sum_adb + sum_dab + sum_ab;
+		tmp_c[i / 2] = (sum_adb + sum_dab) + sum_ab;
 	}
 
 	for(auto i = 0; i < 16; i += 2){
@@ -167,7 +167,7 @@ template <> __device__ inline void matmul_core_m16n16k16<mtk::matmul::compute_mo
 			sum_dab = fmaf(a_dv, b_v, sum_dab);
 			sum_adb = fmaf(a_v, b_dv, sum_adb);
 		}
-		tmp_c[i / 2] += sum_adb + sum_dab + sum_ab;
+		tmp_c[i / 2] = (sum_adb + sum_dab) + sum_ab;
 	}
 
 	for(auto i = 0; i < 16; i += 2){
@@ -190,14 +190,12 @@ template <> __device__ inline void matmul_core_m16n16k16<mtk::matmul::compute_mo
 	for (auto i = 0; i < 16; i += 2){
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
-		float sum_dab = 0.0f;
-		float sum_adb = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
 			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
 			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
-		tmp_c[i / 2] += sum_adb + sum_dab + sum_ab;
+		tmp_c[i / 2] = sum_ab;
 	}
 
 	for(auto i = 0; i < 16; i += 2){
