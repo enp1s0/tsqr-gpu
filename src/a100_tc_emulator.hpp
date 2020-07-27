@@ -1,6 +1,7 @@
 #ifndef __A100_TC_EMULATOR_HPP__
 #define __A100_TC_EMULATOR_HPP__
 #include <cutf/experimental/tf32.hpp>
+#include <cutf/experimental/mantissa.hpp>
 #include <cutf/type.hpp>
 #include "gemm_core/gemm_core.cuh"
 
@@ -13,6 +14,9 @@ enum compute_mode {
 	tf32_tc_nocor_emu,
 	mixed_tc_cor,
 };
+
+// 10 means TF32
+constexpr unsigned mantissa_length = 10;
 
 template <mtk::matmul::compute_mode mode, class T>
 __device__ inline void matmul_core_m16n16k32(T* const c, const unsigned ldm_c, const T* const a, const unsigned ldm_a, const T* const b, const unsigned ldm_b, const unsigned unique_id) {
@@ -89,8 +93,8 @@ template <> __device__ inline void matmul_core_m16n16k32<mtk::matmul::compute_mo
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
 		for (unsigned k = 0; k < 32; k += 1) {
-			const auto a_v = cutf::type::cast<nvcuda::wmma::precision::tf32>(a[y + ldm_a * k]);
-			const auto b_v = cutf::type::cast<nvcuda::wmma::precision::tf32>(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::cut_mantissa<mantissa_length>(a[y + ldm_a * k]);
+			const auto b_v = cutf::experimental::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] = sum_ab;
@@ -191,8 +195,8 @@ template <> __device__ inline void matmul_core_m16n16k16<mtk::matmul::compute_mo
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::experimental::tf32::to_tf32(tmp_a[k]);
-			const auto b_v = cutf::experimental::tf32::to_tf32(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::cut_mantissa<mantissa_length>(tmp_a[k]);
+			const auto b_v = cutf::experimental::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] = sum_ab;
