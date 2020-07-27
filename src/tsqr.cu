@@ -804,6 +804,13 @@ void tsqr16_geq32(
 		mtk::utils::print_matrix(h_tmp.get(), 2 * n, n, "Q");
 	}
 #endif
+#ifdef DEBUG
+		{
+			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_r_type<mode>::type>(n * n);
+			cutf::memory::copy(h_tmp.get(), r_ptr, n * n);
+			mtk::utils::print_matrix(h_tmp.get(), n, n, "R (result)");
+		}
+#endif
 
 #ifdef MEASURE_QR_TIME
 	CUTF_CHECK_ERROR(cudaDeviceSynchronize());
