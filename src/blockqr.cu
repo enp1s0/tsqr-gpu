@@ -423,13 +423,17 @@ mtk::qr::state_t mtk::qr::qr(
 
 
 #define BQR_TEMPLATE_INSTANCE(mode, reorth) template mtk::qr::state_t mtk::qr::qr<mode, reorth>(mtk::qr::get_io_type<mode>::type* const, const std::size_t, mtk::qr::get_io_type<mode>::type* const, const std::size_t, mtk::qr::get_io_type<mode>::type* const, const std::size_t, const std::size_t, const std::size_t, typename mtk::qr::get_working_q_type<mode>::type* const, typename mtk::qr::get_working_r_type<mode>::type* const, typename mtk::qr::get_io_type<mode>::type* const, unsigned* const, unsigned* const, cublasHandle_t const);
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_notc    , true );
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_notc    , true );
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_tc_nocor, true );
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_nocor, true );
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_cor  , true );
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_notc    , false);
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_notc    , false);
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_tc_nocor, false);
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_nocor, false);
-BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_cor  , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_notc        , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_notc        , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_tc_nocor    , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_nocor    , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_cor      , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::tf32_tc_nocor_emu, true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::tf32_tc_cor_emu  , true );
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_notc        , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_notc        , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp16_tc_nocor    , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_nocor    , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::fp32_tc_cor      , false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::tf32_tc_nocor_emu, false);
+BQR_TEMPLATE_INSTANCE(mtk::qr::compute_mode::tf32_tc_cor_emu  , false);
