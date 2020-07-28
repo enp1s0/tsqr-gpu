@@ -775,7 +775,7 @@ void tsqr16_geq32(
 		{
 			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_q_type<mode>::type>(2 * n * n * local_batch_size);
 			cutf::memory::copy(h_tmp.get(), working_q_ptr + working_q_sride, 2 * n * n * local_batch_size);
-			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, "Q");
+			mtk::utils::print_matrix(h_tmp.get(), 2 * n * local_batch_size, n, ("Q (" + std::to_string(k) + ")").c_str());
 		}
 #endif
 
