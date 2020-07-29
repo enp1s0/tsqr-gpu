@@ -14,7 +14,7 @@ enum compute_mode {
 	fp32_notc,
 	fp32_tc_cor,
 	fp32_tc_nocor,
-	mixed_tc_cor,
+	mixed_tc_cor_emu,
 	tf32_tc_cor,
 	tf32_tc_cor_emu,
 	tf32_tc_nocor,
@@ -33,7 +33,7 @@ TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp32_tc_cor      );
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_cor      );
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_cor_emu  );
 TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_nocor_emu);
-TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mixed_tc_cor     );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mixed_tc_cor_emu );
 
 template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
 void accuracy(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16);

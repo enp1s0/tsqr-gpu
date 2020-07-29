@@ -114,15 +114,16 @@ void print_accuracy_head() {
 template <mtk::test_qr::compute_mode>
 constexpr mtk::qr::compute_mode get_qr_compute_mode();
 #define TEST_QR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::qr::compute_mode get_qr_compute_mode<mtk::test_qr::compute_mode::mode>() {return mtk::qr::compute_mode::mode;}
-TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_notc      );
-TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_notc      );
-TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor  );
-TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor  );
-TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor  );
-TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor    );
-TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor    );
-TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu);
-TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor   );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor_emu);
+TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor_emu );
 } // namespace
 
 template <mtk::test_qr::compute_mode mode, bool Reorthogonalize>
@@ -246,16 +247,22 @@ void mtk::test_qr::accuracy_cond(const std::vector<std::tuple<std::size_t, std::
 	}
 }
 
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor    , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
-template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor    , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc        , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc        , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor    , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor    , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor      , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::mixed_tc_cor_emu , false>(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc        , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc        , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor    , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor    , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor      , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
+template void mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::mixed_tc_cor_emu , true >(const std::vector<std::tuple<std::size_t, std::size_t, float>>&, const std::size_t);
 
 template <class T>
 void mtk::test_qr::cusolver_accuracy_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_case_tuple_vector, const std::size_t C) {
