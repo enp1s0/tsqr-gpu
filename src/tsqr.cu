@@ -14,7 +14,7 @@
 #include "matrix_copy.cuh"
 #include "matrix_operations.cuh"
 #include "gemm_core/gemm_core.cuh"
-#include "a100_tc_emulator.hpp"
+#include "matmul.hpp"
 
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
