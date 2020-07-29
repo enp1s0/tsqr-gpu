@@ -34,6 +34,23 @@ std::size_t get_batch_size_log2(const std::size_t m) {
 std::size_t get_batch_size(const std::size_t m) {
 	return 1lu << get_batch_size_log2(m);
 }
+
+// Calculating necessary working memory size
+std::size_t get_working_q_size(const std::size_t m, const std::size_t n) {
+	const auto batch_size = get_batch_size(m);
+	const auto working_q_size = n * m + 2 * n * n * (batch_size - 1);
+
+	return working_q_size;
+}
+
+std::size_t get_working_r_size(const std::size_t m, const std::size_t n) {
+	const auto batch_size = get_batch_size(m);
+	const auto working_r_size_0 = n * n * batch_size;
+	const auto working_r_size_1 = n * n * batch_size / 2;
+
+	return working_r_size_0 + working_r_size_1;
+}
+
 } // namespace tsqr
 } // namespace mtk
 namespace{
@@ -653,21 +670,6 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_cor, float
 			tid
 			);
 }
-}
-
-// 必要な作業用メモリ
-std::size_t mtk::tsqr::get_working_q_size(const std::size_t m, const std::size_t n) {
-	const auto batch_size = get_batch_size(m);
-	const auto working_q_size = n * m + 2 * n * n * (batch_size - 1);
-
-	return working_q_size;
-}
-std::size_t mtk::tsqr::get_working_r_size(const std::size_t m, const std::size_t n) {
-	const auto batch_size = get_batch_size(m);
-	const auto working_r_size_0 = n * n * batch_size;
-	const auto working_r_size_1 = n * n * batch_size / 2;
-
-	return working_r_size_0 + working_r_size_1;
 }
 
 template <mtk::tsqr::compute_mode mode, class T>
