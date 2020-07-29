@@ -3,8 +3,8 @@
 #include <cutf/type.hpp>
 #include "blockqr.hpp"
 
-// #define PROFILE_BREAKDOWN
-// #define PROFILE_BREAKDOWN_CSV
+//#define PROFILE_BREAKDOWN
+//#define PROFILE_BREAKDOWN_CSV
 
 #ifdef PROFILE_BREAKDOWN
 #include <chrono>
@@ -13,6 +13,20 @@ namespace  {
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<float>() {return "float";}
 template <> std::string get_type_name<half>() {return "half";}
+
+template <mtk::qr::compute_mode mode>
+inline std::string get_compute_mode_name_string();
+#define TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mode) template <> inline std::string get_compute_mode_name_string<mtk::qr::mode>() {return #mode;}
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp16_notc        );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp32_notc        );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp16_tc_nocor    );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp32_tc_nocor    );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_nocor    );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(fp32_tc_cor      );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_cor      );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_cor_emu  );
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(tf32_tc_nocor_emu);
+TEST_QR_GET_COMPUTE_MODE_NAME_STRING(mixed_tc_cor_emu );
 } // namespace
 #endif
 
@@ -137,22 +151,21 @@ mtk::qr::state_t block_qr_core(
 #ifdef PROFILE_BREAKDOWN
 	const auto time_sum = gemm_0_count + gemm_1_count + tsqr_count;
 #ifdef PROFILE_BREAKDOWN_CSV
-	std::printf("%lu,%lu,%s,%s,%d,%d,%d,%e,%e,%e,%e\n",
+	std::printf("%lu,%lu,%s,%s,%d,%e,%e,%e,%e\n",
 			m, n,
 			get_type_name<T>().c_str(),
-			get_type_name<CORE_T>().c_str(),
-			(UseTC ? 1 : 0),
-			(Correction ? 1 : 0),
+			get_compute_mode_name_string<mode>().c_str(),
 			0,
-			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
-			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
+			(gemm_0_count + gemm_1_count) / 1.0e6,
+			static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
+			tsqr_count / 1.0e6,
+			static_cast<double>(tsqr_count) / time_sum * 100
 			);
 #else
 	std::printf("# BlockQR breakdown\n");
 	std::printf("Size   : %lu x %lu\n", m, n);
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
-	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
-	std::printf("Correction : %s\n", (Correction ? "YES" : "NO"));
+	std::printf("Mode   : %s\n", get_compute_mode_name_string<mode>().c_str());
 	std::printf("Reorth : %s\n", "NO");
 	std::printf("GEMM-0 : %e[s] (%e%%)\n", gemm_0_count / 1.0e6, static_cast<double>(gemm_0_count) / time_sum * 100);
 	std::printf("GEMM-1 : %e[s] (%e%%)\n", gemm_1_count / 1.0e6, static_cast<double>(gemm_1_count) / time_sum * 100);
@@ -350,23 +363,21 @@ mtk::qr::state_t block_qr_reorthogonalization_core(
 #ifdef PROFILE_BREAKDOWN
 	const auto time_sum = gemm_count + tsqr_count;
 #ifdef PROFILE_BREAKDOWN_CSV
-	std::printf("%lu,%lu,%s,%s,%d,%d,%d,%e,%e,%e,%e\n",
+	std::printf("%lu,%lu,%s,%s,%d,%e,%e,%e,%e\n",
 			m, n,
 			get_type_name<T>().c_str(),
-			get_type_name<CORE_T>().c_str(),
-			(UseTC ? 1 : 0),
-			(Correction ? 1 : 0),
-			0,
-			(gemm_0_count + gemm_1_count) / 1.0e6, static_cast<double>(gemm_0_count + gemm_1_count) / time_sum * 100,
-			tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100
+			get_compute_mode_name_string<mode>().c_str(),
+			1,
+			(gemm_count) / 1.0e6,
+			static_cast<double>(gemm_count) / time_sum * 100,
+			tsqr_count / 1.0e6,
+			static_cast<double>(tsqr_count) / time_sum * 100
 			);
 #else
 	std::printf("# BlockQR breakdown\n");
 	std::printf("Size   : %lu x %lu\n", m, n);
 	std::printf("Type   : %s\n", get_type_name<T>().c_str());
-	std::printf("C Type : %s\n", get_type_name<CORE_T>().c_str());
-	std::printf("UseTC  : %s\n", (UseTC ? "YES" : "NO"));
-	std::printf("Correction : %s\n", (Correction ? "YES" : "NO"));
+	std::printf("Mode   : %s\n", get_compute_mode_name_string<mode>().c_str());
 	std::printf("Reorth : %s\n", "YES");
 	std::printf("GEMM   : %e[s] (%e%%)\n", gemm_count / 1.0e6, static_cast<double>(gemm_count) / time_sum * 100);
 	std::printf("TSQR   : %e[s] (%e%%)\n", tsqr_count / 1.0e6, static_cast<double>(tsqr_count) / time_sum * 100);
