@@ -20,6 +20,9 @@ void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& tes
 	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor, true >(test_matrix_config_list, test_count);
 	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor  , true >(test_matrix_config_list, test_count);
 
+	mtk::test_qr::cusolver_accuracy<float>(test_matrix_config_list                  , test_count);
+	mtk::test_qr::cusolver_accuracy<double>(test_matrix_config_list                 , test_count);
+
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_notc    , false>(test_matrix_config_list, test_count);
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_tc_nocor, false>(test_matrix_config_list, test_count);
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_notc    , false>(test_matrix_config_list, test_count);
