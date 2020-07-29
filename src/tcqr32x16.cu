@@ -414,13 +414,9 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_nocor, half, float, h
 	nvcuda::wmma::mma_sync(out_q_0_frag, h_0_frag, in_q_0_frag, out_q_0_frag);
 	nvcuda::wmma::mma_sync(out_q_0_frag, h_1_frag, in_q_1_frag, out_q_0_frag);
 	/*  Q 1 */
-
-	__syncthreads();
-	copy_32x16(working_memory, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, unique_id);
-	__syncthreads();
 	// load q
-	nvcuda::wmma::load_matrix_sync(in_q_0_frag, q_ptr, FRAGMENT_DIM_M);
-	nvcuda::wmma::load_matrix_sync(in_q_1_frag, q_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_0_frag, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+	nvcuda::wmma::load_matrix_sync(in_q_1_frag, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// mma
 	nvcuda::wmma::mma_sync(out_q_1_frag, h_0_frag, in_q_0_frag, out_q_1_frag);
 	nvcuda::wmma::mma_sync(out_q_1_frag, h_1_frag, in_q_1_frag, out_q_1_frag);
