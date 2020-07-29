@@ -35,6 +35,7 @@ template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_notc        > {using ty
 template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_tc_nocor    > {using type = half;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_nocor_emu> {using type = float;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_cor_emu  > {using type = float;};
+template <> struct h_mat_t<mtk::tcqr::compute_mode::mixed_tc_cor_emu > {using type = float;};
 
 template <mtk::tcqr::compute_mode mode>
 constexpr unsigned get_max_batch_size_per_block() {return 4u;}
@@ -46,7 +47,7 @@ TCQR_GET_MATMUL_COMPUTE_MODE(fp16_notc        );
 TCQR_GET_MATMUL_COMPUTE_MODE(fp32_notc        );
 TCQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu  );
 TCQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_nocor_emu);
-TCQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor     );
+TCQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor_emu );
 
 template <class Func>
 __device__ void debug_func(unsigned unique_id, Func run_func) {
