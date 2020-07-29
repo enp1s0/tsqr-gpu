@@ -23,7 +23,6 @@ make -f Makefile.library
 You can find `libtcqr.a` in `lib` directory.
 
 ## Sample
-### BlockQR
 ```cpp
 #include <blockqr.hpp>
 
