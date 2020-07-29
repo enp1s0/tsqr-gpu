@@ -71,8 +71,8 @@ nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib`
 
 ## Environment
 ### Software
-- C++ (C++11 or later)
-- CUDA (9.2 or later)
+- C++ (C++14 or later)
+- CUDA (10.1 or later)
 
 ### Hardware
 - NVIDIA GPU
