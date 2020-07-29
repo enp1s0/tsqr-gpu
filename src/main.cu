@@ -8,17 +8,23 @@ constexpr std::size_t test_count = 16;
 
 void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_matrix_config_list) {
 	std::cout << "# accuracy test" << std::endl;
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc    , false>(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor, false>(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc    , false>(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor, false>(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor  , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc        , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor    , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc        , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor    , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor      , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::mixed_tc_cor_emu , false>(test_matrix_config_list, test_count);
 
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc    , true >(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor, true >(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc    , true >(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor, true >(test_matrix_config_list, test_count);
-	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor  , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_notc        , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp16_tc_nocor    , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_notc        , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_nocor    , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::fp32_tc_cor      , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy<mtk::test_qr::compute_mode::mixed_tc_cor_emu , true >(test_matrix_config_list, test_count);
 
 	mtk::test_qr::cusolver_accuracy<float>(test_matrix_config_list                  , test_count);
 	mtk::test_qr::cusolver_accuracy<double>(test_matrix_config_list                 , test_count);
@@ -42,17 +48,23 @@ void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& tes
 
 void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>& test_matrix_config_list) {
 	std::cout << "# condition number test" << std::endl;
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc    , false>(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor, false>(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc    , false>(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor, false>(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor  , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc        , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor    , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc        , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor    , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor      , false>(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , false>(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::mixed_tc_cor_emu , false>(test_matrix_config_list, test_count);
 
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc    , true >(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor, true >(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc    , true >(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor, true >(test_matrix_config_list);
-	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor  , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_notc        , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp16_tc_nocor    , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_notc        , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_nocor    , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::fp32_tc_cor      , true >(test_matrix_config_list);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_nocor_emu, true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::tf32_tc_cor_emu  , true >(test_matrix_config_list, test_count);
+	mtk::test_qr::accuracy_cond<mtk::test_qr::compute_mode::mixed_tc_cor_emu , true >(test_matrix_config_list, test_count);
 
 	mtk::test_qr::cusolver_accuracy_cond<float>(test_matrix_config_list                  , test_count);
 	mtk::test_qr::cusolver_accuracy_cond<double>(test_matrix_config_list                 , test_count);
