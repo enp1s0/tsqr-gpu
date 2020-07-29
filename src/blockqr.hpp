@@ -15,7 +15,7 @@ enum compute_mode {
 	fp32_notc,
 	fp32_tc_cor,
 	fp32_tc_nocor,
-	mixed_tc_cor,
+	mixed_tc_cor_emu,
 	tf32_tc_cor,
 	tf32_tc_cor_emu,
 	tf32_tc_nocor,
@@ -40,7 +40,7 @@ BQR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor      );
 BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor      );
 BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu  );
 BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor_emu);
-BQR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor     );
+BQR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor_emu );
 
 template <mtk::qr::compute_mode mode>
 struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<get_tsqr_compute_mode<mode>()>::type;};
