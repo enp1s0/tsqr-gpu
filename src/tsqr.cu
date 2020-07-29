@@ -115,7 +115,7 @@ __device__ void copy_16x16(
 	__syncthreads();
 }
 
-// backward 1層目以外
+// backward except last one layer
 template <mtk::tsqr::compute_mode mode, class T>
 __global__ void tsqr_backward(
 		T* const ac_ptr,
@@ -141,13 +141,13 @@ __global__ void tsqr_backward(
 	auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// AC(in)のコピー
+	// Copy AC(in)
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_in_ptr, 2 * n, n,
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_ptr, n, n,
 			b_ptr, matrix_id * n, ac_m / 2,
@@ -266,20 +266,19 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp16_tc_nocor, half>(
 	const auto shared_ac_fp32_ptr = shared_ac_f32 + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// ACのコピー
+	// Copy AC
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, 2 * n, n,
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, ac_m / 2,
 			tid
 			);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> frag_c0, frag_c1;
@@ -331,14 +330,12 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp32_ptr = shared_b_f32 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// ACのコピー
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp32_ptr, 2 * n, n,
 			ac_ptr, matrix_id * 2 * n, ac_m,
 			tid
 			);
 	copy_32x16(shared_ac_fp16_ptr, shared_ac_fp32_ptr, tid);
-	// Bのコピー
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp32_ptr, n, n,
 			b_ptr, matrix_id * n, ac_m / 2,
@@ -346,7 +343,6 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 			);
 	copy_16x16(shared_b_fp16_ptr, shared_b_fp32_ptr, tid);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0_diff, frag_a1_diff;
@@ -385,6 +381,7 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 			);
 }
 
+// Backword of last layer
 template <mtk::tsqr::compute_mode mode, class OUTPUT_T, class INPUT_T>
 __global__ void tsqr_backward_layer0(
 		OUTPUT_T* const q_ptr, const std::size_t ldq,
@@ -414,13 +411,13 @@ __global__ void tsqr_backward_layer0(
 	const auto shared_ac_out_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// A(in) のコピー
+	// Copy A(in)
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_in_ptr, sub_m, n,
 			a_ptr, q_start_pos, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_ptr, n, n,
 			b_ptr, matrix_id * n, n * batch_size,
@@ -481,20 +478,19 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp16_tc_nocor, hal
 	const auto shared_ac_fp32_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// A のコピー
+	// Copy A
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, sub_m, n,
 			a_ptr, q_start_pos, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, n * batch_size,
 			tid
 			);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, half> frag_c0, frag_c1;
@@ -548,20 +544,19 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_nocor, flo
 	const auto shared_ac_fp32_ptr = shared_ac_out + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// A のコピー
+	// Copy A
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp16_ptr, sub_m, n,
 			a_ptr, q_start_pos, ac_m,
 			tid
 			);
-	// Bのコピー
+	// Copy B
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp16_ptr, n, n,
 			b_ptr, matrix_id * n, n * batch_size,
 			tid
 			);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 16, float> frag_c0, frag_c1;
@@ -617,14 +612,12 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_cor, float
 	const auto shared_b_fp16_ptr = shared_b_f16 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 	const auto shared_b_fp32_ptr = shared_b_f32 + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
 
-	// A のコピー
 	mtk::matrix_copy::g2s32x16_1w(
 			shared_ac_fp32_ptr, sub_m, n,
 			a_ptr, q_start_pos, ac_m,
 			tid
 			);
 	copy_32x16(shared_ac_fp16_ptr, shared_ac_fp32_ptr, tid);
-	// Bのコピー
 	mtk::matrix_copy::g2s16x16_1w(
 			shared_b_fp32_ptr, n, n,
 			b_ptr, matrix_id * n, n * batch_size,
@@ -632,7 +625,6 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_cor, float
 			);
 	copy_16x16(shared_b_fp16_ptr, shared_b_fp32_ptr, tid);
 
-	// TCによる行列積
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0, frag_a1;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> frag_a0_diff, frag_a1_diff;
@@ -695,7 +687,7 @@ void tsqr16_geq32(
 	debug_func([&working_r_ptrs]() {std::printf("%s : working_r_ptr[1] = %p\n", __func__, working_r_ptrs[1]);});
 	debug_func([&working_q_ptr]() {std::printf("%s : working_q_ptr    = %p\n", __func__, working_q_ptr);});
 
-	// 1層目はsub_mが特殊なので別途計算を行う
+	// Fisrt QR Factorization, whose matrix sizes are special
 	h_sub_m_list[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++) {
 		h_sub_m_list[i] = m * i / batch_size;
@@ -719,14 +711,13 @@ void tsqr16_geq32(
 			);
 	cudaStreamSynchronize(cuda_stream);
 
-	// 2層目からはsub matrixの大きさが 2n * n となるので，一度計算しGPUに転送しておけばOK
+	// Rest QR Factorization, whose matrix sizes are n x n
 	for(std::size_t i = 0; i < batch_size / 2 + 1; i++) {
 		h_sub_m_list[i] = 2 * n * i;
 	}
 	cutf::memory::copy_async(d_sub_m_list, h_sub_m_list, batch_size / 2 + 1, cuda_stream);
 	cudaStreamSynchronize(cuda_stream);
 
-	// 再帰的QR分解のfor展開
 	for(std::size_t k = batch_size_log2 - 1; k > 0; k--) {
 		debug_func([&k]() {std::printf("%s : %lu bQR\n", __func__, k);});
 		const auto local_batch_size = 1lu << k;	
@@ -764,7 +755,7 @@ void tsqr16_geq32(
 
 	}
 
-	// 最終層はrの保存先が異なる
+	// Store final R to `r_ptr`
 	debug_func([]() {std::printf("%s : 1 bQR\n", __func__);});
 	debug_func([&batch_size_log2]() {std::printf("%s : a(wr[%lu]) -> r\n", __func__, (batch_size_log2 % 2));});
 	const auto working_q_sride = 2 * n * n * (batch_size - 2) + m * n;
@@ -828,7 +819,7 @@ void tsqr16_geq32(
 				);
 		cudaStreamSynchronize(cuda_stream);
 	}
-	// 1層目はsub_mが特殊なので別途計算を行う
+	// the each matrix size of last layer is different from other layers
 	h_sub_m_list[0] = 0;
 	for(std::size_t i = 1; i < batch_size; i++) {
 		h_sub_m_list[i] = m * i / batch_size;
