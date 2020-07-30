@@ -9,28 +9,58 @@
 namespace mtk {
 namespace qr {
 
+enum compute_mode {
+	fp16_notc,
+	fp16_tc_nocor,
+	fp32_notc,
+	fp32_tc_cor,
+	fp32_tc_nocor,
+	mixed_tc_cor_emu,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	tf32_tc_nocor,
+	tf32_tc_nocor_emu,
+};
+
 constexpr std::size_t tsqr_colmun_size = 16;
 
 using state_t = int;
 const state_t success_factorization = 0;
 const state_t error_invalid_matrix_size = 1;
 
-template <class T, bool UseTC, bool Correction>
-struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<T, UseTC, Correction>::type;};
+template <mtk::qr::compute_mode>
+constexpr mtk::tsqr::compute_mode get_tsqr_compute_mode();
+#define BQR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::tsqr::compute_mode get_tsqr_compute_mode<mtk::qr::compute_mode::mode>() {return mtk::tsqr::compute_mode::mode;}
+BQR_GET_TSQR_COMPUTE_MODE(fp16_notc        );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_notc        );
+BQR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor    );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor    );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor    );
+BQR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor      );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor      );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu  );
+BQR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor_emu);
+BQR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor_emu );
 
-template <class T, bool UseTC, bool Correction>
-struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<T, UseTC, Correction>::type;};
+template <mtk::qr::compute_mode mode>
+struct get_working_q_type{using type = typename mtk::tsqr::get_working_q_type<get_tsqr_compute_mode<mode>()>::type;};
+
+template <mtk::qr::compute_mode mode>
+struct get_working_r_type{using type = typename mtk::tsqr::get_working_r_type<get_tsqr_compute_mode<mode>()>::type;};
+
+template <mtk::qr::compute_mode mode>
+struct get_io_type{using type = typename mtk::tsqr::get_io_type<get_tsqr_compute_mode<mode>()>::type;};
 
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_r_size(const std::size_t m, const std::size_t n);
 std::size_t get_working_l_size(const std::size_t m);
 
-template <class T, bool UseTC, bool Correction, bool Reorthogonalize>
+template <mtk::qr::compute_mode mode, bool Reorthogonalize>
 struct buffer {
-	typename get_working_q_type<T, UseTC, Correction>::type* dwq;
-	typename get_working_r_type<T, UseTC, Correction>::type* dwr;
-	T* dw_reorth_r;
+	typename get_working_q_type<mode>::type* dwq;
+	typename get_working_r_type<mode>::type* dwr;
+	typename get_io_type<mode>::type* dw_reorth_r;
 	unsigned* dl;
 	unsigned* hl;
 
@@ -47,8 +77,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<mode>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<mode>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
@@ -58,7 +88,7 @@ struct buffer {
 
 		// Allocate additional working memory for reorthogonalization
 		if (Reorthogonalize) {
-			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size);
+			const auto reorth_r_size = sizeof(typename get_io_type<mode>::type) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size);
 			cudaMalloc(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 			total_memory_size += reorth_r_size;
 		}
@@ -78,8 +108,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<mode>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<mode>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
@@ -89,7 +119,7 @@ struct buffer {
 
 		// Allocate additional working memory for reorthogonalization
 		if (Reorthogonalize) {
-			const auto reorth_r_size = sizeof(T) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size);
+			const auto reorth_r_size = sizeof(typename get_io_type<mode>::type) * (tsqr_colmun_size * tsqr_colmun_size * 2 + m * tsqr_colmun_size);
 			cudaMallocHost(reinterpret_cast<void**>(&dw_reorth_r), reorth_r_size);
 			total_memory_size += reorth_r_size;
 		}
@@ -109,28 +139,28 @@ struct buffer {
 	}
 };
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+template <mtk::qr::compute_mode mode, bool Reorthogonalize>
 state_t qr(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		T* const a_ptr, const std::size_t lda,
+		typename mtk::qr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::qr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		typename mtk::qr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		typename mtk::qr::get_working_q_type<T, UseTC, Correction>::type* const wq_ptr,
-		typename mtk::qr::get_working_r_type<T, UseTC, Correction>::type* const wr_ptr,
-		T* const reorth_r_ptr,
+		typename mtk::qr::get_working_q_type<mode>::type* const wq_ptr,
+		typename mtk::qr::get_working_r_type<mode>::type* const wr_ptr,
+		typename mtk::qr::get_io_type<mode>::type* const reorth_r_ptr,
 		unsigned* const d_wl_ptr,
 		unsigned* const h_wl_ptr,
 		cublasHandle_t const main_cublas_handle);
 
-template <bool UseTC, bool Correction, bool Reorthogonalize, class T, class CORE_T = T>
+template <mtk::qr::compute_mode mode, bool Reorthogonalize>
 inline state_t qr(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		T* const a_ptr, const std::size_t lda,
+		typename mtk::qr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::qr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		typename mtk::qr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		buffer<T, UseTC, Correction, Reorthogonalize>& bf,
+		buffer<mode, Reorthogonalize>& bf,
 		cublasHandle_t const main_cublas_handle) {
-	return qr<UseTC, Correction, Reorthogonalize, T, CORE_T>(
+	return qr<mode, Reorthogonalize>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,
