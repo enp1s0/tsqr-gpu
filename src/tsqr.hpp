@@ -6,16 +6,37 @@
 
 namespace mtk {
 namespace tsqr {
+enum compute_mode {
+	fp16_notc,
+	fp16_tc_nocor,
+	fp32_notc,
+	fp32_tc_cor,
+	fp32_tc_nocor,
+	mixed_tc_cor_emu,
+	tf32_tc_cor,
+	tf32_tc_cor_emu,
+	tf32_tc_nocor,
+	tf32_tc_nocor_emu,
+};
 // get batch size
 std::size_t get_batch_size_log2(const std::size_t m);
 std::size_t get_batch_size(const std::size_t m);
 // get working memory type
-template <class T, bool UseTC, bool Correction>
-struct get_working_q_type{using type = T;};
-template <> struct get_working_q_type<float, true, false>{using type = half;};
+template <compute_mode mode>
+struct get_working_q_type{using type = float;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
+template<> struct get_working_q_type<mtk::tsqr::compute_mode::fp32_tc_nocor  >{using type = half ;};
 
-template <class T, bool UseTC, bool Correction>
-struct get_working_r_type{using type = T;};
+template <compute_mode mode>
+struct get_working_r_type{using type = float;};
+template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
+template<> struct get_working_r_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
+
+template <compute_mode mode>
+struct get_io_type{using type = float;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_notc      >{using type = half ;};
+template<> struct get_io_type<mtk::tsqr::compute_mode::fp16_tc_nocor  >{using type = half ;};
 
 // get working memory size
 std::size_t get_working_q_size(const std::size_t m, const std::size_t n);
@@ -25,10 +46,10 @@ inline std::size_t get_working_l_size(const std::size_t m) {
 }
 
 // integrated buffer struct
-template <class T, bool UseTC, bool Correction>
+template <mtk::tsqr::compute_mode mode>
 struct buffer {
-	typename get_working_q_type<T, UseTC, Correction>::type* dwq;
-	typename get_working_r_type<T, UseTC, Correction>::type* dwr;
+	typename get_working_q_type<mode>::type* dwq;
+	typename get_working_r_type<mode>::type* dwr;
 	unsigned* dl;
 	unsigned* hl;
 
@@ -45,8 +66,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<mode>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<mode>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMalloc(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMalloc(reinterpret_cast<void**>(&dwr), wr_size);
@@ -64,8 +85,8 @@ struct buffer {
 		if (dwq != nullptr || dwr != nullptr || dl != nullptr || hl != nullptr) {
 			throw std::runtime_error("The buffer has been already allocated");
 		}
-		const auto wq_size = sizeof(typename get_working_q_type<T, UseTC, Correction>::type) * get_working_q_size(m, n);
-		const auto wr_size = sizeof(typename get_working_r_type<T, UseTC, Correction>::type) * get_working_r_size(m, n);
+		const auto wq_size = sizeof(typename get_working_q_type<mode>::type) * get_working_q_size(m, n);
+		const auto wr_size = sizeof(typename get_working_r_type<mode>::type) * get_working_r_size(m, n);
 		const auto l_size = sizeof(unsigned) * get_working_l_size(m);
 		cudaMallocHost(reinterpret_cast<void**>(&dwq), wq_size);
 		cudaMallocHost(reinterpret_cast<void**>(&dwr), wr_size);
@@ -84,29 +105,29 @@ struct buffer {
 	}
 };
 
-template <bool UseTC, bool Correction, class T, class CORE_T>
+template <mtk::tsqr::compute_mode mode>
 void tsqr16(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		typename mtk::tsqr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::tsqr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		const typename mtk::tsqr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m,
 		const std::size_t n,
-		typename get_working_q_type<T, UseTC, Correction>::type* const working_q_ptr,
-		typename get_working_r_type<T, UseTC, Correction>::type* const working_r_ptr,
+		typename get_working_q_type<mode>::type* const working_q_ptr,
+		typename get_working_r_type<mode>::type* const working_r_ptr,
 		unsigned* const d_working_l_ptr,
 		unsigned* const h_working_l_ptr,
 		cudaStream_t const cuda_stream = nullptr);
 
 
-template <bool UseTC, bool Correction, class T, class CORE_T>
+template <mtk::tsqr::compute_mode mode>
 inline void tsqr16(
-		T* const q_ptr, const std::size_t ldq,
-		T* const r_ptr, const std::size_t ldr,
-		const T* const a_ptr, const std::size_t lda,
+		typename mtk::tsqr::get_io_type<mode>::type* const q_ptr, const std::size_t ldq,
+		typename mtk::tsqr::get_io_type<mode>::type* const r_ptr, const std::size_t ldr,
+		const typename mtk::tsqr::get_io_type<mode>::type* const a_ptr, const std::size_t lda,
 		const std::size_t m, const std::size_t n,
-		mtk::tsqr::buffer<T, UseTC, Correction>& buffer,
+		mtk::tsqr::buffer<mode>& buffer,
 		cudaStream_t const cuda_stream) {
-	mtk::tsqr::tsqr16<UseTC, Correction, T, CORE_T>(
+	mtk::tsqr::tsqr16<mode>(
 			q_ptr, ldq,
 			r_ptr, ldr,
 			a_ptr, lda,
