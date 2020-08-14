@@ -48,17 +48,18 @@ namespace mtk {
 namespace test_qr {
 
 template <compute_mode A_compute_mode, bool A_Reorthogonalization, compute_mode B_compute_mode, bool B_Reorthogonalization>
-__inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& size_pair_vector, const std::size_t C) {
+__inline__ void compare(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C = 16) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
 	using T = typename get_compute_type<A_compute_mode>::type;
 
 	for (const auto& size_pair : size_pair_vector) {
-		const auto m = size_pair.first;
-		const auto n = size_pair.second;
+		const auto m = std::get<0>(size_pair);
+		const auto n = std::get<1>(size_pair);
+		const auto rand_range = std::get<2>(size_pair);
+		std::uniform_real_distribution<float> dist(-rand_range, rand_range);
 
 		auto dA = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto dQ = cutf::memory::get_device_unique_ptr<T>(m * n);
