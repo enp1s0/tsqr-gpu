@@ -22,22 +22,44 @@ __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, con
 	dst[tid] = src[m * x + y];
 }
 
+template <mtk::test_qr::compute_mode compute_mode>
+struct get_compute_type {using type = float;};
+template <> struct get_compute_type<mtk::test_qr::compute_mode::fp16_notc      > {using type = half;};
+template <> struct get_compute_type<mtk::test_qr::compute_mode::fp16_tc_nocor  > {using type = half;};
+
+template <mtk::test_qr::compute_mode>
+constexpr mtk::qr::compute_mode get_qr_compute_mode();
+#define TEST_QR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::qr::compute_mode get_qr_compute_mode<mtk::test_qr::compute_mode::mode>() {return mtk::qr::compute_mode::mode;}
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor_emu);
+TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor_emu );
+
 } // namespace
 
 
 namespace mtk {
 namespace test_qr {
 
-template <bool A_UseTC, bool A_Correction, bool A_Reorthogonalization, bool B_UseTC, bool B_Correction, bool B_Reorthogonalization, class T>
-__inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& size_pair_vector, const std::size_t C) {
+template <compute_mode A_compute_mode, bool A_Reorthogonalization, compute_mode B_compute_mode, bool B_Reorthogonalization>
+__inline__ void compare(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-	for (const auto& size_pair : size_pair_vector) {
-		const auto m = size_pair.first;
-		const auto n = size_pair.second;
+	using T = typename get_compute_type<A_compute_mode>::type;
+
+	for (const auto& matrix_config : matrix_config_list) {
+		const auto m = std::get<0>(matrix_config);
+		const auto n = std::get<1>(matrix_config);
+		const auto rand_range = std::get<2>(matrix_config);
+		std::uniform_real_distribution<float> dist(-rand_range, rand_range);
 
 		auto dA = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto dQ = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -60,9 +82,9 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 
 			// A
 			{
-				mtk::qr::buffer<T, A_UseTC, A_Correction, A_Reorthogonalization> buffer;
+				mtk::qr::buffer<get_qr_compute_mode<A_compute_mode>(), A_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<A_UseTC, A_Correction, A_Reorthogonalization, T, T>(
+				mtk::qr::qr<get_qr_compute_mode<A_compute_mode>(), A_Reorthogonalization>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -76,9 +98,9 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 
 			// B
 			{
-				mtk::qr::buffer<T, B_UseTC, B_Correction, B_Reorthogonalization> buffer;
+				mtk::qr::buffer<get_qr_compute_mode<B_compute_mode>(), B_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<B_UseTC, B_Correction, B_Reorthogonalization, T, T>(
+				mtk::qr::qr<get_qr_compute_mode<B_compute_mode>(), B_Reorthogonalization>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -118,19 +140,23 @@ __inline__ void compare(const std::vector<std::pair<std::size_t, std::size_t>>& 
 	}
 }
 
-template <bool A_UseTC, bool A_Correction, bool A_Reorthogonalization, class T>
-__inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C) {
+template <compute_mode A_compute_mode, bool A_Reorthogonalization>
+__inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 	auto cusolver_handle = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
 	std::mt19937 mt(std::random_device{}());
-	std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
 
-	std::printf("m,n,tc,correction,reorth,Q,R\n");
+	using T = typename get_compute_type<A_compute_mode>::type;
 
-	for (const auto& size_pair : size_pair_vector) {
-		const auto m = std::get<0>(size_pair);
-		const auto n = std::get<1>(size_pair);
+	std::printf("m,n,compute_mode,reorth,Q,R\n");
+
+	for (const auto& matrix_config : matrix_config_list) {
+		const auto m = std::get<0>(matrix_config);
+		const auto n = std::get<1>(matrix_config);
+		const auto rand_range = std::get<2>(matrix_config);
+		std::uniform_real_distribution<float> dist(-rand_range, rand_range);
+
 
 		auto dA = cutf::memory::get_device_unique_ptr<T>(m * n);
 		auto dQ = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -170,9 +196,9 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 
 			// A
 			{
-				mtk::qr::buffer<T, A_UseTC, A_Correction, A_Reorthogonalization> buffer;
+				mtk::qr::buffer<get_qr_compute_mode<A_compute_mode>(), A_Reorthogonalization> buffer;
 				buffer.allocate(m, n);
-				mtk::qr::qr<A_UseTC, A_Correction, A_Reorthogonalization, T, T>(
+				mtk::qr::qr<get_qr_compute_mode<A_compute_mode>(), A_Reorthogonalization>(
 						dQ.get(), m,
 						dR.get(), n,
 						dA.get(), m,
@@ -230,10 +256,9 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 		}
 		const auto Q_residual = std::accumulate(Q_residual_list.begin(), Q_residual_list.end(), 0.0f) / C;
 		const auto R_residual = std::accumulate(R_residual_list.begin(), R_residual_list.end(), 0.0f) / C;
-		std::printf("%lu,%lu,%d,%d,%d,%e,%e\n",
+		std::printf("%lu,%lu,%s,%d,%e,%e\n",
 				m, n,
-				(A_UseTC ? 1 : 0),
-				(A_Correction ? 1 : 0),
+				get_compute_mode_name_string<A_compute_mode>().c_str(),
 				(A_Reorthogonalization ? 1 : 0),
 				Q_residual, R_residual);
 	}
