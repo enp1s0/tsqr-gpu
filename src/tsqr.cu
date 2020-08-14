@@ -313,6 +313,7 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
+	constexpr float correction_rescale = 1024.0f;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -356,20 +357,25 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
 
-	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, tid);
-	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, tid);
+	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, correction_rescale, tid);
+	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, correction_rescale, tid);
 
 	nvcuda::wmma::load_matrix_sync(frag_a0_diff, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_a1_diff, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_b_diff, shared_b_fp16_ptr, FRAGMENT_DIM_N);
 
-	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
-	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
-
 	nvcuda::wmma::mma_sync(frag_c0, frag_a0_diff, frag_b, frag_c0);
 	nvcuda::wmma::mma_sync(frag_c1, frag_a1_diff, frag_b, frag_c1);
 	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b_diff, frag_c0);
 	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b_diff, frag_c1);
+
+	for (unsigned i = 0; i < frag_c0.num_elements; i++) {
+		frag_c0.x[i] *= 1.0f / correction_rescale;
+		frag_c1.x[i] *= 1.0f / correction_rescale;
+	}
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
 
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
@@ -593,6 +599,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_cor, float
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t max_batch_size_per_block = 4;
+	constexpr float correction_rescale = 1024.0f;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
 	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
@@ -638,20 +645,25 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::fp32_tc_cor, float
 	nvcuda::wmma::load_matrix_sync(frag_a1, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_b, shared_b_fp16_ptr, FRAGMENT_DIM_N);
 
-	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, tid);
-	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, tid);
+	mtk::matrix_operation::diff32x16_1w(shared_ac_fp16_ptr, shared_ac_fp32_ptr, shared_ac_fp16_ptr, correction_rescale, tid);
+	mtk::matrix_operation::diff16x16_1w(shared_b_fp16_ptr, shared_b_fp32_ptr, shared_b_fp16_ptr, correction_rescale, tid);
 
 	nvcuda::wmma::load_matrix_sync(frag_a0_diff, shared_ac_fp16_ptr, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_a1_diff, shared_ac_fp16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	nvcuda::wmma::load_matrix_sync(frag_b_diff, shared_b_fp16_ptr, FRAGMENT_DIM_N);
 
-	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
-	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
-
 	nvcuda::wmma::mma_sync(frag_c0, frag_a0_diff, frag_b, frag_c0);
 	nvcuda::wmma::mma_sync(frag_c1, frag_a1_diff, frag_b, frag_c1);
 	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b_diff, frag_c0);
 	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b_diff, frag_c1);
+
+	for (unsigned i = 0; i < frag_c0.num_elements; i++) {
+		frag_c0.x[i] *= 1.0f / correction_rescale;
+		frag_c1.x[i] *= 1.0f / correction_rescale;
+	}
+
+	nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+	nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
 
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(shared_ac_fp32_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
