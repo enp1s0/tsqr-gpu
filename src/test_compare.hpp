@@ -22,6 +22,25 @@ __global__ void cut_r(T* const dst, const T* const src, const std::size_t m, con
 	dst[tid] = src[m * x + y];
 }
 
+template <mtk::test_qr::compute_mode compute_mode>
+struct get_compute_type {using type = float;};
+template <> struct get_compute_type<mtk::test_qr::compute_mode::fp16_notc      > {using type = half;};
+template <> struct get_compute_type<mtk::test_qr::compute_mode::fp16_tc_nocor  > {using type = half;};
+
+template <mtk::test_qr::compute_mode>
+constexpr mtk::qr::compute_mode get_qr_compute_mode();
+#define TEST_QR_GET_TSQR_COMPUTE_MODE(mode) template<> constexpr mtk::qr::compute_mode get_qr_compute_mode<mtk::test_qr::compute_mode::mode>() {return mtk::qr::compute_mode::mode;}
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_notc        );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp16_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor    );
+TEST_QR_GET_TSQR_COMPUTE_MODE(fp32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor      );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_cor_emu  );
+TEST_QR_GET_TSQR_COMPUTE_MODE(tf32_tc_nocor_emu);
+TEST_QR_GET_TSQR_COMPUTE_MODE(mixed_tc_cor_emu );
+
 } // namespace
 
 
