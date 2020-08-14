@@ -500,7 +500,12 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	constexpr float correction_rescale = 1024.0f;
+
+	// NOTE:
+	// Multipying 1.0f is ignored by nvcc.
+	// Thus if `correction_rescale` is 1.0f, the computating time is almost same as no-rescaling code.
+	constexpr float correction_rescale = 1.0f;
+
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
