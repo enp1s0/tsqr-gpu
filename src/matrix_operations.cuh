@@ -89,6 +89,22 @@ __device__ inline void diff32x16_1w(
 	__syncthreads();
 }
 
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff32x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const float correction_rescale,
+		const unsigned tid
+		) {
+	const auto y = tid & 0x1f;
+	for(std::size_t x = 0; x < FRAGMENT_DIM_N; x += 1) {
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+
+		dst[shared_index] = cutf::type::cast<half>((src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index])) * correction_rescale);
+	}
+	__syncthreads();
+}
+
 template <std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 16>
 __device__ inline void diff16x16_1w(
 		half* const dst,
@@ -102,6 +118,24 @@ __device__ inline void diff16x16_1w(
 		const auto shared_index = i + unique_id;
 
 		dst[shared_index] = cutf::type::cast<half>(src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index]));
+	}
+	__syncthreads();
+}
+
+template <std::size_t FRAGMENT_DIM_M = 16, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff16x16_1w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const float correction_rescale,
+		const unsigned tid
+		) {
+	const auto unique_id = tid & 0x1f;
+	const unsigned warp_size = 32;
+
+	for(std::size_t i = 0; i < FRAGMENT_DIM_M * FRAGMENT_DIM_N; i += warp_size) {
+		const auto shared_index = i + unique_id;
+
+		dst[shared_index] = cutf::type::cast<half>((src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index])) * correction_rescale);
 	}
 	__syncthreads();
 }
