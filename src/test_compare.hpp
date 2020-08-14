@@ -48,17 +48,17 @@ namespace mtk {
 namespace test_qr {
 
 template <compute_mode A_compute_mode, bool A_Reorthogonalization, compute_mode B_compute_mode, bool B_Reorthogonalization>
-__inline__ void compare(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C = 16) {
+__inline__ void compare(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 
 	std::mt19937 mt(std::random_device{}());
 
 	using T = typename get_compute_type<A_compute_mode>::type;
 
-	for (const auto& size_pair : size_pair_vector) {
-		const auto m = std::get<0>(size_pair);
-		const auto n = std::get<1>(size_pair);
-		const auto rand_range = std::get<2>(size_pair);
+	for (const auto& matrix_config : matrix_config_list) {
+		const auto m = std::get<0>(matrix_config);
+		const auto n = std::get<1>(matrix_config);
+		const auto rand_range = std::get<2>(matrix_config);
 		std::uniform_real_distribution<float> dist(-rand_range, rand_range);
 
 		auto dA = cutf::memory::get_device_unique_ptr<T>(m * n);
@@ -141,7 +141,7 @@ __inline__ void compare(const std::vector<std::tuple<std::size_t, std::size_t, f
 }
 
 template <compute_mode A_compute_mode, bool A_Reorthogonalization>
-__inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& size_pair_vector, const std::size_t C = 16) {
+__inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::size_t, std::size_t, float>>& matrix_config_list, const std::size_t C = 16) {
 	auto cublas_handle = cutf::cublas::get_cublas_unique_ptr();
 	auto cusolver_handle = cutf::cusolver::get_cusolver_dn_unique_ptr();
 
@@ -151,10 +151,10 @@ __inline__ void compare_to_cusolver_double(const std::vector<std::tuple<std::siz
 
 	std::printf("m,n,compute_mode,reorth,Q,R\n");
 
-	for (const auto& size_pair : size_pair_vector) {
-		const auto m = std::get<0>(size_pair);
-		const auto n = std::get<1>(size_pair);
-		const auto rand_range = std::get<2>(size_pair);
+	for (const auto& matrix_config : matrix_config_list) {
+		const auto m = std::get<0>(matrix_config);
+		const auto n = std::get<1>(matrix_config);
+		const auto rand_range = std::get<2>(matrix_config);
 		std::uniform_real_distribution<float> dist(-rand_range, rand_range);
 
 
