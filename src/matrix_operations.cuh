@@ -57,6 +57,24 @@ __device__ inline void diff32x16_2w(
 }
 
 template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
+__device__ inline void diff32x16_2w(
+		half* const dst,
+		const float* const src_fp32, const half* const src_fp16,
+		const float correction_rescale,
+		const unsigned tid
+		) {
+	const auto unique_id = tid & 0x3f;
+	const auto y = unique_id & 0x1f;
+	const auto lane = unique_id >> 5;
+	for(std::size_t x = lane; x < FRAGMENT_DIM_N; x += 2) {
+		const auto shared_index = FRAGMENT_DIM_M * x + y;
+
+		dst[shared_index] = cutf::type::cast<half>((src_fp32[shared_index] - cutf::type::cast<float>(src_fp16[shared_index])) * correction_rescale);
+	}
+	__syncthreads();
+}
+
+template <std::size_t FRAGMENT_DIM_M = 32, std::size_t FRAGMENT_DIM_N = 16>
 __device__ inline void diff32x16_1w(
 		half* const dst,
 		const float* const src_fp32, const half* const src_fp16,
