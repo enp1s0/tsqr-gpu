@@ -62,20 +62,20 @@ template <class INPUT_T>
 __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	float tmp;
+	double tmp;
 
 	if(warp_id < size) {
-		tmp = cutf::type::cast<float>(ptr[warp_id]);
+		tmp = cutf::type::cast<double>(ptr[warp_id]);
 		tmp = tmp * tmp;
 	} else {
-		tmp = 0.0f;
+		tmp = 0.0;
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
 		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
 	}
 
-	return tmp;
+	return cutf::type::cast<float>(tmp);
 }
 
 template <class DST_T, class SRC_T>
