@@ -448,6 +448,8 @@ void mtk::test_qr::cusolver_speed(const std::vector<std::tuple<std::size_t, std:
 	constexpr std::size_t block_size = 256;
 	std::mt19937 mt(std::random_device{}());
 
+	print_speed_head();
+
 	auto get_qr_complexity = [](const std::size_t m, const std::size_t n) {
 		return 2 * n * (m * m * n + m * m * m);
 	};
