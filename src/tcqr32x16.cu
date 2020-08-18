@@ -62,20 +62,21 @@ template <class INPUT_T>
 __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	float tmp;
+	double tmp_d;
 
+	// compute reduction in double precision because information loss is likely to occure in this computation.
 	if(warp_id < size) {
-		tmp = cutf::type::cast<float>(ptr[warp_id]);
-		tmp = tmp * tmp;
+		const float tmp_f = cutf::type::cast<float>(ptr[warp_id]);
+		tmp_d = tmp_f * tmp_f;
 	} else {
-		tmp = 0.0f;
+		tmp_d = 0.0;
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
-		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
+		tmp_d += __shfl_xor_sync(0xffffffff, tmp_d, mask);
 	}
 
-	return tmp;
+	return cutf::type::cast<float>(tmp_d);
 }
 
 template <class DST_T, class SRC_T>
