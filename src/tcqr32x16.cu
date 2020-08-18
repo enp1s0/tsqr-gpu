@@ -64,6 +64,7 @@ __device__ float get_norm2_32(
 		unsigned warp_id) {
 	double tmp_d;
 
+	// compute reduction in double precision because information loss is likely to occure in this computation.
 	if(warp_id < size) {
 		const float tmp_f = cutf::type::cast<float>(ptr[warp_id]);
 		tmp_d = tmp_f * tmp_f;
