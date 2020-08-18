@@ -63,10 +63,9 @@ __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
 	double tmp_d;
-	float tmp_f;
 
 	if(warp_id < size) {
-		tmp_f = cutf::type::cast<double>(ptr[warp_id]);
+		const float tmp_f = cutf::type::cast<float>(ptr[warp_id]);
 		tmp_d = tmp_f * tmp_f;
 	} else {
 		tmp_d = 0.0;
