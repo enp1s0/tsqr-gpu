@@ -16,11 +16,11 @@ data_list = [
         ]
 
 def get_color(d):
-    if 'default' in d:
+    if 'fp32' in d:
         return '#51318f'
-    if 'tcqr' in d:
+    if 'fp16' in d:
         return '#006c3a'
-    if 'all' in d:
+    if 'tf32' in d:
         return '#ed6c00'
     if 'mixed' in d:
         return '#333132'
@@ -37,18 +37,18 @@ def get_linestyle(d):
 
 fig, ((ax0, ax1)) = plt.subplots(1, 2, figsize=(6, 3))
 
-def draw_graph(ax, y_label):
+def draw_time_graph(ax, y_label):
     ax.grid()
     ax.set_xlabel('Matrix size $m \\times 16$ : $m$')
-    ax.set_xlim([2**9, 2**25])
+    ax.set_xlim([2**9, 2**26])
     ax.set_xscale('log', basex=2)
     ax.set_ylabel(y_label)
-    ax.set_ylim(1e-6, 6.1e-2)
+    ax.set_ylim(1e-4, 6.1e1)
     ax.set_yscale('log')
-    ax.set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2])
+    ax.set_yticks([1e-4, 1e-3, 1e-2, 1e-1, 1, 10])
     ax.set_facecolor('white')
 
-    background = patches.Rectangle(xy=(2**9, 1e-6), width=2**25, height=1, fc='#ffffff', fill=True)
+    background = patches.Rectangle(xy=(2**9, 1e-6), width=2**26, height=1, fc='#ffffff', fill=True)
     ax.add_patch(background)
 
     df = pd.read_csv('performance.csv')
@@ -61,8 +61,30 @@ def draw_graph(ax, y_label):
         label_list += [d]
     return line_list, label_list
 
-draw_graph(ax0, 'elapsed_time')
-line_list, label_list = draw_graph(ax1, 'performance')
+def draw_performance_graph(ax, y_label):
+    ax.grid()
+    ax.set_xlabel('Matrix size $m \\times 16$ : $m$')
+    ax.set_xlim([2**9, 2**26])
+    ax.set_xscale('log', basex=2)
+    ax.set_ylabel(y_label)
+    ax.set_ylim(0, 16)
+    ax.set_facecolor('white')
+
+    background = patches.Rectangle(xy=(2**9, 1e-6), width=2**26, height=1, fc='#ffffff', fill=True)
+    ax.add_patch(background)
+
+    df = pd.read_csv('performance.csv')
+    line_list = []
+    label_list = []
+    for d in data_list:
+        data = df.query("compute_mode=='" + d + "'")
+        l = ax.plot(data['m'], data[y_label], linewidth=2, marker='*', markersize=4, color=get_color(d), linestyle=get_linestyle(d))
+        line_list += [l]
+        label_list += [d]
+    return line_list, label_list
+
+draw_time_graph(ax0, 'elapsed_time')
+line_list, label_list = draw_performance_graph(ax1, 'tflops')
 
 fig.legend(line_list,
         labels=label_list,
