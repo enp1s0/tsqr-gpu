@@ -40,7 +40,7 @@ fig, ((ax0, ax1)) = plt.subplots(1, 2, figsize=(6, 3))
 def draw_graph(ax, matrix_label):
     ax.grid()
     ax.set_xlabel('Matrix size $m \\times 16$ : $m$')
-    ax.set_xlim([2**9, 2**24])
+    ax.set_xlim([2**9, 2**25])
     ax.set_xscale('log', basex=2)
     ax.set_ylabel('residual of ' + matrix_label)
     ax.set_ylim(1e-6, 6.1e-2)
@@ -48,7 +48,7 @@ def draw_graph(ax, matrix_label):
     ax.set_yticks([1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2])
     ax.set_facecolor('white')
 
-    background = patches.Rectangle(xy=(2**9, 1e-6), width=2**24, height=1, fc='#ffffff', fill=True)
+    background = patches.Rectangle(xy=(2**9, 1e-6), width=2**25, height=1, fc='#ffffff', fill=True)
     ax.add_patch(background)
 
     df = pd.read_csv('accuracy.csv')
