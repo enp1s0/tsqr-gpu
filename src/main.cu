@@ -73,7 +73,7 @@ void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>
 
 int main() {
 	mtk::runtime_status::git::print_info(true);
-	mtk::runtime_status::cuda::print_info();
+	mtk::runtime_status::cuda::print_info(true);
 	{
 		std::vector<std::tuple<std::size_t, std::size_t, float>> test_matrix_config_list;
 		for (std::size_t m = 10; m <= 15; m++) {
