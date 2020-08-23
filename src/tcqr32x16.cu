@@ -65,20 +65,21 @@ template <class INPUT_T>
 __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	float tmp;
+	double tmp_d;
 
+	// compute reduction in double precision because information loss is likely to occure in this computation.
 	if(warp_id < size) {
-		tmp = cutf::type::cast<float>(ptr[warp_id]);
-		tmp = tmp * tmp;
+		const float tmp_f = cutf::type::cast<float>(ptr[warp_id]);
+		tmp_d = tmp_f * tmp_f;
 	} else {
-		tmp = 0.0f;
+		tmp_d = 0.0;
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
-		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
+		tmp_d += __shfl_xor_sync(0xffffffff, tmp_d, mask);
 	}
 
-	return tmp;
+	return cutf::type::cast<float>(tmp_d);
 }
 
 template <class DST_T, class SRC_T>
@@ -503,6 +504,12 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 		) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
+
+	// NOTE:
+	// Multipying 1.0f is ignored by nvcc.
+	// Thus if `correction_rescale` is 1.0f, the computating time is almost same as no-rescaling code.
+	constexpr float correction_rescale = 1.0f;
+
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 16, half, nvcuda::wmma::col_major> h16_0_frag, h16_1_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 16, half, nvcuda::wmma::col_major> r16_0_frag, r16_1_frag;
@@ -525,11 +532,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 				const auto v0_f32 = h_ptr[FRAGMENT_DIM_N * lane + mem];
 				const auto v0_f16 = cutf::type::cast<half>(v0_f32);
 				h16_0_frag.x[frag_index] = v0_f16;
-				h16_0_diff_frag.x[frag_index] = cutf::type::cast<half>(v0_f32 - cutf::type::cast<float>(v0_f16));
+				h16_0_diff_frag.x[frag_index] = cutf::type::cast<half>((v0_f32 - cutf::type::cast<float>(v0_f16)) * correction_rescale);
 				const auto v1_f32 = h_ptr[FRAGMENT_DIM_N * lane + mem + FRAGMENT_DIM_N * FRAGMENT_DIM_M];
 				const auto v1_f16 = cutf::type::cast<half>(v1_f32);
 				h16_1_frag.x[frag_index] = v1_f16;
-				h16_1_diff_frag.x[frag_index] = cutf::type::cast<half>(v1_f32 - cutf::type::cast<float>(v1_f16));
+				h16_1_diff_frag.x[frag_index] = cutf::type::cast<half>((v1_f32 - cutf::type::cast<float>(v1_f16)) * correction_rescale);
 			});
 
 
@@ -543,7 +550,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	// make q diff
 	__syncthreads();
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr, q16_ptr, correction_rescale, unique_id);
 	// diff mma
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 #ifdef THREE_TERMS_CORRECTION
@@ -557,6 +564,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 #endif
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_diff_frag, q16_1_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_diff_frag, q32_0_frag);
+
+	for (unsigned i = 0; i < q32_0_frag.num_elements; i++) {
+		q32_0_frag.x[i] *= 1.0f / correction_rescale;
+	}
+
 	// mma
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_0_frag, q16_0_frag, q32_0_frag);
 	nvcuda::wmma::mma_sync(q32_0_frag, h16_1_frag, q16_1_frag, q32_0_frag);
@@ -573,7 +585,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::load_matrix_sync(q16_1_frag, q16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load q diff
-	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(q16_ptr, q_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q16_ptr, correction_rescale, unique_id);
 	nvcuda::wmma::load_matrix_sync(q16_0_diff_frag, q16_ptr, FRAGMENT_DIM_M);
 	// diff mma
 #ifdef THREE_TERMS_CORRECTION
@@ -588,6 +600,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_diff_frag, q16_1_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_diff_frag, q32_1_frag);
 	// mma
+
+	for (unsigned i = 0; i < q32_1_frag.num_elements; i++) {
+		q32_1_frag.x[i] *= 1.0f / correction_rescale;
+	}
+
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_0_frag, q16_0_frag, q32_1_frag);
 	nvcuda::wmma::mma_sync(q32_1_frag, h16_1_frag, q16_1_frag, q32_1_frag);
 	nvcuda::wmma::store_matrix_sync(q_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, q32_1_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
@@ -604,7 +621,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::load_matrix_sync(r16_1_frag, r16_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 	__syncthreads();
 	// load r diff
-	mtk::matrix_operation::diff32x16_2w(r16_ptr, r_ptr, r16_ptr, unique_id);
+	mtk::matrix_operation::diff32x16_2w(r16_ptr, r_ptr, r16_ptr, correction_rescale, unique_id);
 	__syncthreads();
 	nvcuda::wmma::load_matrix_sync(r16_0_diff_frag, r16_ptr, FRAGMENT_DIM_M);
 	// diff mma
@@ -620,6 +637,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::fp32_tc_cor, float, float, fl
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_diff_frag, r16_1_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_diff_frag, r32_frag);
 	// mma
+
+	for (unsigned i = 0; i < r32_frag.num_elements; i++) {
+		r32_frag.x[i] *= 1.0f / correction_rescale;
+	}
+
 	nvcuda::wmma::mma_sync(r32_frag, h16_0_frag, r16_0_frag, r32_frag);
 	nvcuda::wmma::mma_sync(r32_frag, h16_1_frag, r16_1_frag, r32_frag);
 	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, r32_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
