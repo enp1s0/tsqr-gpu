@@ -26,6 +26,11 @@ template <>
 unsigned get_exponent_bitstring<half>(const half v) {
 	return (*reinterpret_cast<const uint16_t*>(&v) >> 10) & 0x1f;
 }
+
+template <class T>
+constexpr unsigned get_exponent_size();
+template <> constexpr unsigned get_exponent_size<float>() {return 8;}
+template <> constexpr unsigned get_exponent_size<half >() {return 5;}
 }
 
 template <class T>
