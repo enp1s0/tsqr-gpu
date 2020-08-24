@@ -185,3 +185,6 @@ void mtk::validation::exponent_distribution(const T* const ptr, const std::size_
 		std::printf("%u,%s,%u\n", i, csv_item_name, exponent_counter[i]);
 	}
 }
+
+template void mtk::validation::exponent_distribution<half >(const half * const ptr, const std::size_t size, const char* const name, cudaStream_t stream);
+template void mtk::validation::exponent_distribution<float>(const float* const ptr, const std::size_t size, const char* const name, cudaStream_t stream);
