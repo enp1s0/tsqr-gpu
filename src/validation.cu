@@ -29,8 +29,8 @@ unsigned get_exponent_bitstring<half>(const half v) {
 
 template <class T>
 constexpr unsigned get_exponent_size();
-template <> constexpr unsigned get_exponent_size<float>() {return 8;}
-template <> constexpr unsigned get_exponent_size<half >() {return 5;}
+template <> constexpr unsigned get_exponent_size<float>() {return 1u << 8;}
+template <> constexpr unsigned get_exponent_size<half >() {return 1u << 5;}
 }
 
 template <class T>
