@@ -1,4 +1,5 @@
 #include <cmath>
+#include <vector>
 #include <cutf/memory.hpp>
 #include <cutf/cublas.hpp>
 #include <cutf/type.hpp>
@@ -151,3 +152,23 @@ void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t 
 
 template void mtk::validation::multi_orthogonality<half >(const half * const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
 template void mtk::validation::multi_orthogonality<float>(const float* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
+
+template <class T>
+void mtk::validation::exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream stream = 0) {
+	auto h_mem = cutf::memory::get_host_unique_ptr<T>(size);
+	CUTF_CHECK_ERROR(cutf::memory::copy_async(h_mem.get(), ptr, size, stream));
+	CUTF_CHECK_ERROR(cudaStreamSynchronize(stream));
+
+	constexpr auto exponent_size = get_exponent_size<T>();
+	std::vector<unsigned> exponent_counter(exponent_size);
+	for (auto& v : exponent_counter) v = 0;
+
+	for (std::size_t i = 0; i < size; i++) {
+		const auto exponent = get_exponent_bitstring(h_mem.get()[i]);
+		exponent_counter[exponent]++;
+	}
+
+	for (unsigned i = 0; i < exponent_size; i++) {
+		std::printf("%u,%s,%u\n", i, csv_item_name, exponent_counter[i]);
+	}
+}
