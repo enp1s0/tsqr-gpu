@@ -6,12 +6,25 @@
 #include "matrix_copy.cuh"
 #include "utils.hpp"
 
+namespace {
 template<class T>
 __global__ void convert_2d(double* const dst, const T* const src, const std::size_t size){
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if(tid >= size) return;
 
 	dst[tid] = cutf::type::cast<T>(src[tid]);
+}
+
+template <class T>
+unsigned get_exponent_bitstring(const T v);
+template <>
+unsigned get_exponent_bitstring<float>(const float v) {
+	return (*reinterpret_cast<const uint32_t*>(&v) >> 23) & 0xff;
+}
+template <>
+unsigned get_exponent_bitstring<half>(const half v) {
+	return (*reinterpret_cast<const uint16_t*>(&v) >> 10) & 0x1f;
+}
 }
 
 template <class T>
