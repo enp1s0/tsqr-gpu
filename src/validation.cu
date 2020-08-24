@@ -20,11 +20,19 @@ template <class T>
 unsigned get_exponent_bitstring(const T v);
 template <>
 unsigned get_exponent_bitstring<float>(const float v) {
-	return (*reinterpret_cast<const uint32_t*>(&v) >> 23) & 0xff;
+	union {
+		float v;
+		uint32_t bs;
+	} conv{v};
+	return conv.bs;
 }
 template <>
 unsigned get_exponent_bitstring<half>(const half v) {
-	return (*reinterpret_cast<const uint16_t*>(&v) >> 10) & 0x1f;
+	union {
+		half v;
+		uint16_t bs;
+	} conv{v};
+	return conv.bs;
 }
 
 template <class T>
