@@ -41,17 +41,20 @@ def get_linestyle(d):
 
 df = pd.read_csv("data.csv", encoding="UTF-8")
 
-fig, ax = plt.subplots(max_k + 1, 1, figsize=(10, 1.7 * (max_k + 1)))
+fig, ax = plt.subplots(max_k + 1, 1, figsize=(8, 1.7 * (max_k + 1)))
 
 for k in range(0, max_k + 1):
     for d in data_list:
         data = df.query("k=='" + str(k) + "'&mode=='" + d + "'")
         ax[max_k - k].set_xlim(-130, 1)
-        ax[max_k - k].set_ylim(-5, 100)
+        ax[max_k - k].set_ylim(-5, 75)
         ax[max_k - k].set_ylabel("prob[%]")
-        ax[max_k - k].set_yticks([0, 25, 50, 75, 100])
+        ax[max_k - k].set_yticks([0, 25, 50, 75])
         ax[max_k - k].grid()
-        ax[max_k - k].plot(data['e'] - 127, data['prob'], label='bQR No.' + str(k) + " (" + d + ")", linestyle=get_linestyle(d), color=get_color(d))
-        ax[max_k - k].legend(ncol=2)
+        ax[max_k - k].plot(data['e'] - 127, data['prob'], label=d, linestyle=get_linestyle(d), color=get_color(d))
+        ax[max_k - k].legend(ncol=3)
+        ax[max_k - k].text(-125, 60, "bQR k=" + str(k))
+        ax[max_k - k].vlines(-15, -10, 75, colors='r')
+        ax[max_k - k].text(-35, 30, "FP16 border", color='r')
 
-plt.savefig("exponent_distribution.pdf", bbox_inches="tight", transparent=True)
+plt.savefig("exponent_distribution.png", bbox_inches="tight", transparent=True)
