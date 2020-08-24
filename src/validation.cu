@@ -167,7 +167,7 @@ template void mtk::validation::multi_orthogonality<half >(const half * const ptr
 template void mtk::validation::multi_orthogonality<float>(const float* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
 
 template <class T>
-void mtk::validation::exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream stream = 0) {
+void mtk::validation::exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream_t stream) {
 	auto h_mem = cutf::memory::get_host_unique_ptr<T>(size);
 	CUTF_CHECK_ERROR(cutf::memory::copy_async(h_mem.get(), ptr, size, stream));
 	CUTF_CHECK_ERROR(cudaStreamSynchronize(stream));

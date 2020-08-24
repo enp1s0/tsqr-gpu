@@ -11,7 +11,7 @@ void check_submatrix_orthogonality(const T* const matrix, const std::size_t m, c
 template <class T>
 void multi_orthogonality(const T* const ptr, const std::size_t m, const std::size_t n, const std::size_t ldm, const std::size_t size, cudaStream_t stream = 0);
 template <class T>
-void exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream stream = 0);
+void exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream_t stream = 0);
 } // namespace validation
 } // namespace mtk
 
