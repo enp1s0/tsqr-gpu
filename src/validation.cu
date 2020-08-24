@@ -173,12 +173,15 @@ void mtk::validation::exponent_distribution(const T* const ptr, const std::size_
 	CUTF_CHECK_ERROR(cudaStreamSynchronize(stream));
 
 	constexpr auto exponent_size = get_exponent_size<T>();
-	std::vector<unsigned> exponent_counter(exponent_size);
-	for (auto& v : exponent_counter) v = 0;
+	std::unique_ptr<unsigned[]> exponent_counter(new unsigned[exponent_size]);
+
+	for (unsigned i = 0; i < exponent_size; i++) {
+		exponent_counter.get()[i] = 0;
+	}
 
 	for (std::size_t i = 0; i < size; i++) {
 		const auto exponent = get_exponent_bitstring(h_mem.get()[i]);
-		exponent_counter[exponent]++;
+		exponent_counter.get()[exponent]++;
 	}
 
 	for (unsigned i = 0; i < exponent_size; i++) {
