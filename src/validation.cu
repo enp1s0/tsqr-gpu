@@ -185,7 +185,7 @@ void mtk::validation::exponent_distribution(const T* const ptr, const std::size_
 	}
 
 	for (unsigned i = 0; i < exponent_size; i++) {
-		std::printf("%u,%s,%u\n", i, csv_item_name, exponent_counter[i]);
+		std::printf("%u,%s,%u,%e\n", i, csv_item_name, exponent_counter[i], exponent_counter[i] / static_cast<double>(size) * 100);
 	}
 }
 
