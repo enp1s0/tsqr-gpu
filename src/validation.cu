@@ -24,7 +24,7 @@ unsigned get_exponent_bitstring<float>(const float v) {
 		float v;
 		uint32_t bs;
 	} conv{v};
-	return conv.bs;
+	return (conv.bs >> 23) & 0xff;
 }
 template <>
 unsigned get_exponent_bitstring<half>(const half v) {
@@ -32,7 +32,7 @@ unsigned get_exponent_bitstring<half>(const half v) {
 		half v;
 		uint16_t bs;
 	} conv{v};
-	return conv.bs;
+	return (conv.bs >> 10) & 0x1f;
 }
 
 template <class T>
