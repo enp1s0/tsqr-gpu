@@ -1,5 +1,4 @@
 #include <cmath>
-#include <vector>
 #include <cutf/memory.hpp>
 #include <cutf/cublas.hpp>
 #include <cutf/type.hpp>
