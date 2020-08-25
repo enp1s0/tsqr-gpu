@@ -83,6 +83,18 @@ TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu  );
 TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_nocor_emu);
 TSQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor_emu );
 
+template <mtk::tsqr::compute_mode>
+std::string get_tsqr_compute_mode_string();
+#define TSQR_GET_TSQR_COMPUTE_MODE_STRING(mode) template<> std::string get_tsqr_compute_mode_string<mtk::tsqr::compute_mode::mode>() {return #mode;}
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp16_notc        );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_notc        );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp16_tc_nocor    );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_tc_nocor    );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_tc_cor      );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_nocor_emu);
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_cor_emu  );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(mixed_tc_cor_emu );
+
 template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
 		DST_T* const dst_ptr,
