@@ -63,4 +63,4 @@ for k in range(0, max_k + 1):
         ax[max_k - k].vlines(15, -10, 75, colors='r')
         ax[max_k - k].text(-18, 38, "FP16 border", color='r', ha='right')
 
-plt.savefig("exponent_distribution.png", bbox_inches="tight", transparent=True)
+plt.savefig("exponent_distribution.pdf", bbox_inches="tight", transparent=True)
