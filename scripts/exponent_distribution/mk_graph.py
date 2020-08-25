@@ -5,8 +5,11 @@ import pandas as pd
 import os
 import seaborn as sns
 
-k_offset = 5
-max_k = 23 - k_offset
+# max exponent (horizontal axis)
+max_e = 5
+
+# log2(m)
+m_log = 23
 
 data_list = [
         'fp16_notc',
@@ -43,10 +46,12 @@ df = pd.read_csv("data.csv", encoding="UTF-8")
 
 fig, ax = plt.subplots(max_k + 1, 1, figsize=(8, 1.7 * (max_k + 1)))
 
+k_offset = 5
+max_k = m_log - k_offset
 for k in range(0, max_k + 1):
     for d in data_list:
         data = df.query("k=='" + str(k) + "'&mode=='" + d + "'")
-        ax[max_k - k].set_xlim(-130, 1)
+        ax[max_k - k].set_xlim(-130, max_e)
         ax[max_k - k].set_ylim(-5, 75)
         ax[max_k - k].set_ylabel("prob[%]")
         ax[max_k - k].set_yticks([0, 25, 50, 75])
