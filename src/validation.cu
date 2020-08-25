@@ -166,7 +166,7 @@ template void mtk::validation::multi_orthogonality<half >(const half * const ptr
 template void mtk::validation::multi_orthogonality<float>(const float* const ptr, const std::size_t ldm, const std::size_t m, const std::size_t n, const std::size_t size, cudaStream_t stream);
 
 template <class T>
-void mtk::validation::exponent_distribution(const T* const ptr, const std::size_t size, const char* const csv_item_name, cudaStream_t stream) {
+void mtk::validation::exponent_distribution(const T* const ptr, const std::size_t size, const char* const compute_mode_str, const char* const csv_item_name, cudaStream_t stream) {
 	auto h_mem = cutf::memory::get_host_unique_ptr<T>(size);
 	CUTF_CHECK_ERROR(cutf::memory::copy_async(h_mem.get(), ptr, size, stream));
 	CUTF_CHECK_ERROR(cudaStreamSynchronize(stream));
@@ -186,9 +186,9 @@ void mtk::validation::exponent_distribution(const T* const ptr, const std::size_
 	// csv header
 	// mode,e,k,count,prob
 	for (unsigned i = 0; i < exponent_size; i++) {
-		std::printf("%u,%s,%u,%e\n", i, csv_item_name, exponent_counter[i], exponent_counter[i] / static_cast<double>(size) * 100);
+		std::printf("%s,%u,%s,%u,%e\n", compute_mode_str, i, csv_item_name, exponent_counter[i], exponent_counter[i] / static_cast<double>(size) * 100);
 	}
 }
 
-template void mtk::validation::exponent_distribution<half >(const half * const ptr, const std::size_t size, const char* const name, cudaStream_t stream);
-template void mtk::validation::exponent_distribution<float>(const float* const ptr, const std::size_t size, const char* const name, cudaStream_t stream);
+template void mtk::validation::exponent_distribution<half >(const half * const ptr, const std::size_t size, const char* const compute_mode_str, const char* const name, cudaStream_t stream);
+template void mtk::validation::exponent_distribution<float>(const float* const ptr, const std::size_t size, const char* const compute_mode_str, const char* const name, cudaStream_t stream);
