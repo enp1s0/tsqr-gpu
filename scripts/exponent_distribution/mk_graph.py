@@ -6,7 +6,7 @@ import os
 import seaborn as sns
 
 # max exponent (horizontal axis)
-max_e = 5
+max_e = 130
 
 # log2(m)
 m_log = 23
@@ -42,12 +42,12 @@ def get_linestyle(d):
         return ':'
     return '--'
 
+k_offset = 5
+max_k = m_log - k_offset
+
 df = pd.read_csv("data.csv", encoding="UTF-8")
 
 fig, ax = plt.subplots(max_k + 1, 1, figsize=(8, 1.7 * (max_k + 1)))
-
-k_offset = 5
-max_k = m_log - k_offset
 for k in range(0, max_k + 1):
     for d in data_list:
         data = df.query("k=='" + str(k) + "'&mode=='" + d + "'")
@@ -60,6 +60,7 @@ for k in range(0, max_k + 1):
         ax[max_k - k].legend(ncol=3)
         ax[max_k - k].text(-125, 60, "bQR k=" + str(k))
         ax[max_k - k].vlines(-15, -10, 75, colors='r')
-        ax[max_k - k].text(-35, 30, "FP16 border", color='r')
+        ax[max_k - k].vlines(15, -10, 75, colors='r')
+        ax[max_k - k].text(-18, 38, "FP16 border", color='r', ha='right')
 
 plt.savefig("exponent_distribution.png", bbox_inches="tight", transparent=True)
