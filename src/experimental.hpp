@@ -3,8 +3,8 @@
 
 namespace mtk {
 namespace experimental {
-template <int min_exponent, class T>
-void force_exponent(T* const ptr, const std::size_t size, cudaStream_t cuda_stream = 0);
+template <class T>
+void force_exponent(T* const ptr, const int min_exponent, const std::size_t size, cudaStream_t cuda_stream = 0);
 } // namespace experimental
 } // namespace mtk
 #endif
