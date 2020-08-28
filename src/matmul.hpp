@@ -93,8 +93,8 @@ template <> __device__ inline void matmul_core_m16n16k32<mtk::matmul::compute_mo
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
 		for (unsigned k = 0; k < 32; k += 1) {
-			const auto a_v = cutf::experimental::cut_mantissa<mantissa_length>(a[y + ldm_a * k]);
-			const auto b_v = cutf::experimental::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::mantissa::cut_mantissa<mantissa_length>(a[y + ldm_a * k]);
+			const auto b_v = cutf::experimental::mantissa::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] = sum_ab;
@@ -195,8 +195,8 @@ template <> __device__ inline void matmul_core_m16n16k16<mtk::matmul::compute_mo
 		const auto x = i + lane;
 		float sum_ab = 0.0f;
 		for(unsigned k = 0; k < 16; k += 1){
-			const auto a_v = cutf::experimental::cut_mantissa<mantissa_length>(tmp_a[k]);
-			const auto b_v = cutf::experimental::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
+			const auto a_v = cutf::experimental::mantissa::cut_mantissa<mantissa_length>(tmp_a[k]);
+			const auto b_v = cutf::experimental::mantissa::cut_mantissa<mantissa_length>(b[x * ldm_b + k]);
 			sum_ab = fmaf(a_v, b_v, sum_ab);
 		}
 		tmp_c[i / 2] = sum_ab;
