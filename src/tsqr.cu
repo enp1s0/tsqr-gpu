@@ -734,6 +734,7 @@ void tsqr16_geq32(
 			batch_size, d_sub_m_list,
 			cuda_stream
 			);
+	//mtk::validation::exponent_distribution(working_q_ptr, m * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(batch_size_log2).c_str(), cuda_stream);
 	cudaStreamSynchronize(cuda_stream);
 
 	// Rest QR Factorization, whose matrix sizes are n x n
@@ -767,6 +768,7 @@ void tsqr16_geq32(
 				local_batch_size, d_sub_m_list,
 				cuda_stream
 				);
+		//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * local_batch_size * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(k).c_str(), cuda_stream);
 
 		debug_func([]() {CUTF_CHECK_ERROR(cudaGetLastError());});
 
@@ -792,6 +794,7 @@ void tsqr16_geq32(
 			n,
 			cuda_stream
 			);
+	//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(0).c_str(), cuda_stream);
 
 	cudaStreamSynchronize(cuda_stream);
 
