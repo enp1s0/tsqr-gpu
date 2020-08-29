@@ -7,7 +7,7 @@ __global__ void min_exponent_kernel(T* const ptr, const int min_exponent, const 
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	if (tid >= size) return;
 
-	ptr[tid] = cutf::experimental::exponent::force_underflow<T>(ptr[tid], min_exponent);
+	ptr[tid] = cutf::experimental::exponent::min_exponent<T>(ptr[tid], min_exponent);
 }
 } // noname namespace
 
