@@ -796,7 +796,7 @@ void tsqr16_geq32(
 	cudaStreamSynchronize(cuda_stream);
 
 	// experimental force underflow
-	// mtk::experimental::force_exponent<typename mtk::tsqr::get_working_q_type<mode>::type>(working_q_ptr, -15, mtk::tsqr::get_working_q_size(m, n), cuda_stream);
+	// mtk::experimental::min_exponent<typename mtk::tsqr::get_working_q_type<mode>::type>(working_q_ptr, -16, mtk::tsqr::get_working_q_size(m, n), cuda_stream);
 
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
