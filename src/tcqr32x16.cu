@@ -66,21 +66,18 @@ __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
 #ifdef NORM2_IN_DP
-	double tmp;
+	using compute_t = double;
 #else
-	float tmp;
+	using compute_t = float;
 #endif
+	compute_t tmp;
 
 	// compute reduction in double precision because information loss is likely to occure in this computation.
 	if(warp_id < size) {
-#ifdef NORM2_IN_DP
-		const auto tmp_r = cutf::type::cast<double>(ptr[warp_id]);
-#else
-		const auto tmp_r = cutf::type::cast<float>(ptr[warp_id]);
-#endif
+		const auto tmp_r = cutf::type::cast<compute_t>(ptr[warp_id]);
 		tmp = tmp_r * tmp_r;
 	} else {
-		tmp = 0.0;
+		tmp = cutf::type::cast<compute_t>(0);
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
