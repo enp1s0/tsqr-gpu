@@ -117,9 +117,9 @@ void mtk::validation::check_orthogonality16_each(double &diag, double &non_diag,
 		const auto tmp = h_qqt.get()[i];
 
 		if (i % (n + 1) == 0) {
-			diag += tmp * tmp;
+			diag_2 += tmp * tmp;
 		} else {
-			non_diag += tmp * tmp;
+			non_diag_2 += tmp * tmp;
 		}
 	}
 	diag = std::sqrt(diag_2);
