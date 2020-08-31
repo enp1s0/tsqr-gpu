@@ -20,6 +20,9 @@
 // Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 
+// `get_norm2_32` computes norm of a vector in FP32 by default and FP64 if `NORM2_IN_DP` is defined.
+//#define NORM2_IN_DP
+
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
 
@@ -62,21 +65,26 @@ template <class INPUT_T>
 __device__ float get_norm2_32(
 		INPUT_T* const ptr, const unsigned size,
 		unsigned warp_id) {
-	double tmp_d;
+#ifdef NORM2_IN_DP
+	using compute_t = double;
+#else
+	using compute_t = float;
+#endif
+	compute_t tmp;
 
 	// compute reduction in double precision because information loss is likely to occure in this computation.
 	if(warp_id < size) {
-		const float tmp_f = cutf::type::cast<float>(ptr[warp_id]);
-		tmp_d = tmp_f * tmp_f;
+		const auto tmp_r = cutf::type::cast<compute_t>(ptr[warp_id]);
+		tmp = tmp_r * tmp_r;
 	} else {
-		tmp_d = 0.0;
+		tmp = cutf::type::cast<compute_t>(0);
 	}
 
 	for(auto mask = (warp_size >> 1); mask > 0; mask >>= 1) {
-		tmp_d += __shfl_xor_sync(0xffffffff, tmp_d, mask);
+		tmp += __shfl_xor_sync(0xffffffff, tmp, mask);
 	}
 
-	return cutf::type::cast<float>(tmp_d);
+	return cutf::type::cast<float>(tmp);
 }
 
 template <class DST_T, class SRC_T>
