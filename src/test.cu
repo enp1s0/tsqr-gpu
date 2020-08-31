@@ -14,7 +14,7 @@
 #include "validation.hpp"
 
 // if `EVALUATE_ORTHOGONALITY_DETAIL` is defined, the orthogonality is compute separately: diag and non-diag
-#define EVALUATE_ORTHOGONALITY_DETAIL
+// #define EVALUATE_ORTHOGONALITY_DETAIL
 
 namespace {
 template <class T> std::string get_type_name();
