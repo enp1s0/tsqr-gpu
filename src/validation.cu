@@ -80,8 +80,8 @@ double mtk::validation::check_orthogonality16(
 }
 
 template double mtk::validation::check_orthogonality16<double>(const double* const, const std::size_t, const unsigned);
-template double mtk::validation::check_orthogonality16<float>(const float* const, const std::size_t, const unsigned);
-template double mtk::validation::check_orthogonality16<half>(const half* const, const std::size_t, const unsigned);
+template double mtk::validation::check_orthogonality16<float >(const float * const, const std::size_t, const unsigned);
+template double mtk::validation::check_orthogonality16<half  >(const half  * const, const std::size_t, const unsigned);
 
 template <class T>
 void mtk::validation::check_orthogonality16_each(double &diag, double &non_diag, const T* const matrix, const std::size_t m, const unsigned n) {
@@ -181,8 +181,8 @@ void mtk::validation::check_submatrix_orthogonality(
 }
 
 template void mtk::validation::check_submatrix_orthogonality<double>(const double* const, const std::size_t, const unsigned);
-template void mtk::validation::check_submatrix_orthogonality<float>(const float* const, const std::size_t, const unsigned);
-template void mtk::validation::check_submatrix_orthogonality<half>(const half* const, const std::size_t, const unsigned);
+template void mtk::validation::check_submatrix_orthogonality<float >(const float * const, const std::size_t, const unsigned);
+template void mtk::validation::check_submatrix_orthogonality<half  >(const half  * const, const std::size_t, const unsigned);
 
 template <class T>
 void mtk::validation::multi_orthogonality(const T* const ptr, const std::size_t m, const std::size_t n, const std::size_t ldm, const std::size_t size, cudaStream_t stream) {
