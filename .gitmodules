@@ -1,3 +1,12 @@
 [submodule "src/wmma_extension"]
 	path = src/wmma_extension
 	url = https://github.com/enp1s0/wmma_extension
+[submodule "src/cutf"]
+	path = src/cutf
+	url = https://github.com/enp1s0/cutf
+[submodule "src/gemm_core"]
+	path = src/gemm_core
+	url = https://github.com/enp1s0/gemm_core_cuh
+[submodule "src/runtime_status"]
+	path = src/runtime_status
+	url = https://github.com/enp1s0/runtime_status
