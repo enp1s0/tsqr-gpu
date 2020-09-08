@@ -78,5 +78,6 @@ nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib`
 
 ## Dependencies
 - cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
-- gemm_core : [https://gitlab.momo86.net/mutsuki/gemm_core](https://gitlab.momo86.net/mutsuki/gemm_core)
-- wmma-extension : [https://gitlab.momo86.net/mutsuki/wmma-extension](https://gitlab.momo86.net/mutsuki/wmma-extension)
+- gemm_core : [https://github.com/enp1s0/gemm_core_cuh](https://github.com/enp1s0/gemm_core_cuh)
+- wmma-extension : [https://github.com/enp1s0/wmma_extension](https://github.com/enp1s0/wmma_extension)
+- runtime_status : [https://github.com/enp1s0/runtime_status](https://github.com/enp1s0/runtime_status)
