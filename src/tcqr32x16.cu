@@ -306,8 +306,8 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::row_major> ut_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> h_frag_0, h_frag_1, i_frag;
 
-	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
-	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_0, 0.0f);
+	nvcuda::wmma::fill_fragment(h_frag_1, 0.0f);
 
 	const auto alpha = 2.0f / norm2_u_1;
 	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
