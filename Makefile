@@ -1,5 +1,5 @@
 CXX=g++
-COMMONFLAGS=-std=c++14 -I./src/cutf -I./src/wmma-extension -I./src/runtime-status -DRS_GIT_BRANCH="\"$(shell git branch | grep '\*' | sed -e 's/.* //')\"" -DRS_GIT_COMMIT="\"$(shell git rev-parse HEAD)\""
+COMMONFLAGS=-std=c++14 -I./src/cutf -I./src/wmma_extension/include -I./src/runtime_status -DRS_GIT_BRANCH="\"$(shell git branch | grep '\*' | sed -e 's/.* //')\"" -DRS_GIT_COMMIT="\"$(shell git rev-parse HEAD)\""
 CXXFLAGS=-O3 -Wall -fopenmp
 NVCC=nvcc
 NVCCFLAGS=$(COMMONFLAGS) --compiler-bindir=$(CXX) -Xcompiler="$(CXXFLAGS)" -rdc=true --expt-relaxed-constexpr

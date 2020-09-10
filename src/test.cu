@@ -13,6 +13,9 @@
 #include "blockqr.hpp"
 #include "validation.hpp"
 
+// if `EVALUATE_ORTHOGONALITY_DETAIL` is defined, the orthogonality is compute separately: diag and non-diag
+// #define EVALUATE_ORTHOGONALITY_DETAIL
+
 namespace {
 template <class T> std::string get_type_name();
 template <> std::string get_type_name<double>() {return "double";}
@@ -46,7 +49,11 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_accuracy_head() {
+#ifndef EVALUATE_ORTHOGONALITY_DETAIL
 	std::cout << "m,n,rand_range,type,compute_mode,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance" << std::endl;
+#else
+	std::cout << "m,n,rand_range,type,compute_mode,reorthogonalization,residual,residual_variance,orthogonality,orthogonality_variance,orthogonality_diag,orthogonality_diag_variance,orthogonality_nondiag,orthogonality_nondiag_variance" << std::endl;
+#endif
 	std::cout.flush();
 }
 
@@ -103,9 +110,12 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			auto h_q = cutf::memory::get_host_unique_ptr<T>(m * n);
 			auto h_r = cutf::memory::get_host_unique_ptr<T>(n * n);
 
-			std::vector<float> residual_list;
-			std::vector<float> orthogonality_list;
-
+			std::vector<double> residual_list;
+			std::vector<double> orthogonality_list;
+#ifdef EVALUATE_ORTHOGONALITY_DETAIL
+			std::vector<double> orthogonality_diag_list;
+			std::vector<double> orthogonality_nondiag_list;
+#endif
 			for(std::size_t c = 0; c < C; c++) {
 				float norm_a = 0.0f;
 				for(std::size_t i = 0; i < m * n; i++) {
@@ -154,9 +164,16 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				}
 				residual_list.push_back(std::sqrt(norm_diff/norm_a));
 				orthogonality_list.push_back(mtk::validation::check_orthogonality16(d_q.get(), m, n));
+#ifdef EVALUATE_ORTHOGONALITY_DETAIL
+				double o_diag;
+				double o_nondiag;
+				mtk::validation::check_orthogonality16_each(o_diag, o_nondiag, d_q.get(), m, n);
+				orthogonality_diag_list.push_back(o_diag);
+				orthogonality_nondiag_list.push_back(o_nondiag);
+#endif
 			}
-			float residual = 0.0f;
-			float orthogonality = 0.0f;
+			double residual = 0.0;
+			double orthogonality = 0.0;
 			for(std::size_t c = 0; c < C; c++) {
 				residual += residual_list[c];
 				orthogonality += orthogonality_list[c];
@@ -164,14 +181,34 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 			residual /= C;
 			orthogonality /= C;
 
-			float residual_variance = 0.0f;
-			float orthogonality_variance = 0.0f;
+			double residual_variance = 0.0;
+			double orthogonality_variance = 0.0;
 			for(std::size_t c = 0; c < C; c++) {
 				residual_variance += (residual_list[c] - residual) * (residual_list[c] - residual);
 				orthogonality_variance += (orthogonality_list[c] - orthogonality) * (orthogonality_list[c] - orthogonality);
 			}
 			residual_variance = residual_variance / C;
 			orthogonality_variance = orthogonality_variance / C;
+
+#ifdef EVALUATE_ORTHOGONALITY_DETAIL
+			double orthogonality_diag = 0.0;
+			double orthogonality_nondiag = 0.0;
+			for(std::size_t c = 0; c < C; c++) {
+				orthogonality_diag += orthogonality_diag_list[c];
+				orthogonality_nondiag += orthogonality_nondiag_list[c];
+			}
+			orthogonality_diag /= C;
+			orthogonality_nondiag /= C;
+
+			double orthogonality_diag_variance = 0.0;
+			double orthogonality_nondiag_variance = 0.0;
+			for(std::size_t c = 0; c < C; c++) {
+				orthogonality_diag_variance += (orthogonality_diag_list[c] - orthogonality_diag) * (orthogonality_diag_list[c] - orthogonality_diag);
+				orthogonality_nondiag_variance += (orthogonality_nondiag_list[c] - orthogonality_nondiag) * (orthogonality_nondiag_list[c] - orthogonality_nondiag);
+			}
+			orthogonality_diag_variance = orthogonality_diag_variance / C;
+			orthogonality_nondiag_variance = orthogonality_nondiag_variance / C;
+#endif
 
 			std::cout << m << ","
 				<< n << ","
@@ -182,7 +219,12 @@ void mtk::test_qr::accuracy(const std::vector<std::tuple<std::size_t, std::size_
 				<< residual << ","
 				<< residual_variance << ","
 				<< orthogonality << ","
-				<< orthogonality_variance << std::endl;
+				<< orthogonality_variance
+#ifdef EVALUATE_ORTHOGONALITY_DETAIL
+				<< "," << orthogonality_diag << "," << orthogonality_diag_variance
+				<< "," << orthogonality_nondiag << "," << orthogonality_nondiag_variance
+#endif
+				<< std::endl;
 			std::cout.flush();
 		} catch (std::runtime_error& e) {
 			std::cerr<<e.what()<<std::endl;

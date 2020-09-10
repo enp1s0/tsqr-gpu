@@ -15,6 +15,7 @@
 #include "matrix_operations.cuh"
 #include "gemm_core/gemm_core.cuh"
 #include "matmul.hpp"
+#include "experimental.hpp"
 
 //#define DEBUG
 //#define DEBUG_INPUT_MATRIX_PRINT
@@ -82,6 +83,18 @@ TSQR_GET_MATMUL_COMPUTE_MODE(fp32_notc        );
 TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu  );
 TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_nocor_emu);
 TSQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor_emu );
+
+template <mtk::tsqr::compute_mode>
+std::string get_tsqr_compute_mode_string();
+#define TSQR_GET_TSQR_COMPUTE_MODE_STRING(mode) template<> std::string get_tsqr_compute_mode_string<mtk::tsqr::compute_mode::mode>() {return #mode;}
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp16_notc        );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_notc        );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp16_tc_nocor    );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_tc_nocor    );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_tc_cor      );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_nocor_emu);
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_cor_emu  );
+TSQR_GET_TSQR_COMPUTE_MODE_STRING(mixed_tc_cor_emu );
 
 template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
@@ -721,6 +734,7 @@ void tsqr16_geq32(
 			batch_size, d_sub_m_list,
 			cuda_stream
 			);
+	//mtk::validation::exponent_distribution(working_q_ptr, m * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(batch_size_log2).c_str(), cuda_stream);
 	cudaStreamSynchronize(cuda_stream);
 
 	// Rest QR Factorization, whose matrix sizes are n x n
@@ -754,6 +768,7 @@ void tsqr16_geq32(
 				local_batch_size, d_sub_m_list,
 				cuda_stream
 				);
+		//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * local_batch_size * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(k).c_str(), cuda_stream);
 
 		debug_func([]() {CUTF_CHECK_ERROR(cudaGetLastError());});
 
@@ -779,8 +794,12 @@ void tsqr16_geq32(
 			n,
 			cuda_stream
 			);
+	//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(0).c_str(), cuda_stream);
 
 	cudaStreamSynchronize(cuda_stream);
+
+	// experimental force underflow
+	// mtk::experimental::min_exponent<typename mtk::tsqr::get_working_q_type<mode>::type>(working_q_ptr, -16, mtk::tsqr::get_working_q_size(m, n), cuda_stream);
 
 	debug_func([]() {std::printf("%s : last Q\n", __func__);});
 #ifdef DEBUG_Q_MATRIX_PRINT
@@ -791,11 +810,11 @@ void tsqr16_geq32(
 	}
 #endif
 #ifdef DEBUG
-		{
-			auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_r_type<mode>::type>(n * n);
-			cutf::memory::copy(h_tmp.get(), r_ptr, n * n);
-			mtk::utils::print_matrix(h_tmp.get(), n, n, "R (result)");
-		}
+	{
+		auto h_tmp = cutf::memory::get_host_unique_ptr<typename mtk::tsqr::get_working_r_type<mode>::type>(n * n);
+		cutf::memory::copy(h_tmp.get(), r_ptr, n * n);
+		mtk::utils::print_matrix(h_tmp.get(), n, n, "R (result)");
+	}
 #endif
 
 #ifdef MEASURE_QR_TIME
