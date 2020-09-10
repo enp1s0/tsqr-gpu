@@ -269,6 +269,49 @@ __device__ void make_h<mtk::tcqr::compute_mode::fp32_tc_cor, float, float>(
 	}
 }
 
+
+template <>
+__device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
+		float* const h_ptr, const unsigned m,
+		float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	const auto lane = unique_id >> 5;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> u_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::row_major> ut_frag;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> h_frag_0, h_frag_1, i_frag;
+
+	nvcuda::wmma::fill_fragment(h_frag_0, cutf::type::cast<half>(0.0f));
+	nvcuda::wmma::fill_fragment(h_frag_1, cutf::type::cast<half>(0.0f));
+
+	const auto alpha = 2.0f / norm2_u_1;
+	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
+
+	mtk::wmma::make_identity_matrix(i_frag);
+
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
+	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
+
+	mtk::wmma::load_vector_sync(ut_frag, u_ptr + FRAGMENT_DIM_N);
+	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
+
+	if(lane == 0) {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = i_frag.x[i] - h_frag_0.x[i];
+			h_frag_1.x[i] = - h_frag_1.x[i];
+		}
+	} else {
+		for(unsigned i = 0; i < i_frag.num_elements; i++) {
+			h_frag_0.x[i] = - h_frag_0.x[i];
+			h_frag_1.x[i] = i_frag.x[i] - h_frag_1.x[i];
+		}
+	}
+
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+}
+
 template <>
 __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float>(
 		float* const h_ptr, const unsigned m,
