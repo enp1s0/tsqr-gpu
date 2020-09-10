@@ -292,6 +292,32 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor_emu, float, float>(
 	}
 }
 
+template <>
+__device__ void make_h<mtk::tcqr::compute_mode::mixed_tc_cor_emu, float, float>(
+		float* const h_ptr, const unsigned m,
+		float* const u_ptr, const float norm2_u_1,
+		const unsigned unique_id) {
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	const auto y = unique_id & 0x1f;
+	const auto lane = unique_id >> 5;
+	for(unsigned k = 0; k < FRAGMENT_DIM_M; k += 2) {
+		const auto x = k + lane;
+		float tmp = 0.0f;
+		if(x == y) {
+			tmp = 1.0f;
+		}
+		if(x < m && y < m) {
+			const auto y_v = cutf::experimental::tf32::to_tf32(u_ptr[y]);
+			const auto x_v = cutf::experimental::tf32::to_tf32(u_ptr[x]);
+			const auto y_dv = cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[y] - y_v));
+			const auto x_dv = cutf::type::cast<float>(cutf::type::cast<half>(u_ptr[x] - x_v));
+			tmp -= 2.0f * (x_dv * y_v + x_v * y_dv + x_v * y_v) / norm2_u_1;
+		}
+
+		h_ptr[x * FRAGMENT_DIM_M + y] = tmp;
+	}
+}
+
 //
 // Updating Q and R
 //
