@@ -3,6 +3,7 @@
 #include <cuda_fp16.h>
 #include <runtime_status/git.hpp>
 #include <runtime_status/cuda.hpp>
+#include <runtime_status/date.hpp>
 #include "test.hpp"
 
 constexpr std::size_t test_count = 16;
@@ -73,6 +74,7 @@ void qr_test_cond(const std::vector<std::tuple<std::size_t, std::size_t, float>>
 
 int main() {
 	mtk::runtime_status::git::print_info(true);
+	mtk::runtime_status::date::print_info(true);
 	mtk::runtime_status::cuda::print_info(true);
 	mtk::runtime_status::cuda::print_current_device_id();
 	{
