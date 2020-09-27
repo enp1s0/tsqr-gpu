@@ -1,8 +1,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <cuda_fp16.h>
-#include <runtime_staus/git.hpp>
-#include <runtime_staus/cuda.hpp>
+#include <runtime_status/git.hpp>
+#include <runtime_status/cuda.hpp>
 #include "test.hpp"
 
 constexpr std::size_t test_count = 16;
