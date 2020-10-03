@@ -25,6 +25,9 @@
 
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+#define ENABLE_TF32
+#endif
 
 namespace {
 constexpr unsigned warp_size = 32;
@@ -277,6 +280,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
+#ifdef ENABLE_TF32
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> u_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::row_major> ut_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> h_frag_0, h_frag_1, i_frag;
@@ -309,6 +313,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * FRAGMENT_DIM_N + FRAGMENT_DIM_M * FRAGMENT_DIM_N, h_frag_1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+#endif
 }
 
 template <>
@@ -318,6 +323,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 		const unsigned unique_id) {
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	const auto lane = unique_id >> 5;
+#ifdef ENABLE_TF32
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> u_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::row_major> ut_frag_0;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> h_frag_0;
@@ -357,6 +363,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 	if (unique_id < FRAGMENT_DIM_M) {
 		h_ptr[unique_id * (FRAGMENT_DIM_M + 1)] += 1.0f;
 	}
+#endif
 }
 
 template <>
@@ -808,6 +815,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 
 	const auto lane = unique_id >> 5;
 
+#ifdef ENABLE_TF32
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> h_frag[4];
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> q_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> r_frag;
@@ -848,6 +856,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 	}
 	__syncthreads();
 	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+#endif
 }
 
 template <>
@@ -863,6 +872,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor, float, float, fl
 
 	const auto lane = unique_id >> 5;
 
+#ifdef ENABLE_TF32
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> h_frag[FRAGMENT_DIM_M / FRAGMENT_DIM_K], dh_frag[FRAGMENT_DIM_M / FRAGMENT_DIM_K];
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> q_frag, dq_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> r_frag, dr_frag;
@@ -928,8 +938,8 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor, float, float, fl
 	}
 	// compute dQ
 	__syncthreads();
-#pragma unroll
 	auto tmp_q_ptr = q_ptr  + FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+#pragma unroll
 	for (unsigned i = 0; i < FRAGMENT_DIM_N * FRAGMENT_DIM_M; i += FRAGMENT_DIM_M) {
 		const auto q = tmp_q_ptr[i];
 		tmp_q_ptr[i] = q - cutf::type::cast<nvcuda::wmma::precision::tf32>(q);
@@ -976,6 +986,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor, float, float, fl
 		out_r_frag.x[i] += out_dr_frag.x[i];
 	}
 	nvcuda::wmma::store_matrix_sync(r_ptr + lane * FRAGMENT_DIM_N, out_r_frag, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+#endif
 }
 #else // IMPLICIT_H
 
