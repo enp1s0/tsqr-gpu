@@ -26,6 +26,10 @@
 // Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+#define ENABLE_TF32
+#endif
+
 
 namespace mtk {
 namespace tsqr {
