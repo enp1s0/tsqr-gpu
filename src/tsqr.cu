@@ -406,6 +406,74 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::fp32_tc_cor, float>(
 }
 
 template <>
+__global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_nocor, float>(
+		float* const ac_ptr,
+		const float* const b_ptr,
+		const unsigned n,
+		const std::size_t k
+		) {
+#ifdef ENABLE_TF32
+	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
+	constexpr std::size_t FRAGMENT_DIM_K = 8;
+	constexpr std::size_t max_batch_size_per_block = 4;
+	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const auto matrix_id = tid / warp_size;
+	const auto shared_memory_id = matrix_id % max_batch_size_per_block;
+	const auto ac_m = (1lu << (k)) * 2 * n;
+
+	if(matrix_id >= (1lu << k)) return;
+
+	__shared__ float shared_ac[FRAGMENT_DIM_M * FRAGMENT_DIM_N * max_batch_size_per_block];
+	__shared__ float shared_b[FRAGMENT_DIM_N * FRAGMENT_DIM_N * max_batch_size_per_block];
+
+	const auto shared_ac_ptr = shared_ac + FRAGMENT_DIM_M * FRAGMENT_DIM_N * shared_memory_id;
+	const auto shared_b_ptr = shared_b + FRAGMENT_DIM_N * FRAGMENT_DIM_N * shared_memory_id;
+
+	mtk::matrix_copy::g2s32x16_1w(
+			shared_ac_ptr, 2 * n, n,
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			tid
+			);
+	mtk::matrix_copy::g2s16x16_1w(
+			shared_b_ptr, n, n,
+			b_ptr, matrix_id * n, ac_m / 2,
+			tid
+			);
+
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> frag_a0, frag_a1;
+	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> frag_b;
+	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0, frag_c1;
+
+	// TODO: Move into the loop and execute when k = 0.
+	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
+	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
+
+#pragma unroll
+	for (unsigned k = 0; k < FRAGMENT_DIM_N / FRAGMENT_DIM_K; k++) {
+		const auto ac_ptr = shared_ac_ptr + k * FRAGMENT_DIM_M * FRAGMENT_DIM_K;
+		const auto b_ptr = shared_b_ptr + k * FRAGMENT_DIM_K;
+
+		nvcuda::wmma::load_matrix_sync(frag_a0, ac_ptr, FRAGMENT_DIM_M);
+		nvcuda::wmma::load_matrix_sync(frag_a1, ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+		nvcuda::wmma::load_matrix_sync(frag_b, b_ptr, FRAGMENT_DIM_N);
+
+		nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
+		nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
+	}
+
+	nvcuda::wmma::store_matrix_sync(shared_ac_ptr, frag_c0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+	nvcuda::wmma::store_matrix_sync(shared_ac_ptr + FRAGMENT_DIM_N, frag_c1, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
+
+	mtk::matrix_copy::s2g32x16_1w(
+			ac_ptr, matrix_id * 2 * n, ac_m,
+			shared_ac_ptr, 2 * n, n,
+			tid
+			);
+#endif
+}
+
+template <>
 __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_cor, float>(
 		float* const ac_ptr,
 		const float* const b_ptr,
