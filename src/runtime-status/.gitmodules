@@ -1,0 +1,3 @@
+[submodule "proc-status"]
+	path = proc-status
+	url = https://github.com/enp1s0/proc-status

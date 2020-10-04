@@ -23,6 +23,7 @@
 //#define DEBUG_Q_MATRIX_PRINT
 //#define MEASURE_QR_TIME
 //#define EVALUATE_EACH_SMALL_Q
+//#define EVALUATE_EXPONENT_DISTRIBUTION
 
 // Defining `EMULATE_TF32` enables `FP32-noTC` to emulate NVIDIA A100 TF32 TensorCore
 //#define EMULATE_TF32
@@ -91,6 +92,7 @@ TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_cor_emu  );
 TSQR_GET_MATMUL_COMPUTE_MODE(tf32_tc_nocor_emu);
 TSQR_GET_MATMUL_COMPUTE_MODE(mixed_tc_cor_emu );
 
+#ifdef EVALUATE_EXPONENT_DISTRIBUTION
 template <mtk::tsqr::compute_mode>
 std::string get_tsqr_compute_mode_string();
 #define TSQR_GET_TSQR_COMPUTE_MODE_STRING(mode) template<> std::string get_tsqr_compute_mode_string<mtk::tsqr::compute_mode::mode>() {return #mode;}
@@ -102,6 +104,7 @@ TSQR_GET_TSQR_COMPUTE_MODE_STRING(fp32_tc_cor      );
 TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_nocor_emu);
 TSQR_GET_TSQR_COMPUTE_MODE_STRING(tf32_tc_cor_emu  );
 TSQR_GET_TSQR_COMPUTE_MODE_STRING(mixed_tc_cor_emu );
+#endif
 
 template <class DST_T, class SRC_T>
 __device__ void copy_32x16(
@@ -1087,7 +1090,9 @@ void tsqr16_geq32(
 			batch_size, d_sub_m_list,
 			cuda_stream
 			);
-	//mtk::validation::exponent_distribution(working_q_ptr, m * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(batch_size_log2).c_str(), cuda_stream);
+#ifdef EVALUATE_EXPONENT_DISTRIBUTION
+	mtk::validation::exponent_distribution(working_q_ptr, m * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(batch_size_log2).c_str(), cuda_stream);
+#endif
 	cudaStreamSynchronize(cuda_stream);
 
 	// Rest QR Factorization, whose matrix sizes are n x n
@@ -1121,7 +1126,9 @@ void tsqr16_geq32(
 				local_batch_size, d_sub_m_list,
 				cuda_stream
 				);
-		//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * local_batch_size * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(k).c_str(), cuda_stream);
+#ifdef EVALUATE_EXPONENT_DISTRIBUTION
+		mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * local_batch_size * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(k).c_str(), cuda_stream);
+#endif
 
 		debug_func([]() {CUTF_CHECK_ERROR(cudaGetLastError());});
 
@@ -1147,7 +1154,9 @@ void tsqr16_geq32(
 			n,
 			cuda_stream
 			);
-	//mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(0).c_str(), cuda_stream);
+#ifdef EVALUATE_EXPONENT_DISTRIBUTION
+	mtk::validation::exponent_distribution(working_q_ptr + working_q_sride, 2 * n * n, get_tsqr_compute_mode_string<mode>().c_str(), std::to_string(0).c_str(), cuda_stream);
+#endif
 
 	cudaStreamSynchronize(cuda_stream);
 
