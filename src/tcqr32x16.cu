@@ -342,9 +342,9 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 	__syncthreads();
 
 	// load original u
-	mtk::wmma::make_direct_product_fragment_c3(u_frag, u16_ptr + lane * 16, du16_ptr + lane * 16);
+	mtk::wmma::make_direct_product_fragment_c3(u_frag, u_tf32_ptr + lane * 16, du_tf32_ptr + lane * 16);
 
-	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u16_ptr, du16_ptr);
+	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u_tf32_ptr, du_tf32_ptr);
 	mtk::wmma::fill_zero(h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	for(unsigned i = 0; i < 8; i++) {
@@ -352,7 +352,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 	}
 	nvcuda::wmma::store_matrix_sync(h_ptr + lane * 16, h_frag_0, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 
-	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u16_ptr + 16, du16_ptr + 16);
+	mtk::wmma::make_direct_product_fragment_c3(ut_frag_0, u_tf32_ptr + 16, du_tf32_ptr + 16);
 	mtk::wmma::fill_zero(h_frag_0);
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag_0, h_frag_0);
 	for(unsigned i = 0; i < 8; i++) {
@@ -841,7 +841,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 	nvcuda::wmma::fill_fragment(out_q_frag, 0.0f);
 #pragma unroll
 	for (unsigned k = 0; k < FRAGMENT_DIM_M / FRAGMENT_DIM_K; k++) {
-		nvcuda::wmma::load_matrix_sync(out_q_frag, q_ptr + FRAGMENT_DIM_K * k + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+		nvcuda::wmma::load_matrix_sync(out_q_frag, q_ptr + FRAGMENT_DIM_K * k + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M, nvcuda::wmma::mem_col_major);
 		nvcuda::wmma::mma_sync(out_q_frag, h_frag[k], q_frag, out_q_frag);
 	}
 	__syncthreads();
