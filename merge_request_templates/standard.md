@@ -11,6 +11,6 @@ This MR
   - [ ] proper comments
   - [ ] proper README.md
 - Execution test
-  - [ ] expected result on
-    - 
+  - expected result on
+    - [ ] 
 

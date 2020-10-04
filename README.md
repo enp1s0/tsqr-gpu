@@ -3,5 +3,6 @@
 ## Installation
 
 ```bash
-git submodule add https://gitlab.momo86.net/mutsuki/gitlab-merge_request_templates .gitlab
+git remote add gitlab-merge_request_templates https://github.com/enp1s0/gitlab-merge_request_templates
+git subtree add --prefix=.gitlab --squash gitlab-merge_request_templates master
 ```
