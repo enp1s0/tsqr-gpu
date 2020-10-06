@@ -323,13 +323,14 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 		const unsigned unique_id) {
 #ifdef ENABLE_TF32
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
+	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_a, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> u_frag;
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::row_major> ut_frag_0;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> h_frag_0;
 
-	float* const u_tf32_ptr = h_ptr;
-	float* const du_tf32_ptr = u_tf32_ptr + FRAGMENT_DIM_M;
+	float* const u_tf32_ptr = h_ptr + FRAGMENT_DIM_M * FRAGMENT_DIM_N;
+	float* const du_tf32_ptr = u_tf32_ptr + FRAGMENT_DIM_M + FRAGMENT_DIM_M * FRAGMENT_DIM_N;
 
 	const auto alpha = cutf::math::sqrt(2.0f / norm2_u_1);
 	if (lane == 0) {
