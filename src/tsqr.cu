@@ -879,7 +879,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_nocor, flo
 #ifdef ENABLE_TF32
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	constexpr std::size_t FRAGMENT_DIM_K = 16;
+	constexpr std::size_t FRAGMENT_DIM_K = 8;
 	constexpr std::size_t max_batch_size_per_block = 4;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto matrix_id = tid / warp_size;
@@ -951,7 +951,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_cor, float
 #ifdef ENABLE_TF32
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
-	constexpr std::size_t FRAGMENT_DIM_K = 16;
+	constexpr std::size_t FRAGMENT_DIM_K = 8;
 	constexpr std::size_t max_batch_size_per_block = 4;
 	constexpr float correction_rescale = 1024.0f;
 	const auto tid = blockIdx.x * blockDim.x + threadIdx.x;
