@@ -534,25 +534,25 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_cor, float>(
 		const auto tmp_b_ptr = shared_b_ptr + k * FRAGMENT_DIM_K;
 
 		nvcuda::wmma::load_matrix_sync(frag_a0, tmp_ac_ptr, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(frag_a1, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(frag_b, tmp_b_ptr, FRAGMENT_DIM_N);
-
-		// compute diff
-		for (unsigned i = 0; i < FRAGMENT_DIM_M * FRAGMENT_DIM_K; i+= warp_size) {
-			const auto index = i + cutf::thread::get_lane_id();
-			const auto v = tmp_ac_ptr[index];
-			tmp_ac_ptr[index] = v - cutf::type::cast<nvcuda::wmma::precision::tf32>(v);
-		}
-		for (unsigned i = 0; i < FRAGMENT_DIM_N * FRAGMENT_DIM_K; i+= warp_size) {
-			const auto v_tid = i + cutf::thread::get_lane_id();
-			const auto index = v_tid % FRAGMENT_DIM_K + (v_tid / FRAGMENT_DIM_K) * FRAGMENT_DIM_N;
-			const auto v = tmp_b_ptr[index];
-			tmp_b_ptr[index] = v - cutf::type::cast<nvcuda::wmma::precision::tf32>(v);
-		}
-
 		nvcuda::wmma::load_matrix_sync(frag_a0_diff, tmp_ac_ptr, FRAGMENT_DIM_M);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a0.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a0.x[i]);
+			frag_a0_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_a0_diff.x[i] - frag_a0.x[i]) * correction_rescale);
+		}
+
+		nvcuda::wmma::load_matrix_sync(frag_a1, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_a1_diff, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a1.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a1.x[i]);
+			frag_a1_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_a1_diff.x[i] - frag_a1.x[i]) * correction_rescale);
+		}
+
+		nvcuda::wmma::load_matrix_sync(frag_b, tmp_b_ptr, FRAGMENT_DIM_N);
 		nvcuda::wmma::load_matrix_sync(frag_b_diff, tmp_b_ptr, FRAGMENT_DIM_N);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_b.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_b.x[i]);
+			frag_b_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_b_diff.x[i] - frag_b.x[i]) * correction_rescale);
+		}
 
 		nvcuda::wmma::mma_sync(frag_c0_diff, frag_a0_diff, frag_b, frag_c0_diff);
 		nvcuda::wmma::mma_sync(frag_c1_diff, frag_a1_diff, frag_b, frag_c1_diff);
@@ -999,25 +999,25 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_cor, float
 		const auto tmp_b_ptr = shared_b_ptr + k * FRAGMENT_DIM_K;
 
 		nvcuda::wmma::load_matrix_sync(frag_a0, tmp_ac_ptr, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(frag_a1, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
-		nvcuda::wmma::load_matrix_sync(frag_b, tmp_b_ptr, FRAGMENT_DIM_N);
-
-		// compute diff
-		for (unsigned i = 0; i < FRAGMENT_DIM_M * FRAGMENT_DIM_K; i+= warp_size) {
-			const auto index = i + cutf::thread::get_lane_id();
-			const auto v = tmp_ac_ptr[index];
-			tmp_ac_ptr[index] = v - cutf::type::cast<nvcuda::wmma::precision::tf32>(v);
-		}
-		for (unsigned i = 0; i < FRAGMENT_DIM_N * FRAGMENT_DIM_K; i+= warp_size) {
-			const auto v_tid = i + cutf::thread::get_lane_id();
-			const auto index = v_tid % FRAGMENT_DIM_K + (v_tid / FRAGMENT_DIM_K) * FRAGMENT_DIM_N;
-			const auto v = tmp_b_ptr[index];
-			tmp_b_ptr[index] = v - cutf::type::cast<nvcuda::wmma::precision::tf32>(v);
-		}
-
 		nvcuda::wmma::load_matrix_sync(frag_a0_diff, tmp_ac_ptr, FRAGMENT_DIM_M);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a0.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a0.x[i]);
+			frag_a0_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_a0_diff.x[i] - frag_a0.x[i]) * correction_rescale);
+		}
+
+		nvcuda::wmma::load_matrix_sync(frag_a1, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_a1_diff, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a1.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a1.x[i]);
+			frag_a1_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_a1_diff.x[i] - frag_a1.x[i]) * correction_rescale);
+		}
+
+		nvcuda::wmma::load_matrix_sync(frag_b, tmp_b_ptr, FRAGMENT_DIM_N);
 		nvcuda::wmma::load_matrix_sync(frag_b_diff, tmp_b_ptr, FRAGMENT_DIM_N);
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_b.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_b.x[i]);
+			frag_b_diff.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>((frag_b_diff.x[i] - frag_b.x[i]) * correction_rescale);
+		}
 
 		nvcuda::wmma::mma_sync(frag_c0_diff, frag_a0_diff, frag_b, frag_c0_diff);
 		nvcuda::wmma::mma_sync(frag_c1_diff, frag_a1_diff, frag_b, frag_c1_diff);
