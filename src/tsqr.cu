@@ -32,6 +32,7 @@
 #define ENABLE_TF32
 #endif
 
+#define TF32_ROUNDING
 
 namespace mtk {
 namespace tsqr {
@@ -462,6 +463,15 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_nocor, float>(
 		nvcuda::wmma::load_matrix_sync(frag_a0, ac_ptr, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_a1, ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_b, b_ptr, FRAGMENT_DIM_N);
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a0.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a0.x[i]);
+			frag_a1.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a1.x[i]);
+		}
+		for (unsigned i = 0; i < frag_b.num_elements; i++) {
+			frag_b.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_b.x[i]);
+		}
+#endif
 
 		nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
 		nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);
@@ -923,6 +933,16 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_nocor, flo
 		nvcuda::wmma::load_matrix_sync(frag_a0, tmp_ac_ptr, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_a1, tmp_ac_ptr + FRAGMENT_DIM_N, FRAGMENT_DIM_M);
 		nvcuda::wmma::load_matrix_sync(frag_b, tmp_b_ptr, FRAGMENT_DIM_N);
+
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < frag_a0.num_elements; i++) {
+			frag_a0.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a0.x[i]);
+			frag_a1.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_a1.x[i]);
+		}
+		for (unsigned i = 0; i < frag_b.num_elements; i++) {
+			frag_b.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(frag_b.x[i]);
+		}
+#endif
 
 		nvcuda::wmma::mma_sync(frag_c0, frag_a0, frag_b, frag_c0);
 		nvcuda::wmma::mma_sync(frag_c1, frag_a1, frag_b, frag_c1);

@@ -29,6 +29,8 @@
 #define ENABLE_TF32
 #endif
 
+#define TF32_ROUNDING
+
 namespace {
 constexpr unsigned warp_size = 32;
 
@@ -287,6 +289,13 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 
 	nvcuda::wmma::fill_fragment(h_frag_0, 0.0f);
 	nvcuda::wmma::fill_fragment(h_frag_1, 0.0f);
+
+#ifdef TF32_ROUNDING
+	if (lane == 0) {
+		u_ptr[unique_id] = cutf::type::cast<nvcuda::wmma::precision::tf32>(u_ptr[unique_id]);
+	}
+	__syncthreads();
+#endif
 
 	const auto alpha = 2.0f / norm2_u_1;
 	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
@@ -827,6 +836,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 #pragma unroll
 	for (unsigned k = 0; k < FRAGMENT_DIM_M / FRAGMENT_DIM_K; k++) {
 		nvcuda::wmma::load_matrix_sync(h_frag[k], h_ptr + FRAGMENT_DIM_K * FRAGMENT_DIM_M * k + lane * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < h_frag[k].num_elements; i++) {
+			h_frag[k].x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(h_frag[k].x[i]);
+		}
+#endif
 	}
 
 	// Q0
@@ -834,6 +848,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 #pragma unroll
 	for (unsigned k = 0; k < FRAGMENT_DIM_M / FRAGMENT_DIM_K; k++) {
 		nvcuda::wmma::load_matrix_sync(q_frag, q_ptr + FRAGMENT_DIM_K * k, FRAGMENT_DIM_M);
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < q_frag.num_elements; i++) {
+			q_frag.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(q_frag.x[i]);
+		}
+#endif
 		nvcuda::wmma::mma_sync(out_q_frag, h_frag[k], q_frag, out_q_frag);
 	}
 	__syncthreads();
@@ -845,6 +864,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 #pragma unroll
 	for (unsigned k = 0; k < FRAGMENT_DIM_M / FRAGMENT_DIM_K; k++) {
 		nvcuda::wmma::load_matrix_sync(q_frag, q_ptr + FRAGMENT_DIM_K * k + FRAGMENT_DIM_M * FRAGMENT_DIM_N, FRAGMENT_DIM_M);
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < q_frag.num_elements; i++) {
+			q_frag.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(q_frag.x[i]);
+		}
+#endif
 		nvcuda::wmma::mma_sync(out_q_frag, h_frag[k], q_frag, out_q_frag);
 	}
 	__syncthreads();
@@ -856,6 +880,11 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 #pragma unroll
 	for (unsigned k = 0; k < FRAGMENT_DIM_M / FRAGMENT_DIM_K; k++) {
 		nvcuda::wmma::load_matrix_sync(r_frag, r_ptr + FRAGMENT_DIM_K * k, FRAGMENT_DIM_M);
+#ifdef TF32_ROUNDING
+		for (unsigned i = 0; i < r_frag.num_elements; i++) {
+			r_frag.x[i] = cutf::type::cast<nvcuda::wmma::precision::tf32>(r_frag.x[i]);
+		}
+#endif
 		nvcuda::wmma::mma_sync(out_r_frag, h_frag[k], r_frag, out_r_frag);
 	}
 	__syncthreads();
