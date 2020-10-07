@@ -290,22 +290,28 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 	nvcuda::wmma::fill_fragment(h_frag_0, 0.0f);
 	nvcuda::wmma::fill_fragment(h_frag_1, 0.0f);
 
-#ifdef TF32_ROUNDING
-	if (lane == 0) {
-		u_ptr[unique_id] = cutf::type::cast<nvcuda::wmma::precision::tf32>(u_ptr[unique_id]);
-	}
-	__syncthreads();
-#endif
 
 	const auto alpha = 2.0f / norm2_u_1;
+#ifdef TF32_ROUNDING
+	mtk::wmma::load_vector_with_rounding_sync(u_frag, u_ptr + lane * 16, alpha);
+#else
 	mtk::wmma::load_vector_sync(u_frag, u_ptr + lane * 16, alpha);
+#endif
 
 	mtk::wmma::make_identity_matrix(i_frag);
 
+#ifdef TF32_ROUNDING
+	mtk::wmma::load_vector_with_rounding_sync(ut_frag, u_ptr);
+#else
 	mtk::wmma::load_vector_sync(ut_frag, u_ptr);
+#endif
 	nvcuda::wmma::mma_sync(h_frag_0, u_frag, ut_frag, h_frag_0);
 
+#ifdef TF32_ROUNDING
+	mtk::wmma::load_vector_with_rounding_sync(ut_frag, u_ptr + FRAGMENT_DIM_N);
+#else
 	mtk::wmma::load_vector_sync(ut_frag, u_ptr + FRAGMENT_DIM_N);
+#endif
 	nvcuda::wmma::mma_sync(h_frag_1, u_frag, ut_frag, h_frag_1);
 
 	if(lane == 0) {
