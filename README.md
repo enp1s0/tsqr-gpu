@@ -1,10 +1,41 @@
 # TSQR on TensorCores
 
+TSQR is an efficient QR factorization algorithm for tall-skinny matrices in parallel computing environment.
+
 ![TSQR](https://gitlab.momo86.net/mutsuki/tsqr-gpu/raw/master/docs/tsqr.svg)
 
-## Publication
+## Publications
 
 - "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (BP Candidate) [[File](https://static.momo86.net/f/1/sc19-tsqr-on-tc-poster)]
+
+## Supported computation mode
+
+| Name          | Type | TensorCore | Error Correction |
+|:--------------|:-----|:-----------|:-----------------|
+|fp16_notc      |half  | no         | no               |
+|fp16_tc_nocor  |half  | yes        | no               |
+|fp32_notc      |float | no         | no               |
+|fp32_tc_nocor  |float | yes (fp32) | no               |
+|fp32_tc_cor    |float | yes (fp32) | yes              |
+|tf32_tc_nocor  |float | yes (tf32) | no               |
+|tf32_tc_cor    |float | yes (tf32) | yes              |
+
+## Requirements
+### Software environment
+- C++ (C++14 or later)
+- CUDA (10.1 or later)
+
+## Dependencies
+- cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
+- gemm_core : [https://github.com/enp1s0/gemm_core_cuh](https://github.com/enp1s0/gemm_core_cuh)
+- wmma-extension : [https://github.com/enp1s0/wmma_extension](https://github.com/enp1s0/wmma_extension)
+- runtime_status : [https://github.com/enp1s0/runtime_status](https://github.com/enp1s0/runtime_status)
+
+These libraries are automatically cloned.
+
+### Hardware environment
+- NVIDIA GPU (Volta or later, TensorCores)
+
 
 ## How to build test
 ```
@@ -67,17 +98,3 @@ mtk::qr::qr<compute_mode, Reorthogonalization>(
 nvcc -std=c++11 -arch=sm_70 tsqr-sample.cu -I/path/to/`include` -L/path/to/`lib` -ltcqr
 ```
 
-
-## Environment
-### Software
-- C++ (C++14 or later)
-- CUDA (10.1 or later)
-
-### Hardware
-- NVIDIA GPU
-
-## Dependencies
-- cutf : [https://github.com/enp1s0/cutf](https://github.com/enp1s0/cutf)
-- gemm_core : [https://github.com/enp1s0/gemm_core_cuh](https://github.com/enp1s0/gemm_core_cuh)
-- wmma-extension : [https://github.com/enp1s0/wmma_extension](https://github.com/enp1s0/wmma_extension)
-- runtime_status : [https://github.com/enp1s0/runtime_status](https://github.com/enp1s0/runtime_status)
