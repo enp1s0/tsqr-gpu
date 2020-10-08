@@ -6,7 +6,7 @@ TSQR is an efficient QR factorization algorithm for tall-skinny matrices in para
 
 ## Publications
 
-- "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (BP Candidate) [[File](https://static.momo86.net/f/1/sc19-tsqr-on-tc-poster)]
+- "TSQR on TensorCores", Hiroyuki Ootomo and Rio Yokota, SC'19 Research Poster (Best Poster Candidate) [[File](https://static.momo86.net/f/1/sc19-tsqr-on-tc-poster)]
 
 ## Supported computation mode
 
