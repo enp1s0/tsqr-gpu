@@ -451,7 +451,6 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_nocor, float>(
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0, frag_c1;
 
-	// TODO: Move into the loop and execute when k = 0.
 	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
 
@@ -532,7 +531,6 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_cor, float>(
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0_diff, frag_c1_diff;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0, frag_c1;
 
-	// TODO: Move into the loop and execute when k = 0.
 	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c0_diff, 0.0f);
@@ -921,7 +919,6 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_nocor, flo
 	nvcuda::wmma::fragment<nvcuda::wmma::matrix_b, 16, 16, 8, nvcuda::wmma::precision::tf32, nvcuda::wmma::col_major> frag_b;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0, frag_c1;
 
-	// TODO: Move into the loop and execute when k = 0.
 	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
 
@@ -1007,7 +1004,6 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_cor, float
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0_diff, frag_c1_diff;
 	nvcuda::wmma::fragment<nvcuda::wmma::accumulator, 16, 16, 8, float> frag_c0, frag_c1;
 
-	// TODO: Move into the loop and execute when k = 0.
 	nvcuda::wmma::fill_fragment(frag_c0, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c1, 0.0f);
 	nvcuda::wmma::fill_fragment(frag_c0_diff, 0.0f);
