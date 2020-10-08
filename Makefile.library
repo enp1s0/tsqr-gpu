@@ -2,7 +2,10 @@ CXX=g++
 CXXFLAGS=-std=c++14 -I./src/cutf -I./src/wmma_extension/include -O3
 OMPFLAGS=-fopenmp
 NVCC=nvcc
-NVCCFLAGS=$(CXXFLAGS) --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver -rdc=true
+NVCCFLAGS=$(CXXFLAGS) --compiler-bindir=$(CXX) -Xcompiler=$(OMPFLAGS) -lcublas -lcusolver -rdc=true --expt-relaxed-constexpr
+NVCCFLAGS+=-gencode arch=compute_70,code=sm_70
+NVCCFLAGS+=-gencode arch=compute_75,code=sm_75
+NVCCFLAGS+=-gencode arch=compute_80,code=sm_80
 SRCDIR=src
 OBJDIR=objs
 LIBDIR=lib
