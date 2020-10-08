@@ -15,8 +15,8 @@ TSQR is an efficient QR factorization algorithm for tall-skinny matrices in para
 |fp16_notc      |half  | no         | no               |
 |fp16_tc_nocor  |half  | yes        | no               |
 |fp32_notc      |float | no         | no               |
-|fp32_tc_nocor  |float | yes (fp32) | no               |
-|fp32_tc_cor    |float | yes (fp32) | yes              |
+|fp32_tc_nocor  |float | yes (fp16) | no               |
+|fp32_tc_cor    |float | yes (fp16) | yes              |
 |tf32_tc_nocor  |float | yes (tf32) | no               |
 |tf32_tc_cor    |float | yes (tf32) | yes              |
 
