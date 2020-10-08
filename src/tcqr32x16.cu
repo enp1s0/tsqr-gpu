@@ -43,7 +43,6 @@ template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_notc        > {using ty
 template <> struct h_mat_t<mtk::tcqr::compute_mode::fp16_tc_nocor    > {using type = half;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_nocor    > {using type = float;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_cor      > {using type = float;};
-template <> struct h_mat_t<mtk::tcqr::compute_mode::mixed_tc_cor     > {using type = float;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_nocor_emu> {using type = float;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::tf32_tc_cor_emu  > {using type = float;};
 template <> struct h_mat_t<mtk::tcqr::compute_mode::mixed_tc_cor_emu > {using type = float;};
