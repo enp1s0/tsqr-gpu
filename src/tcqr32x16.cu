@@ -26,7 +26,7 @@
 // clock : make_u,norm1,update_u,norm2,make_h,mem_init,update_qr,mem_swap
 // clock : make_u,norm1,update_u,norm2,update_qr_with_u
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-#define ENABLE_TF32
+#define TF32_ENABLED
 #endif
 
 #define TF32_ROUNDING
@@ -279,7 +279,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float>(
 		float* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
@@ -336,7 +336,7 @@ __device__ void make_h<mtk::tcqr::compute_mode::tf32_tc_cor, float, float>(
 		float* const h_ptr, const unsigned m,
 		float* const u_ptr, const float norm2_u_1,
 		const unsigned unique_id) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	const auto lane = unique_id >> 5;
@@ -826,7 +826,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_nocor, float, float, 
 		half* const working_memory,
 		const unsigned unique_id
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;
@@ -905,7 +905,7 @@ __device__ void update_qr<mtk::tcqr::compute_mode::tf32_tc_cor, float, float, fl
 		half* const working_memory,
 		const unsigned unique_id
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;

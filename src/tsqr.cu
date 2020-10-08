@@ -29,7 +29,7 @@
 //#define EMULATE_TF32
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-#define ENABLE_TF32
+#define TF32_ENABLED
 #endif
 
 #define TF32_ROUNDING
@@ -418,7 +418,7 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_nocor, float>(
 		const unsigned n,
 		const std::size_t k
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;
@@ -495,7 +495,7 @@ __global__ void tsqr_backward<mtk::tsqr::compute_mode::tf32_tc_cor, float>(
 		const unsigned n,
 		const std::size_t k
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;
@@ -886,7 +886,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_nocor, flo
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;
@@ -968,7 +968,7 @@ __global__ void tsqr_backward_layer0<mtk::tsqr::compute_mode::tf32_tc_cor, float
 		const std::size_t batch_size,
 		const unsigned* const q_start_position
 		) {
-#ifdef ENABLE_TF32
+#ifdef TF32_ENABLED
 	constexpr std::size_t FRAGMENT_DIM_M = 32;
 	constexpr std::size_t FRAGMENT_DIM_N = 16;
 	constexpr std::size_t FRAGMENT_DIM_K = 8;
