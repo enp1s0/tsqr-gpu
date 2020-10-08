@@ -49,7 +49,7 @@ void qr_test(const std::vector<std::tuple<std::size_t, std::size_t, float>>& tes
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp16_tc_nocor, true >(test_matrix_config_list, test_count);
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_notc    , true >(test_matrix_config_list, test_count);
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_nocor, true >(test_matrix_config_list, test_count);
-	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_nocor, true >(test_matrix_config_list, test_count);
+	mtk::test_qr::speed<mtk::test_qr::compute_mode::fp32_tc_cor  , true >(test_matrix_config_list, test_count);
 #ifdef TF32_ENABLED
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::tf32_tc_cor  , true >(test_matrix_config_list, test_count);
 	mtk::test_qr::speed<mtk::test_qr::compute_mode::tf32_tc_cor  , true >(test_matrix_config_list, test_count);
