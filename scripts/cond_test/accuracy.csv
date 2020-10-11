@@ -1,1 +1,1 @@
-m,n,cond,type,core_type,tc,correction,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation
+m,n,cond,type,compute_mode,reorthogonalization,residual,residual_deviation,orthogonality,orthogonality_deviation
