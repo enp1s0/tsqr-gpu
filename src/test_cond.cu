@@ -107,7 +107,7 @@ __global__ void make_zero(DST_T* const dst, const std::size_t size){
 }
 
 void print_accuracy_head() {
-	std::cout << "m,n,cond,type,core_type,tc,correction,reorthogonalization,error,error_deviation,orthogonality,orthogonality_deviation" << std::endl;
+	std::cout << "m,n,cond,type,compute_mode,reorthogonalization,residual,residual_deviation,orthogonality,orthogonality_deviation" << std::endl;
 	std::cout.flush();
 }
 
