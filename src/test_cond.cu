@@ -384,7 +384,6 @@ void mtk::test_qr::cusolver_accuracy_cond(const std::vector<std::tuple<std::size
 				<< n << ","
 				<< condition_number << ","
 				<< get_type_name<T>() << ","
-				<< get_type_name<T>() << ","
 				<< "cusolver" << ","
 				<< "0" << ","
 				<< error << ","
