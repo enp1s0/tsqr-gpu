@@ -1,8 +1,12 @@
 CXX=g++
-COMMONFLAGS=-std=c++14 -I./src/cutf -I./src/wmma_extension/include -I./src/runtime-status -DRS_GIT_BRANCH="\"$(shell git branch | grep '\*' | sed -e 's/.* //')\"" -DRS_GIT_COMMIT="\"$(shell git rev-parse HEAD)\"" -DRS_DATE_BUILD="\"$(shell date +%s)\""
+COMMONFLAGS=-std=c++14 -I./src/cutf -I./src/wmma_extension/include -I./src/runtime_status -DRS_GIT_BRANCH="\"$(shell git branch | grep '\*' | sed -e 's/.* //')\"" -DRS_GIT_COMMIT="\"$(shell git rev-parse HEAD)\"" -DRS_DATE_BUILD="\"$(shell date +%s)\""
 CXXFLAGS=-O3 -Wall -fopenmp
 NVCC=nvcc
-NVCCFLAGS=$(COMMONFLAGS) --compiler-bindir=$(CXX) -Xcompiler="$(CXXFLAGS)" -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -lcublas -lcusolver -lcurand -rdc=true --expt-relaxed-constexpr
+NVCCFLAGS=$(COMMONFLAGS) --compiler-bindir=$(CXX) -Xcompiler="$(CXXFLAGS)" -rdc=true --expt-relaxed-constexpr
+NVCCFLAGS+=-lcublas -lcusolver -lcurand
+NVCCFLAGS+=-gencode arch=compute_70,code=sm_70
+NVCCFLAGS+=-gencode arch=compute_75,code=sm_75
+NVCCFLAGS+=-gencode arch=compute_80,code=sm_80
 SRCDIR=src
 SRCS=$(shell find src -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
