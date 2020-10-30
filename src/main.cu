@@ -7,6 +7,20 @@ constexpr std::size_t n = 16;
 
 constexpr auto compute_mode = mtk::tsqr::compute_mode::fp32_tc_cor;
 
+void qr_tc(float* const q, float* const r, const float* const a) {
+	// Allocate working memory
+	mtk::tsqr::buffer<compute_mode> working_memory;
+	working_memory.allocate(m, n);
+
+	// TSQR
+	mtk::tsqr::tsqr16<compute_mode>(
+			q, m, // Q, leading dimension
+			r, n, // R, leading dimension
+			a, m, // A, leading dimension
+			m, n, // size of A
+			working_memory, 0);
+}
+
 int main() {
 	// Allocate device memory
 	float *a;
@@ -23,17 +37,7 @@ int main() {
 	for (std::size_t i = 0; i < m * n; i++) ha[i] = dist(mt);
 	cudaMemcpy(a, ha, sizeof(float) * m * n, cudaMemcpyDefault);
 
-	// Allocate working memory
-	mtk::tsqr::buffer<compute_mode> working_memory;
-	working_memory.allocate(m, n);
-
-	// TSQR
-	mtk::tsqr::tsqr16<compute_mode>(
-			q, m, // Q, leading dimension
-			r, n, // R, leading dimension
-			a, m, // A, leading dimension
-			m, n, // size of A
-			working_memory, 0);
+	qr_tc(q, r, a);
 
 	cudaFree(a);
 	cudaFree(r);
