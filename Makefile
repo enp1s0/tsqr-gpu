@@ -7,6 +7,7 @@ NVCCFLAGS+=-lcublas -lcusolver -lcurand
 NVCCFLAGS+=-gencode arch=compute_70,code=sm_70
 NVCCFLAGS+=-gencode arch=compute_75,code=sm_75
 NVCCFLAGS+=-gencode arch=compute_80,code=sm_80
+NVCCFLAGS+=-gencode arch=compute_86,code=sm_86
 SRCDIR=src
 SRCS=$(shell find src -maxdepth 1 -name '*.cu' -o -name '*.cpp')
 OBJDIR=objs
