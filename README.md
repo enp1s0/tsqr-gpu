@@ -1,4 +1,9 @@
-# TSQR on TensorCores
+# This project is no longer maintained
+
+**Please see a [new project](https://github.com/enp1s0/tsqr-tc).**
+
+
+# TSQR on TensorCore
 
 TSQR is an efficient QR factorization algorithm for tall-skinny matrices in parallel computing environment.
 
